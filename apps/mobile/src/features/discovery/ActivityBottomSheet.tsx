@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, Easing } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   ShieldCheck,
@@ -22,46 +22,6 @@ export function ActivityBottomSheet({
   onClose,
 }: ActivityBottomSheetProps) {
   const router = useRouter();
-  const slideAnim = useRef(new Animated.Value(120)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (activity) {
-      slideAnim.setValue(120);
-      opacityAnim.setValue(0);
-      Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          bounciness: 4,
-          speed: 16,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [activity, slideAnim, opacityAnim]);
-
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 120,
-        duration: 150,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 130,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-    });
-  };
 
   if (!activity) return null;
 
@@ -69,16 +29,10 @@ export function ActivityBottomSheet({
   const theme = getPinTheme(ttlStatus.urgency);
 
   return (
-    <Animated.View
-      style={{
-        transform: [{ translateY: slideAnim }],
-        opacity: opacityAnim,
-      }}
-      className="bg-ink border-t border-hairline px-5 pt-3 pb-8 rounded-t-3xl shadow-2xl"
-    >
+    <View className="bg-ink border-t border-hairline px-5 pt-3 pb-8 rounded-t-3xl">
       {/* Top Handle Bar */}
       <TouchableOpacity
-        onPress={handleClose}
+        onPress={onClose}
         activeOpacity={0.6}
         className="py-1 self-center w-16 items-center mb-2"
       >
@@ -111,7 +65,7 @@ export function ActivityBottomSheet({
         </View>
 
         <TouchableOpacity
-          onPress={handleClose}
+          onPress={onClose}
           className="w-7 h-7 rounded-full bg-ink-raised border border-hairline items-center justify-center"
           activeOpacity={0.7}
         >
@@ -174,7 +128,7 @@ export function ActivityBottomSheet({
       {/* Request to Join CTA Button */}
       <TouchableOpacity
         onPress={() => router.push(`/activity/${activity.id}`)}
-        className="w-full bg-signal-violet py-3.5 rounded-full flex-row items-center justify-center shadow-lg"
+        className="w-full bg-signal-violet py-3.5 rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
         activeOpacity={0.85}
       >
         <Text className="text-moonlight font-display text-sm font-bold mr-1">
@@ -183,6 +137,6 @@ export function ActivityBottomSheet({
         </Text>
         <ChevronRight size={16} color="#F5F0FF" />
       </TouchableOpacity>
-    </Animated.View>
+    </View>
   );
 }

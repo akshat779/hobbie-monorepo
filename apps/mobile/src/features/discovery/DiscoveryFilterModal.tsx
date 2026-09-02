@@ -250,7 +250,7 @@ export function DiscoveryFilterModal({
           {/* Bottom Action CTA */}
           <TouchableOpacity
             onPress={handleApply}
-            className="w-full bg-signal-violet py-4 rounded-full items-center justify-center shadow-lg mt-2"
+            className="w-full bg-signal-violet py-4 rounded-full items-center justify-center border border-signal-violet-light/30 mt-2"
             activeOpacity={0.85}
           >
             <Text className="text-moonlight font-display text-base font-bold">

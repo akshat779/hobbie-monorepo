@@ -65,7 +65,7 @@ export default function ActiveEphemeralRoomScreen() {
       {/* Ephemeral Header */}
       <View
         style={{ paddingTop: Math.max(insets.top, 16) }}
-        className="bg-ink border-b border-hairline px-5 pb-3 shadow-lg"
+        className="bg-ink border-b border-hairline px-5 pb-3"
       >
         <View className="flex-row justify-between items-center mb-2">
           <TouchableOpacity
@@ -155,7 +155,7 @@ export default function ActiveEphemeralRoomScreen() {
         />
         <TouchableOpacity
           onPress={handleSend}
-          className="w-11 h-11 bg-signal-violet rounded-full items-center justify-center shadow-md"
+          className="w-11 h-11 bg-signal-violet rounded-full items-center justify-center border border-signal-violet-light/30"
           activeOpacity={0.8}
         >
           <Send size={16} color="#F5F0FF" />

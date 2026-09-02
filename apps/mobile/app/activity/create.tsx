@@ -137,9 +137,9 @@ export default function CreateActivityScreen() {
       <TouchableOpacity
         onPress={handlePost}
         disabled={!title.trim()}
-        className={`w-full py-4 rounded-full items-center shadow-lg mb-10 ${
+        className={`w-full py-4 rounded-full items-center mb-10 ${
           title.trim()
-            ? 'bg-signal-violet'
+            ? 'bg-signal-violet border border-signal-violet-light/30'
             : 'bg-ink border border-hairline opacity-50'
         }`}
       >

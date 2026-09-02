@@ -31,6 +31,7 @@ export function RadiusSlider({
   step = 0.5,
 }: RadiusSliderProps) {
   const [trackWidth, setTrackWidth] = useState(0);
+  const trackWidthRef = useRef(0);
   const trackPageX = useRef(0);
   const trackRef = useRef<View>(null);
   const isDragging = useRef(false);
@@ -50,10 +51,11 @@ export function RadiusSlider({
   }, [value, min, max, animRatio]);
 
   const measureAndStore = () => {
-    trackRef.current?.measure((_x, _y, width, _height, pageX) => {
+    trackRef.current?.measureInWindow((pageX, _y, width) => {
       if (width > 0) {
-        setTrackWidth(width);
+        trackWidthRef.current = width;
         trackPageX.current = pageX;
+        setTrackWidth(width);
       }
     });
   };
@@ -61,15 +63,17 @@ export function RadiusSlider({
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width } = e.nativeEvent.layout;
     if (width > 0) {
+      trackWidthRef.current = width;
       setTrackWidth(width);
       measureAndStore();
     }
   };
 
   const updateFromPageX = (pageX: number) => {
-    if (trackWidth <= 0) return;
+    const currentTrackWidth = trackWidthRef.current;
+    if (currentTrackWidth <= 0) return;
     const x = pageX - trackPageX.current;
-    const ratio = Math.max(0, Math.min(1, x / trackWidth));
+    const ratio = Math.max(0, Math.min(1, x / currentTrackWidth));
 
     // 1. Instant 60fps/120fps hardware animated value
     animRatio.setValue(ratio);
@@ -89,20 +93,17 @@ export function RadiusSlider({
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => false,
-      onMoveShouldSetPanResponder: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 4;
-      },
-      onMoveShouldSetPanResponderCapture: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 4;
-      },
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderGrant: (evt: GestureResponderEvent) => {
         isDragging.current = true;
         onSlidingStart?.();
-        trackRef.current?.measure((_x, _y, width, _height, pageX) => {
+        trackRef.current?.measureInWindow((pageX, _y, width) => {
           if (width > 0) {
-            setTrackWidth(width);
+            trackWidthRef.current = width;
             trackPageX.current = pageX;
+            setTrackWidth(width);
           }
           updateFromPageX(evt.nativeEvent.pageX);
         });

@@ -48,7 +48,7 @@ export default function WelcomeLandingScreen() {
       <View className="w-full space-y-3">
         <TouchableOpacity
           onPress={() => router.push('/(auth)/phone')}
-          className="w-full h-14 bg-signal-violet rounded-full flex-row items-center justify-center shadow-lg"
+          className="w-full h-14 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
           activeOpacity={0.8}
         >
           <Text className="text-moonlight font-display text-lg font-bold">

@@ -244,31 +244,35 @@ export default function DiscoveryMapScreen() {
           </View>
         )}
 
-        {/* Floating Recenter Radar Button */}
-        <TouchableOpacity
-          onPress={() => {
-            mapRef.current?.animateToRegion(mapRegion, 400);
-            refreshLocation();
-          }}
+        {/* Floating Controls (Recenter & Host Squad FAB) */}
+        <View
           style={{ bottom: selectedActivity ? 310 : 80 }}
-          className="absolute right-5 z-40 w-11 h-11 rounded-full bg-ink/95 border border-hairline items-center justify-center shadow-xl active:bg-ink-raised"
-          activeOpacity={0.8}
+          className="absolute right-5 z-40 items-end pointer-events-box-none"
         >
-          <LocateFixed size={18} color="#C77DFF" />
-        </TouchableOpacity>
+          {/* Floating Recenter Radar Button */}
+          <TouchableOpacity
+            onPress={() => {
+              mapRef.current?.animateToRegion(mapRegion, 400);
+              refreshLocation();
+            }}
+            className="w-11 h-11 rounded-full bg-ink/95 border border-hairline items-center justify-center mb-3 active:bg-ink-raised"
+            activeOpacity={0.8}
+          >
+            <LocateFixed size={18} color="#C77DFF" />
+          </TouchableOpacity>
 
-        {/* Floating Action Button (Host Squad) */}
-        <TouchableOpacity
-          onPress={() => router.push('/activity/create')}
-          style={{ bottom: selectedActivity ? 254 : 24 }}
-          className="absolute right-5 z-40 bg-signal-violet px-4 py-3.5 rounded-full flex-row items-center shadow-2xl border border-signal-violet-light/30"
-          activeOpacity={0.85}
-        >
-          <Plus size={18} color="#F5F0FF" />
-          <Text className="text-moonlight font-display text-sm font-bold ml-1.5">
-            Host Squad
-          </Text>
-        </TouchableOpacity>
+          {/* Floating Action Button (Host Squad) */}
+          <TouchableOpacity
+            onPress={() => router.push('/activity/create')}
+            className="bg-signal-violet px-4 py-3.5 rounded-full flex-row items-center border border-signal-violet-light/30"
+            activeOpacity={0.85}
+          >
+            <Plus size={18} color="#F5F0FF" />
+            <Text className="text-moonlight font-display text-sm font-bold ml-1.5">
+              Host Squad
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Interactive Activity Detail Bottom Sheet */}

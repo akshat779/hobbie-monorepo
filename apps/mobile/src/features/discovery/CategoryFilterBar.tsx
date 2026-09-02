@@ -7,7 +7,7 @@ interface CategoryFilterBarProps {
   onSelectCategory: (category: string) => void;
 }
 
-export function CategoryFilterBar({
+export const CategoryFilterBar = React.memo(function CategoryFilterBar({
   selectedCategory,
   onSelectCategory,
 }: CategoryFilterBarProps) {
@@ -22,7 +22,7 @@ export function CategoryFilterBar({
         onPress={() => onSelectCategory('all')}
         className={`px-4 py-2 rounded-full mr-2 border ${
           selectedCategory === 'all'
-            ? 'bg-signal-violet border-signal-violet shadow-md'
+            ? 'bg-signal-violet border-signal-violet'
             : 'bg-ink border-hairline'
         }`}
         activeOpacity={0.75}
@@ -44,7 +44,7 @@ export function CategoryFilterBar({
             onPress={() => onSelectCategory(c.id)}
             className={`px-4 py-2 rounded-full mr-2 border ${
               isSelected
-                ? 'bg-signal-violet border-signal-violet shadow-md'
+                ? 'bg-signal-violet border-signal-violet'
                 : 'bg-ink border-hairline'
             }`}
             activeOpacity={0.75}
@@ -61,4 +61,4 @@ export function CategoryFilterBar({
       })}
     </ScrollView>
   );
-}
+});

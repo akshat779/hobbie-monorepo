@@ -19,7 +19,7 @@ export function DevPersonaSwitcher() {
       <TouchableOpacity
         onPress={() => setModalVisible(true)}
         style={{ top: Math.max(insets.top + 8, 48) }}
-        className="absolute right-4 z-50 bg-ink-raised border border-signal-violet/80 px-2.5 py-1 rounded-full flex-row items-center shadow-2xl"
+        className="absolute right-4 z-50 bg-ink-raised border border-signal-violet/80 px-2.5 py-1 rounded-full flex-row items-center"
         activeOpacity={0.8}
       >
         <Zap size={11} color="#C77DFF" style={{ marginRight: 4 }} />
@@ -30,7 +30,7 @@ export function DevPersonaSwitcher() {
 
       <Modal visible={modalVisible} transparent animationType="fade">
         <View className="flex-1 bg-black/80 justify-center items-center px-5">
-          <View className="w-full max-w-sm bg-ink border border-hairline rounded-3xl p-6 shadow-2xl">
+          <View className="w-full max-w-sm bg-ink border border-hairline rounded-3xl p-6">
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
                 <Zap size={18} color="#C77DFF" />

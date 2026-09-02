@@ -16,9 +16,9 @@ export function DiscoveryEmptyState({
   const isFiltered = category && category !== 'all';
 
   return (
-    <View className="bg-ink/95 border border-hairline p-6 rounded-3xl items-center mx-5 my-auto shadow-2xl backdrop-blur-md">
+    <View className="bg-ink/95 border border-hairline p-6 rounded-3xl items-center mx-5 my-auto backdrop-blur-md">
       {/* Icon Bubble */}
-      <View className="w-16 h-16 rounded-full bg-ink-raised border border-hairline items-center justify-center mb-4 shadow-inner">
+      <View className="w-16 h-16 rounded-full bg-ink-raised border border-hairline items-center justify-center mb-4">
         <Radio size={28} color="#C77DFF" />
       </View>
 
@@ -47,7 +47,7 @@ export function DiscoveryEmptyState({
 
         <TouchableOpacity
           onPress={() => router.push('/activity/create')}
-          className="flex-1 h-12 bg-signal-violet rounded-full flex-row items-center justify-center shadow-lg"
+          className="flex-1 h-12 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
           activeOpacity={0.85}
         >
           <Plus size={16} color="#F5F0FF" style={{ marginRight: 6 }} />

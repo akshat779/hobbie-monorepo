@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../services/supabase';
 import { DEV_PERSONAS } from '../auth/useAuthStore';
 import {
@@ -230,7 +229,6 @@ export function filterActivities(
 }
 
 export function useDiscoveryQuery(params: DiscoveryQueryParams) {
-  const queryClient = useQueryClient();
   const {
     userLat,
     userLng,
@@ -239,29 +237,6 @@ export function useDiscoveryQuery(params: DiscoveryQueryParams) {
     gender = 'all',
     ageGroup = 'all',
   } = params;
-
-  // Live Supabase Realtime WebSocket subscription for instant squad updates
-  useEffect(() => {
-    const channel = supabase
-      .channel('discovery-live-activities')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'activities',
-        },
-        () => {
-          // Immediately invalidate discovery cache when any squad is created/updated/expired
-          queryClient.invalidateQueries({ queryKey: ['discovery'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
 
   return useQuery<NearbyActivity[]>({
     queryKey: [

@@ -86,7 +86,7 @@ export default function DiscoveryListScreen() {
             return (
               <TouchableOpacity
                 onPress={() => router.push(`/activity/${item.id}`)}
-                className="bg-ink border border-hairline p-5 rounded-3xl mb-3 shadow-md"
+                className="bg-ink border border-hairline p-5 rounded-3xl mb-3"
                 activeOpacity={0.75}
               >
                 <View className="flex-row justify-between items-start mb-2">

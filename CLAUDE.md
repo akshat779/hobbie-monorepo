@@ -10,11 +10,10 @@ hobbie/
 │   ├── mobile/                    # React Native + Expo (Managed Workflow, expo-router, NativeWind v4)
 │   │   ├── app/                   # File-based routing (expo-router)
 │   │   ├── src/
-│   │   │   ├── components/ui/     # Reusable design system primitives (Buttons, Chips, Cards, BottomSheets)
-│   │   │   ├── features/          # Domain-sliced modules (auth, discovery, room, trust, feedback)
-│   │   │   ├── hooks/             # Custom React hooks
-│   │   │   ├── services/          # Supabase client, Backend API client
-│   │   │   ├── store/             # Zustand (client/ephemeral state), TanStack Query (server state)
+│   │   │   ├── components/        # Reusable design system primitives (Buttons, Chips, Cards, Sliders, Map Pins)
+│   │   │   ├── features/          # Domain-sliced modules (auth, discovery, activity, room, trust, feedback)
+│   │   │   ├── hooks/             # Custom React hooks (useUserLocation)
+│   │   │   ├── services/          # Supabase typed client, Backend API client
 │   │   │   └── global.css         # NativeWind / Tailwind CSS theme tokens & utilities
 │   │   ├── package.json
 │   │   └── tsconfig.json
@@ -23,7 +22,7 @@ hobbie/
 │       ├── src/
 │       │   ├── modules/           # Domain modules (Controller -> Service -> Repository)
 │       │   │   ├── activity/      # Creation, dynamic radius matching, lifecycle
-│       │   │   ├── notifications/ # Push notification dispatcher & k-anonymity gate
+│       │   │   ├── matching/      # Haversine math, privacy fuzzing, k-anonymity gate
 │       │   │   └── trust/         # Rolling average trust score calculation
 │       │   ├── middleware/        # Auth verification, dev headers, error handling
 │       │   └── index.ts
@@ -35,15 +34,14 @@ hobbie/
 │   └── shared/                    # Shared TypeScript library
 │       ├── src/
 │       │   ├── schemas/           # Zod schemas (Validation for API inputs & forms)
-│       │   ├── types/             # Inferred TypeScript types & DTOs
+│       │   ├── types/             # Inferred TypeScript types, DTOs & Database schemas
 │       │   └── constants/         # Interest taxonomy, TTL defaults (2-4 hrs), k-anonymity floor (8-10)
 │       ├── package.json
 │       └── tsconfig.json
 │
 ├── supabase/                      # Database migrations & configuration
 │   ├── migrations/                # Version-controlled PostGIS SQL migrations
-│   ├── seed.sql                   # Seed personas & geo-coordinates for testing
-│   └── functions/                 # Edge Functions (Scheduled TTL cleanup sweep)
+│   └── seed.sql                   # Seed personas & geo-coordinates for testing
 │
 ├── docs/                          # Architecture & design specifications
 ├── CLAUDE.md                      # Source of truth for AI agents (Claude Code & Antigravity)
@@ -52,7 +50,23 @@ hobbie/
 
 ---
 
-## 2. Design System: Nocturnal Pulse (`global.css` & NativeWind v4)
+## 2. System Design, 3NF Normalization & ACID Directives (STRICT — NO DUCT-TAPE)
+
+1. **No Duct-Taped Code / Clean Layering:**
+   * Strictly maintain decoupled architecture across layers: `Presentation UI (app/)` $\rightarrow$ `State & Hooks (src/features/)` $\rightarrow$ `Data Layer` $\rightarrow$ `Shared Domain Contracts (packages/shared)` $\rightarrow$ `Postgres DB`.
+   * **Never place multi-step mutations or business algorithms directly inside JSX event handlers.** Always encapsulate behind typed service functions or repository modules.
+2. **ACID Concurrency & Transactional Boundaries:**
+   * Operations mutating multiple entities (e.g. *Accept Join Request* $\rightarrow$ *Add `activity_members`* $\rightarrow$ *Increment `current_participants_count`* $\rightarrow$ *Close slot*) **MUST** be executed as atomic Postgres stored procedures (`SECURITY DEFINER` plpgsql functions with rollback).
+   * Slot reservations must use row-level locking (`SELECT ... FOR UPDATE OF activities`) to eliminate overbooking race conditions.
+3. **Third Normal Form (3NF) Relational Standard:**
+   * All database tables must adhere to 3NF. Every non-key column must depend solely on the primary key.
+   * Composite uniqueness constraints must be enforced at the DB level (`UNIQUE(activity_id, user_id)`).
+4. **Spatial Indexing Standard:**
+   * All geospatial columns must be indexed with **GiST** indexes (`USING GIST (fuzzed_location)`) for sub-millisecond radius matching.
+
+---
+
+## 3. Design System: Nocturnal Pulse (`global.css` & NativeWind v4)
 
 The app uses **NativeWind (Tailwind CSS for React Native)** with a unified `global.css` token system.
 
@@ -68,7 +82,7 @@ The app uses **NativeWind (Tailwind CSS for React Native)** with a unified `glob
 * **`text-dusk` (`#A99BC2`):** Secondary text, timestamps, captions.
 
 ### Typography
-* **Headlines & Titles:** Bricolage Grotesque / Clash Display (`font-display`).
+* **Headlines & Titles:** Bricolage Grotesque (`font-display`).
 * **Body Text:** General Sans (`font-body`).
 * **Dynamic & Numeric Data:** JetBrains Mono (`font-mono` with tabular figures for TTL countdowns, distances, trust scores).
 
@@ -86,17 +100,16 @@ The app uses **NativeWind (Tailwind CSS for React Native)** with a unified `glob
 * **Zero Neon/Cyber Slop:** Sleek, understated modern dark luxury canvas with subtle hairline borders (`#2C2739`) and elegant typography.
 * **Vector Glyphs:** `lucide-react-native` for all UI icons (minimalist, scalable, tinted via Tailwind).
 
-
 ---
 
-## 3. Testing Strategy & Quality Assurance
+## 4. Testing Strategy & Quality Assurance
 
 To prevent technical debt, testing is mandatory across all layers:
 
 ### A. Unit Tests (Vitest)
 * **Shared Schemas:** Validate all Zod schemas in `packages/shared` against valid/invalid payloads.
 * **Backend Domain Logic:** Pure unit tests for matching algorithms, dynamic radius calculations, $k$-anonymity checks, and rolling trust decay math.
-* **Mobile Components:** React Native Testing Library for UI components (buttons, countdown timers, bottom sheets).
+* **Mobile Components:** React Native Testing Library / Vitest for UI utilities and filter engines.
 
 ### B. Integration Tests (Supertest + Fastify)
 * API endpoint testing verifying database persistence, auth headers, and status codes against a local Supabase test instance.
@@ -109,7 +122,7 @@ To prevent technical debt, testing is mandatory across all layers:
 
 ---
 
-## 4. Multi-User Testing & Auth Strategy (Simulators & Devices)
+## 5. Multi-User Testing & Auth Strategy (Simulators & Devices)
 
 To eliminate phone OTP friction and enable multi-user interaction testing:
 
@@ -122,22 +135,6 @@ To eliminate phone OTP friction and enable multi-user interaction testing:
      * **User D (Low-Trust):** Unverified test profile
 3. **Backend Dev Auth Bypass:** In non-production environments, Fastify accepts an `X-Dev-User-Id` header to test API endpoints directly without signing in via SMS.
 4. **Multi-Client Verification:** Run iOS Simulator (as Host) alongside Android Emulator / Expo Go device (as Joiner) to observe live Supabase Realtime synchronization.
-
----
-
-## 5. Engineering Standards & Conventions
-
-1. **Strict TypeScript:** `noImplicitAny: true`, `strict: true`. No untyped data across API boundaries.
-2. **Single Source of Truth:** All DTOs and request validation schemas live in `packages/shared`.
-3. **Clean Layered Architecture (Server):**
-   * `Controller` -> Request parsing & HTTP response.
-   * `Service` -> Pure business rules (no direct DB queries).
-   * `Repository` -> Direct PostGIS / Supabase SQL execution.
-4. **State Separation (Mobile):**
-   * TanStack Query for remote API data caching and invalidation.
-   * Zustand for client-only UI state (active map filter selections, local drafts).
-   * Supabase Realtime channels for active room chat and live join request alerts.
-5. **Ephemerality by Design:** Activities, rooms, and chat rows auto-expire after TTL (2–4 hrs) via Supabase scheduled cleanup. Notifications expire with activity TTL.
 
 ---
 
@@ -160,4 +157,3 @@ export const supabase = createClient<Database>(
 ### Mandatory Rules:
 * Never write untyped Supabase queries (`createClient()` without `<Database>`).
 * All table queries (`.from('activities')`, `.from('profiles')`), RPC calls (`.rpc('get_nearby_activities')`), and Realtime subscriptions must be 100% type-safe with zero `any` casts.
-

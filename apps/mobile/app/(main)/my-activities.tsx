@@ -29,7 +29,7 @@ export default function MyActivitiesScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-        <View className="bg-ink border border-signal-violet/60 p-5 rounded-3xl mb-4 shadow-lg">
+        <View className="bg-ink border border-signal-violet/60 p-5 rounded-3xl mb-4">
           <View className="flex-row justify-between items-center mb-2">
             <Text className="text-moonlight font-bold font-display text-base">
               5-a-side Turf Football
@@ -54,7 +54,7 @@ export default function MyActivitiesScreen() {
 
           <TouchableOpacity
             onPress={() => router.push('/room/act-1')}
-            className="w-full h-12 bg-signal-violet rounded-full flex-row items-center justify-center shadow-md"
+            className="w-full h-12 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
             activeOpacity={0.8}
           >
             <Text className="text-moonlight font-display text-xs font-bold mr-1.5">

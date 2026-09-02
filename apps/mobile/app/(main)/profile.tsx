@@ -39,7 +39,7 @@ export default function ProfileScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
         {/* Identity & Rep Card */}
-        <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4 shadow-lg">
+        <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4">
           <View className="flex-row justify-between items-center mb-2">
             <Text className="text-xl font-bold font-display text-moonlight">
               {displayName}

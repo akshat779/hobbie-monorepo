@@ -55,7 +55,7 @@ export default function ActivityDetailScreen() {
         </View>
 
         {/* Host Identity Card */}
-        <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4 shadow-lg">
+        <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4">
           <View className="flex-row justify-between items-center mb-2">
             <Text className="text-moonlight font-bold font-display text-base">
               Host: Alex Rivera
@@ -115,7 +115,7 @@ export default function ActivityDetailScreen() {
       {!requestSent && (
         <TouchableOpacity
           onPress={handleJoin}
-          className="w-full h-14 bg-signal-violet rounded-full flex-row items-center justify-center shadow-lg"
+          className="w-full h-14 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
           activeOpacity={0.8}
         >
           <Send size={16} color="#F5F0FF" style={{ marginRight: 8 }} />
