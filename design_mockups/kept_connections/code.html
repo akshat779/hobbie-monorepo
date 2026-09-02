@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kept Connections - Nocturnal Pulse</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Bricolage Grotesque & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#5b4883",
+                        "surface-bright": "#3a3842",
+                        "surface-tint": "#d2bbff",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "tertiary-container": "#feb3aa",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "inverse-surface": "#e6e0ed",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "outline": "#948e9a",
+                        "surface-container-high": "#2b2932",
+                        "surface-container-highest": "#36333d",
+                        "pulse-lilac": "#e1b6ff",
+                        "on-error": "#690005",
+                        "surface-container": "#211e28",
+                        "border-hairline": "#2C2739",
+                        "primary-fixed": "#eaddff",
+                        "signal-violet": "#d2bbff",
+                        "error-container": "#93000a",
+                        "surface-dim": "#14121b",
+                        "tertiary-fixed": "#ffdad5",
+                        "error": "#ffb4ab",
+                        "text-dusk": "#A99BC2",
+                        "ember": "#ffb4ab",
+                        "on-tertiary-container": "#7a433c",
+                        "surface-container-lowest": "#0f0d16",
+                        "secondary-container": "#5b3776",
+                        "surface-container-low": "#1c1a24",
+                        "on-primary": "#38255e",
+                        "on-secondary-container": "#cfa5ed",
+                        "inverse-on-surface": "#322f39",
+                        "primary-container": "#d2bbff",
+                        "on-primary-fixed": "#230e48",
+                        "on-tertiary": "#51221d",
+                        "primary": "#eadcff",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#d2bbff",
+                        "bg-ink-raised": "#211C2E",
+                        "bg-void": "#0D0B14",
+                        "tertiary": "#ffd9d4",
+                        "on-surface": "#e6e0ed",
+                        "on-tertiary-fixed": "#360e0a",
+                        "on-secondary-fixed": "#2c0647",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "surface-variant": "#36333d",
+                        "inverse-primary": "#685490",
+                        "secondary-fixed": "#f2daff",
+                        "on-surface-variant": "#cbc4d0",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "outline-variant": "#49454f",
+                        "background": "#14121b",
+                        "bg-ink": "#17131F",
+                        "surface": "#14121b",
+                        "secondary": "#e1b6ff",
+                        "text-moonlight": "#F5F0FF",
+                        "on-background": "#e6e0ed",
+                        "on-secondary": "#43205e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "lg": "16px",
+                        "md": "12px",
+                        "xs": "4px",
+                        "xl": "24px",
+                        "3xl": "48px",
+                        "2xl": "32px"
+                    },
+                    "fontFamily": {
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"],
+                        "body-sm": ["Bricolage Grotesque"],
+                        "display-xl": ["Bricolage Grotesque"],
+                        "headline-lg": ["Bricolage Grotesque"],
+                        "mono-data": ["JetBrains Mono"],
+                        "headline-md": ["Bricolage Grotesque"],
+                        "label-md": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom Utilities */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      width: 390px;
+      height: 844px;
+      margin: 0 auto;
+      position: relative;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-lg flex flex-col antialiased selection:bg-signal-violet selection:text-bg-void w-[390px] h-[844px] mx-auto overflow-hidden relative border-x border-border-hairline">
+<!-- TopAppBar -->
+<header class="bg-surface-container dark:bg-surface-container docked full-width top-0 border-b border-border-hairline flat no shadows flex justify-between items-center px-lg w-full h-16 absolute z-40">
+<button class="text-on-surface-variant hover:text-pulse-lilac transition-colors active:scale-95 duration-150 p-xs flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-display-xl-mobile text-display-xl-mobile text-signal-violet uppercase tracking-tighter">NOCTURNAL PULSE</h1>
+<button class="text-on-surface-variant hover:text-pulse-lilac transition-colors active:scale-95 duration-150 p-xs flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-grow overflow-y-auto pt-[80px] pb-[100px] px-lg w-full hide-scrollbar">
+<!-- Screen Title Header -->
+<div class="py-xl">
+<h2 class="font-display-xl text-display-xl text-text-moonlight tracking-tight">Connections</h2>
+<p class="font-body-sm text-body-sm text-text-dusk mt-sm">Echoes from recent nocturnal routes.</p>
+</div>
+<!-- Connections List -->
+<div class="flex flex-col gap-md">
+<!-- Connection Row 1 -->
+<div class="group flex items-center justify-between p-md bg-bg-ink rounded-lg border border-border-hairline hover:border-signal-violet/30 transition-colors duration-200 cursor-pointer">
+<div class="flex items-center gap-lg">
+<!-- Avatar Placeholder -->
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center border border-border-hairline">
+<span class="font-headline-md text-headline-md text-text-dusk">AR</span>
+</div>
+<!-- Details -->
+<div class="flex flex-col gap-xs">
+<span class="font-headline-md text-headline-md text-text-moonlight">Alex Rivera</span>
+<div class="flex items-center gap-xs bg-bg-ink-raised border border-border-hairline rounded-full px-sm py-[2px] w-fit">
+<span class="material-symbols-outlined text-[14px] text-text-dusk" data-icon="directions_run" style="font-variation-settings: 'FILL' 1;">directions_run</span>
+<span class="font-label-md text-label-md text-text-dusk">Night Run</span>
+</div>
+</div>
+</div>
+<!-- Action -->
+<button class="p-sm rounded-full bg-surface-container hover:bg-surface-container-highest transition-colors active:scale-95 text-signal-violet">
+<span class="material-symbols-outlined" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+</button>
+</div>
+<!-- Connection Row 2 -->
+<div class="group flex items-center justify-between p-md bg-bg-ink rounded-lg border border-border-hairline hover:border-signal-violet/30 transition-colors duration-200 cursor-pointer">
+<div class="flex items-center gap-lg">
+<!-- Avatar Image -->
+<div class="w-12 h-12 rounded-full border border-border-hairline overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="A close-up portrait of a young adult in a dark urban environment illuminated by a vibrant purple neon light, casting deep shadows and dramatic highlights. Shot with high contrast, nocturnal aesthetic, cinematic lighting, emphasizing an ephemeral, gritty city mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5orErGksusPR2LvETk8XVY6_RdhP3HrTUJ9vC7NBaKlH0yYbKQ-H-m0wQMVoMXUKtSb5oT0Us6SDsDcYyuiqafxRDu_Lyma_mUqWy6JNfblbUlb8Kgwj0Ea9mRhHWVFYVmVjLs8pZ_PDR_b9uZuZuiL0JwOX5Z8doUA8YxCcLzIWSfHYTTj8VDbKw-eK2BqJ-em8UmzEM9dgLOhJbRlBfbkaUPf90SaFWIQTHxzDwAivUMPKy9fDPJQ"/>
+</div>
+<!-- Details -->
+<div class="flex flex-col gap-xs">
+<span class="font-headline-md text-headline-md text-text-moonlight">Sam Chen</span>
+<div class="flex items-center gap-xs bg-bg-ink-raised border border-border-hairline rounded-full px-sm py-[2px] w-fit">
+<span class="material-symbols-outlined text-[14px] text-text-dusk" data-icon="sports_tennis" style="font-variation-settings: 'FILL' 1;">sports_tennis</span>
+<span class="font-label-md text-label-md text-text-dusk">Badminton Partner</span>
+</div>
+</div>
+</div>
+<!-- Action -->
+<button class="p-sm rounded-full bg-surface-container hover:bg-surface-container-highest transition-colors active:scale-95 text-signal-violet">
+<span class="material-symbols-outlined" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+</button>
+</div>
+<!-- Connection Row 3 -->
+<div class="group flex items-center justify-between p-md bg-bg-ink rounded-lg border border-border-hairline hover:border-signal-violet/30 transition-colors duration-200 cursor-pointer">
+<div class="flex items-center gap-lg">
+<!-- Avatar Placeholder -->
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center border border-border-hairline">
+<span class="font-headline-md text-headline-md text-text-dusk">JL</span>
+</div>
+<!-- Details -->
+<div class="flex flex-col gap-xs">
+<span class="font-headline-md text-headline-md text-text-moonlight">Jordan Lee</span>
+<div class="flex items-center gap-xs bg-bg-ink-raised border border-border-hairline rounded-full px-sm py-[2px] w-fit">
+<span class="material-symbols-outlined text-[14px] text-text-dusk" data-icon="explore" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-label-md text-label-md text-text-dusk">Urban Exploration</span>
+</div>
+</div>
+</div>
+<!-- Action -->
+<button class="p-sm rounded-full bg-surface-container hover:bg-surface-container-highest transition-colors active:scale-95 text-signal-violet">
+<span class="material-symbols-outlined" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+</button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-bg-ink dark:bg-bg-ink absolute bottom-0 w-full z-50 rounded-t-xl border-t border-border-hairline backdrop-blur-md flat no shadows left-0 flex justify-around items-center px-md pb-safe h-20">
+<!-- Inactive Tab: Pulse -->
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-moonlight active:scale-90 transition-transform duration-200 w-16">
+<span class="material-symbols-outlined mb-xs" data-icon="bolt">bolt</span>
+<span class="font-label-md text-label-md">Pulse</span>
+</button>
+<!-- Inactive Tab: Map -->
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-moonlight active:scale-90 transition-transform duration-200 w-16">
+<span class="material-symbols-outlined mb-xs" data-icon="map">map</span>
+<span class="font-label-md text-label-md">Map</span>
+</button>
+<!-- Inactive Tab: Alerts -->
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-moonlight active:scale-90 transition-transform duration-200 w-16">
+<span class="material-symbols-outlined mb-xs" data-icon="notifications">notifications</span>
+<span class="font-label-md text-label-md">Alerts</span>
+</button>
+<!-- Active Tab: Profile (Connections belong here semantically) -->
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 transition-transform duration-200 w-20">
+<span class="material-symbols-outlined mb-xs" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</button>
+</nav>
+</body></html>

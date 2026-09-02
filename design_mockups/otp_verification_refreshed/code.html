@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nocturnal Pulse - OTP Verification</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#ffb4ab",
+                        "surface-tint": "#d2bbff",
+                        "error": "#ffb4ab",
+                        "on-primary": "#3e008e",
+                        "surface-container-high": "#2b2933",
+                        "inverse-surface": "#e6e0ee",
+                        "on-primary-container": "#ebddff",
+                        "on-surface": "#e6e0ee",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#25005a",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-primary-fixed-variant": "#5900c6",
+                        "surface-container-highest": "#36333e",
+                        "border-hairline": "#2C2739",
+                        "inverse-primary": "#7423f0",
+                        "on-secondary-fixed": "#2e004d",
+                        "on-surface-variant": "#ccc3d9",
+                        "bg-void": "#0D0B14",
+                        "error-container": "#93000a",
+                        "on-background": "#e6e0ee",
+                        "tertiary-fixed": "#ffdad6",
+                        "text-dusk": "#A99BC2",
+                        "on-secondary-fixed-variant": "#691a9f",
+                        "secondary-container": "#691a9f",
+                        "primary-fixed": "#eaddff",
+                        "on-tertiary": "#690005",
+                        "surface-container": "#211e28",
+                        "on-secondary-container": "#d69eff",
+                        "on-error-container": "#ffdad6",
+                        "outline-variant": "#4a4456",
+                        "surface-container-lowest": "#0f0d16",
+                        "text-moonlight": "#F5F0FF",
+                        "outline": "#958da2",
+                        "surface-variant": "#36333e",
+                        "primary": "#d2bbff",
+                        "on-secondary": "#4c007b",
+                        "primary-fixed-dim": "#d2bbff",
+                        "tertiary-container": "#b7372f",
+                        "bg-ink-raised": "#211C2E",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "background": "#14121b",
+                        "surface-bright": "#3b3842",
+                        "surface": "#14121b",
+                        "on-tertiary-fixed": "#410002",
+                        "secondary-fixed": "#f2daff",
+                        "primary-container": "#7b2ff7",
+                        "bg-ink": "#17131F",
+                        "inverse-on-surface": "#322f39",
+                        "secondary": "#e1b6ff",
+                        "surface-dim": "#14121b",
+                        "surface-container-low": "#1c1a24",
+                        "on-tertiary-container": "#ffdbd7",
+                        "on-tertiary-fixed-variant": "#8c1715"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "3xl": "48px",
+                        "xs": "4px",
+                        "lg": "16px",
+                        "sm": "8px",
+                        "md": "12px",
+                        "2xl": "32px",
+                        "xl": "24px"
+                    },
+                    "fontFamily": {
+                        "mono-data": ["JetBrains Mono"],
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "body-sm": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"],
+                        "display-l": ["Bricolage Grotesque"],
+                        "display-m": ["Bricolage Grotesque"],
+                        "display-xl": ["Bricolage Grotesque"],
+                        "caption": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-l": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "display-m": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "caption": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0D0B14; /* bg-void */
+            color: #F5F0FF; /* text-moonlight */
+        }
+        
+        /* Custom Input Styling for OTP */
+        .otp-input {
+            width: 48px;
+            height: 56px;
+            text-align: center;
+            background-color: #17131F; /* bg-ink */
+            border: 1px solid #2C2739; /* border-hairline */
+            border-radius: 12px;
+            color: #F5F0FF;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 20px;
+            transition: all 0.2s ease;
+        }
+        
+        .otp-input:focus {
+            outline: none;
+            border-color: #d2bbff; /* primary / Signal Violet */
+            box-shadow: 0 0 0 1px #d2bbff;
+            background-color: #211C2E; /* bg-ink-raised */
+        }
+        
+        /* Pulse Animation for Timer */
+        @keyframes pulse-opacity {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-opacity 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+<style>
+    body {
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      margin: 0 auto;
+      position: relative;
+    }
+  </style>
+</head>
+<body class="flex flex-col font-body-lg antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top Navigation (Transactional, minimal shell) -->
+<header class="absolute top-0 w-full z-50 bg-bg-void/80 backdrop-blur-md border-b border-border-hairline h-16 flex items-center justify-between px-lg md:px-xl">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-primary active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<div class="font-display-m text-display-m text-text-moonlight">
+            Nocturnal Pulse
+        </div>
+<div class="w-10 h-10"></div> <!-- Placeholder for balance -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center px-lg pt-16 pb-xl h-full w-full">
+<div class="w-full mx-auto flex flex-col gap-2xl">
+<!-- Header Section -->
+<div class="text-center space-y-md">
+<h1 class="font-display-xl-mobile text-display-xl-mobile md:font-display-xl md:text-display-xl text-text-moonlight tracking-tight">
+                    Verify your number
+                </h1>
+<p class="font-body-lg text-body-lg text-text-dusk">
+                    Enter the 6-digit code sent to<br/>
+<span class="text-text-moonlight font-medium">+1 (555) 019-8372</span>
+</p>
+</div>
+<!-- OTP Input Section -->
+<form class="flex flex-col gap-xl w-full" id="otp-form">
+<div class="flex justify-between w-full max-w-[342px] mx-auto gap-xs sm:gap-sm">
+<input aria-label="Digit 1" autofocus="" class="otp-input" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/>
+<input aria-label="Digit 2" class="otp-input" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/>
+<input aria-label="Digit 3" class="otp-input" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/>
+<input aria-label="Digit 4" class="otp-input" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/>
+<input aria-label="Digit 5" class="otp-input" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/>
+<input aria-label="Digit 6" class="otp-input" inputmode="numeric" maxlength="1" pattern="[0-9]*" type="text"/>
+</div>
+<!-- Timer & Resend -->
+<div class="flex flex-col items-center gap-md mt-sm">
+<div class="flex items-center gap-xs text-primary font-mono-data text-mono-data bg-primary-container/10 px-md py-xs rounded-full border border-primary/20">
+<span class="material-symbols-outlined text-[16px] animate-pulse-slow">timer</span>
+<span id="countdown">00:59</span>
+</div>
+<button class="mt-md font-body-sm text-body-sm text-text-moonlight hover:text-primary transition-colors underline decoration-border-hairline underline-offset-4 hover:decoration-primary" type="button">
+                        Resend code
+                    </button>
+</div>
+<!-- Primary Action (Initially disabled/dimmed until filled) -->
+<button class="mt-lg w-full bg-surface-variant text-text-dusk py-lg rounded-full font-body-lg text-body-lg font-medium transition-all duration-300 pointer-events-none" id="verify-btn" type="submit">
+                    Verify Pulse
+                </button>
+</form>
+</div>
+</main>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('.otp-input');
+            const verifyBtn = document.getElementById('verify-btn');
+            
+            // Auto-focus logic for OTP inputs
+            inputs.forEach((input, index) => {
+                input.addEventListener('input', (e) => {
+                    // Only allow numbers
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    
+                    // Move to next input if value is entered
+                    if (e.target.value !== '' && index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                    
+                    checkCompletion();
+                });
+
+                input.addEventListener('keydown', (e) => {
+                    // Move to previous input on backspace if current is empty
+                    if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+                        inputs[index - 1].focus();
+                        inputs[index - 1].value = ''; // Clear previous input on backspace to it
+                    }
+                });
+                
+                // Allow pasting full code
+                input.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+                    
+                    if (pastedData.length > 0) {
+                        for (let i = 0; i < pastedData.length; i++) {
+                            if (i < inputs.length) {
+                                inputs[i].value = pastedData[i];
+                            }
+                        }
+                        // Focus the next empty input or the last one
+                        const focusIndex = Math.min(pastedData.length, inputs.length - 1);
+                        inputs[focusIndex].focus();
+                        checkCompletion();
+                    }
+                });
+            });
+            
+            function checkCompletion() {
+                const allFilled = Array.from(inputs).every(input => input.value.length === 1);
+                if (allFilled) {
+                    verifyBtn.classList.remove('bg-surface-variant', 'text-text-dusk', 'pointer-events-none');
+                    verifyBtn.classList.add('bg-primary', 'text-on-primary', 'shadow-[0_0_15px_rgba(210,187,255,0.3)]', 'active:scale-95');
+                } else {
+                    verifyBtn.classList.add('bg-surface-variant', 'text-text-dusk', 'pointer-events-none');
+                    verifyBtn.classList.remove('bg-primary', 'text-on-primary', 'shadow-[0_0_15px_rgba(210,187,255,0.3)]', 'active:scale-95');
+                }
+            }
+
+            // Simple timer countdown
+            let timeLeft = 59;
+            const timerDisplay = document.getElementById('countdown');
+            
+            const timer = setInterval(() => {
+                timeLeft--;
+                if (timeLeft < 0) {
+                    clearInterval(timer);
+                    timerDisplay.textContent = "00:00";
+                    timerDisplay.parentElement.classList.replace('text-primary', 'text-error');
+                    timerDisplay.parentElement.classList.replace('border-primary/20', 'border-error/20');
+                    timerDisplay.parentElement.classList.replace('bg-primary-container/10', 'bg-error-container/10');
+                } else {
+                    const seconds = timeLeft.toString().padStart(2, '0');
+                    timerDisplay.textContent = `00:${seconds}`;
+                }
+            }, 1000);
+        });
+    </script>
+</body></html>

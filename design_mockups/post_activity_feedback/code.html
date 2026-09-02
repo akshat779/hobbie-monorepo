@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Feedback - Nocturnal Pulse</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#cbc4d0",
+                        "pulse-lilac": "#e1b6ff",
+                        "secondary": "#e1b6ff",
+                        "bg-ink": "#17131F",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "on-tertiary-container": "#7a433c",
+                        "on-secondary": "#43205e",
+                        "on-tertiary-fixed": "#360e0a",
+                        "ember": "#ffb4ab",
+                        "secondary-container": "#5b3776",
+                        "inverse-primary": "#685490",
+                        "surface-container-high": "#2b2932",
+                        "surface-container-low": "#1c1a24",
+                        "on-primary-container": "#5b4883",
+                        "error-container": "#93000a",
+                        "inverse-surface": "#e6e0ed",
+                        "on-primary": "#38255e",
+                        "surface": "#14121b",
+                        "surface-bright": "#3a3842",
+                        "surface-container": "#211e28",
+                        "tertiary-container": "#feb3aa",
+                        "bg-ink-raised": "#211C2E",
+                        "surface-variant": "#36333d",
+                        "on-secondary-container": "#cfa5ed",
+                        "secondary-fixed": "#f2daff",
+                        "text-moonlight": "#F5F0FF",
+                        "primary-fixed-dim": "#d2bbff",
+                        "surface-dim": "#14121b",
+                        "on-secondary-fixed": "#2c0647",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "primary-fixed": "#eaddff",
+                        "tertiary": "#ffd9d4",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary": "#51221d",
+                        "inverse-on-surface": "#322f39",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-primary-fixed": "#230e48",
+                        "bg-void": "#0D0B14",
+                        "outline": "#948e9a",
+                        "primary-container": "#d2bbff",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "background": "#14121b",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "text-dusk": "#A99BC2",
+                        "surface-container-lowest": "#0f0d16",
+                        "surface-container-highest": "#36333d",
+                        "border-hairline": "#2C2739",
+                        "on-background": "#e6e0ed",
+                        "surface-tint": "#d2bbff",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "primary": "#eadcff",
+                        "outline-variant": "#49454f",
+                        "signal-violet": "#d2bbff",
+                        "on-surface": "#e6e0ed"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "xl": "24px",
+                        "lg": "16px",
+                        "2xl": "32px",
+                        "3xl": "48px",
+                        "xs": "4px",
+                        "md": "12px"
+                    },
+                    "fontFamily": {
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "display-xl": ["Bricolage Grotesque"],
+                        "headline-md": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"],
+                        "body-sm": ["Bricolage Grotesque"],
+                        "label-md": ["Bricolage Grotesque"],
+                        "mono-data": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Bricolage Grotesque"],
+                        "headline-lg": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #d2bbff;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #d2bbff;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+    </style>
+<style>
+    body {
+      width: 390px !important;
+      height: 844px !important;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="w-[390px] h-[844px] mx-auto overflow-hidden relative bg-bg-void text-text-moonlight font-body-lg flex flex-col items-center justify-center p-lg md:p-xl antialiased selection:bg-signal-violet selection:text-bg-void">
+<!-- Top App Bar (Suppressed as per rules for transactional/focused pages like Feedback, but included structural placeholder if needed for 'Back' though prompt requests a centered card) -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface border-b border-hairline flex justify-between items-center px-lg h-16 transition-colors duration-200 shadow-none hidden">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-signal-violet" data-icon="menu">menu</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-signal-violet tracking-tight">Nocturnal Pulse</h1>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden border border-hairline">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A small, stylized avatar profile picture of a young urban creative in a dimly lit, neon-accented room. The aesthetic is moody and nocturnal, fitting the dark mode hyper-local app theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZnTiJVo_S4clCRAXkBSQlaaM_-0rtJjm270FkD-lpEoQCv6MF8xxbuVXTeowdQv2YONgi_3RDGtVfcgudPF3k4lE7mdca1FmNeM0SFxHvgsZS0P8Sg0EWvrict52QCahnm6HMecsk0D8oYB7SXP4y6wmTu30SeFnkpOf6KBAjUqUutK8CPgAxwgHKA2bTYG4z4MFnaPIGQuZjpTiJ7_WeEyL5T2061Obvsflafi4W_ie_FYUwp9VGeg"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="w-full max-w-md flex flex-col gap-lg z-10 relative">
+<div class="text-center mb-sm">
+<h1 class="font-display-xl-mobile text-display-xl-mobile text-text-moonlight mb-xs">Feedback</h1>
+<p class="font-body-sm text-body-sm text-text-dusk">Help us curate the night.</p>
+</div>
+<!-- Feedback Card -->
+<section class="bg-bg-ink border border-hairline p-lg rounded-[20px] flex flex-col gap-xl backdrop-blur-md relative overflow-hidden">
+<!-- Decorative ambient glow -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-signal-violet/5 rounded-full blur-3xl pointer-events-none"></div>
+<!-- Question 1 -->
+<div class="flex flex-col gap-md">
+<h2 class="font-headline-md text-headline-md text-text-moonlight">Would you hang out with them again?</h2>
+<div class="flex gap-sm">
+<button class="flex-1 py-md border border-hairline rounded-full flex items-center justify-center hover:bg-bg-ink-raised hover:border-signal-violet transition-all duration-200 group text-text-dusk hover:text-signal-violet active:scale-95">
+<span class="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform" data-icon="thumb_up">thumb_up</span>
+</button>
+<button class="flex-1 py-md border border-hairline rounded-full flex items-center justify-center hover:bg-bg-ink-raised hover:border-ember transition-all duration-200 group text-text-dusk hover:text-ember active:scale-95">
+<span class="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform" data-icon="thumb_down">thumb_down</span>
+</button>
+</div>
+</div>
+<!-- Divider -->
+<hr class="border-hairline"/>
+<!-- Question 2 -->
+<div class="flex flex-col gap-md">
+<h2 class="font-headline-md text-headline-md text-text-moonlight">Were they who they said they'd be?</h2>
+<div class="flex gap-sm">
+<button class="flex-1 py-md border border-hairline rounded-full flex items-center justify-center hover:bg-bg-ink-raised hover:border-signal-violet transition-all duration-200 group text-text-dusk hover:text-signal-violet active:scale-95">
+<span class="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform" data-icon="thumb_up">thumb_up</span>
+</button>
+<button class="flex-1 py-md border border-hairline rounded-full flex items-center justify-center hover:bg-bg-ink-raised hover:border-ember transition-all duration-200 group text-text-dusk hover:text-ember active:scale-95">
+<span class="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform" data-icon="thumb_down">thumb_down</span>
+</button>
+</div>
+</div>
+<!-- Divider -->
+<hr class="border-hairline"/>
+<!-- Reconnect Toggle -->
+<div class="flex items-start justify-between gap-md mt-sm">
+<div class="flex flex-col gap-xs pr-md">
+<h3 class="font-headline-md text-headline-md text-text-moonlight">Keep in touch for Midnight Run?</h3>
+<p class="font-body-sm text-body-sm text-text-dusk">Lets you reconnect for this specific activity type only.</p>
+</div>
+<!-- Toggle Switch -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in mt-1 shrink-0">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-hairline checked:bg-signal-violet checked:border-signal-violet transition-all duration-300 z-10" id="toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-bg-ink-raised border border-hairline cursor-pointer transition-colors duration-300" for="toggle"></label>
+</div>
+</div>
+<!-- Submit Button (Inside Card for tighter visual grouping, as requested "bottom of the card") -->
+<div class="pt-sm">
+<button class="w-full bg-signal-violet text-bg-void font-headline-md text-headline-md py-md rounded-full hover:bg-pulse-lilac transition-colors duration-200 shadow-[0_0_15px_rgba(210,187,255,0.15)] active:scale-95">
+                    Submit
+                </button>
+</div>
+</section>
+<button class="w-full bg-transparent border border-hairline text-text-moonlight font-body-lg text-body-lg py-md rounded-full hover:bg-bg-ink transition-colors duration-200 mt-sm active:scale-95">
+            Skip
+        </button>
+</main>
+<!-- Bottom Nav Bar (Suppressed on Feedback/Transactional screen per shell logic) -->
+<script>
+        // Simple toggle state management for visual feedback on buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function() {
+                // If it's a thumb button
+                if(this.querySelector('.material-symbols-outlined')) {
+                    const sibling = this.nextElementSibling || this.previousElementSibling;
+                    
+                    // Reset both
+                    this.classList.remove('bg-bg-ink-raised', 'border-signal-violet', 'border-ember', 'text-signal-violet', 'text-ember');
+                    this.classList.add('border-hairline', 'text-text-dusk');
+                    if(sibling) {
+                        sibling.classList.remove('bg-bg-ink-raised', 'border-signal-violet', 'border-ember', 'text-signal-violet', 'text-ember');
+                        sibling.classList.add('border-hairline', 'text-text-dusk');
+                    }
+
+                    // Apply active state
+                    const icon = this.querySelector('.material-symbols-outlined').textContent;
+                    this.classList.remove('border-hairline', 'text-text-dusk');
+                    this.classList.add('bg-bg-ink-raised');
+                    
+                    if(icon === 'thumb_up') {
+                        this.classList.add('border-signal-violet', 'text-signal-violet');
+                    } else {
+                        this.classList.add('border-ember', 'text-ember');
+                    }
+                }
+            });
+        });
+    </script>
+</body></html>

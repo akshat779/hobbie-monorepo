@@ -1,0 +1,19 @@
+appId: com.hobbie.app
+---
+# Test 1: Full Onboarding Flow (Phone -> Dev OTP -> Interests -> Radar)
+- launchApp
+- assertVisible: "Hobbie"
+- tapOn: "Get Started"
+- assertVisible: "What's your number?"
+- tapOn: "98765 43210"
+- inputText: "9876543210"
+- tapOn: "Send Code"
+- assertVisible: "Verify your code"
+- tapOn: "• • • • • •"
+- inputText: "123456"
+- tapOn: "Verify & Continue"
+- assertVisible: "Pick your interests"
+- tapOn: "Football"
+- tapOn: "Badminton"
+- tapOn: "Enter Live Radar.*"
+- assertVisible: "Radar"

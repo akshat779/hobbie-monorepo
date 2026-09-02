@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Hobbie",
+    "slug": "hobbie",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "owner": "akshat779s-team",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D0B14"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.hobbie.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D0B14"
+      },
+      "package": "com.hobbie.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "scheme": "hobbie",
+    "extra": {
+      "eas": {
+        "projectId": "9d46f924-fefc-40a2-9183-75b633760b85"
+      }
+    }
+  }
+}

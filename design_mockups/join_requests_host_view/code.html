@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Requests</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "pulse-lilac": "#e1b6ff",
+                        "on-secondary": "#43205e",
+                        "secondary-container": "#5b3776",
+                        "bg-void": "#0D0B14",
+                        "primary-fixed-dim": "#d2bbff",
+                        "inverse-on-surface": "#322f39",
+                        "on-error-container": "#ffdad6",
+                        "outline": "#948e9a",
+                        "on-secondary-container": "#cfa5ed",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "surface-container-lowest": "#0f0d16",
+                        "border-hairline": "#2C2739",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "surface-container-low": "#1c1a24",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "tertiary-container": "#feb3aa",
+                        "bg-ink": "#17131F",
+                        "surface-variant": "#36333d",
+                        "on-background": "#e6e0ed",
+                        "inverse-primary": "#685490",
+                        "text-dusk": "#A99BC2",
+                        "surface-container-high": "#2b2932",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-primary": "#38255e",
+                        "secondary-fixed": "#f2daff",
+                        "on-primary-fixed": "#230e48",
+                        "outline-variant": "#49454f",
+                        "on-surface-variant": "#cbc4d0",
+                        "on-tertiary-container": "#7a433c",
+                        "on-surface": "#e6e0ed",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "surface-dim": "#14121b",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#360e0a",
+                        "ember": "#ffb4ab",
+                        "surface-container-highest": "#36333d",
+                        "primary-fixed": "#eaddff",
+                        "error": "#ffb4ab",
+                        "bg-ink-raised": "#211C2E",
+                        "on-error": "#690005",
+                        "primary-container": "#d2bbff",
+                        "tertiary-fixed": "#ffdad5",
+                        "background": "#14121b",
+                        "text-moonlight": "#F5F0FF",
+                        "signal-violet": "#d2bbff",
+                        "on-tertiary": "#51221d",
+                        "primary": "#eadcff",
+                        "tertiary": "#ffd9d4",
+                        "surface-container": "#211e28",
+                        "surface-bright": "#3a3842",
+                        "surface-tint": "#d2bbff",
+                        "on-primary-container": "#5b4883",
+                        "inverse-surface": "#e6e0ed",
+                        "on-secondary-fixed": "#2c0647",
+                        "surface": "#14121b",
+                        "secondary": "#e1b6ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "24px",
+                        "3xl": "48px",
+                        "lg": "16px",
+                        "md": "12px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "2xl": "32px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Bricolage Grotesque"],
+                        "display-xl": ["Bricolage Grotesque"],
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "label-md": ["Bricolage Grotesque"],
+                        "mono-data": ["JetBrains Mono"],
+                        "headline-lg": ["Bricolage Grotesque"],
+                        "headline-md": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      width: 390px;
+      height: 844px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-bg-void text-on-surface flex flex-col antialiased selection:bg-signal-violet selection:text-bg-void">
+<!-- TopAppBar -->
+<header class="flex items-center justify-between px-lg h-16 w-full absolute top-0 w-full z-50 border-b border-border-hairline bg-bg-void/80 backdrop-blur-md transition-colors duration-200">
+<button class="text-on-surface-variant hover:bg-surface-variant/20 p-2 rounded-full flex items-center justify-center transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-signal-violet tracking-tighter">Pulse</h1>
+<button class="text-on-surface-variant hover:bg-surface-variant/20 p-2 rounded-full flex items-center justify-center transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-grow overflow-y-auto pt-24 pb-32 px-lg md:px-xl max-w-3xl mx-auto w-full">
+<h2 class="font-display-xl-mobile text-display-xl-mobile md:font-display-xl md:text-display-xl text-text-moonlight mb-xl">Requests</h2>
+<div class="flex flex-col gap-sm">
+<!-- Request Item 1 -->
+<div class="bg-bg-ink rounded-xl p-lg border border-border-hairline flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md transition-all duration-300 hover:bg-bg-ink-raised">
+<div class="flex items-center gap-md">
+<img alt="Avatar" class="w-12 h-12 rounded-full object-cover border border-border-hairline shrink-0" data-alt="A detailed headshot portrait of a young urbanite in neon street lighting, cinematic bokeh, nocturnal atmosphere, high-end photography, 8k resolution, photorealistic, cinematic lighting, dramatic shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2pMA48bMqWGUXJ1g8lamEpuhQFNFqTGu8bPElIJjEWIizpYJ1GXUH8j13LTFlaL6J-E8AV_FNwe2E0H7bnfFb51jqBp0RJbnaQ5Wb7HjX_WTCYPfeCvSqCHTdaaTAgm3G16Ku_Up8VTyVdHd5AXQewumoeb8BN-iGSxKitE4uO_1WDOsBDaKVz9gWmac92OMCisWeVYcuc7SnQbCaTFbzShpnCVo8xJ6nWjrsIte-QSAyqXXRaj3Y1A"/>
+<div>
+<div class="flex items-center gap-xs">
+<h3 class="font-body-lg text-body-lg text-text-moonlight font-bold">Sarah Jenkins</h3>
+<span class="material-symbols-outlined text-[16px] text-signal-violet" data-icon="verified">verified</span>
+</div>
+<div class="flex items-center gap-xs mt-xs">
+<span class="font-mono-data text-mono-data text-text-dusk">Trust Score:</span>
+<span class="font-mono-data text-mono-data text-pulse-lilac">98</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm w-full sm:w-auto">
+<button class="flex-1 sm:flex-none px-4 py-2 rounded-full border border-border-hairline text-text-moonlight font-body-sm text-body-sm font-bold hover:bg-surface-variant/50 transition-colors">Decline</button>
+<button class="flex-1 sm:flex-none px-4 py-2 rounded-full bg-signal-violet text-bg-void font-body-sm text-body-sm font-bold hover:bg-pulse-lilac transition-colors">Accept</button>
+</div>
+</div>
+<!-- Request Item 2 -->
+<div class="bg-bg-ink rounded-xl p-lg border border-border-hairline flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md transition-all duration-300 hover:bg-bg-ink-raised">
+<div class="flex items-center gap-md">
+<img alt="Avatar" class="w-12 h-12 rounded-full object-cover border border-border-hairline shrink-0" data-alt="A dramatic profile shot of an alternative creative person in a dark studio setting with vivid purple rim lighting, extremely high detail, sharp focus, 85mm lens, moody atmospheric portrait." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCineA7zN_rFZUP-eHDCCkJCwTvRXIoynZ4tPa953aAFH2ECT4m4OHssvKucAtE8eQ6IP_W3uQkPqpXjpCEa1JxjpFtWez0un9ESFHMaUaenYg8KacZK7Ow1Ty-qH-XS4KXjyWki__cCuEhbPFdt3K4ZukJngFxDh9DbG52HDcD6Qsc96FHeEGblv_08T9X2dltb10x_FZQTbhvqAD1wcSGmaxUHex9tnn2BksSYFhBmYC6x5_8D_ccZQ"/>
+<div>
+<div class="flex items-center gap-xs">
+<h3 class="font-body-lg text-body-lg text-text-moonlight font-bold">Marcus Thorne</h3>
+</div>
+<div class="flex items-center gap-xs mt-xs">
+<span class="font-mono-data text-mono-data text-text-dusk">Trust Score:</span>
+<span class="font-mono-data text-mono-data text-text-moonlight">84</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm w-full sm:w-auto">
+<button class="flex-1 sm:flex-none px-4 py-2 rounded-full border border-border-hairline text-text-moonlight font-body-sm text-body-sm font-bold hover:bg-surface-variant/50 transition-colors">Decline</button>
+<button class="flex-1 sm:flex-none px-4 py-2 rounded-full bg-signal-violet text-bg-void font-body-sm text-body-sm font-bold hover:bg-pulse-lilac transition-colors">Accept</button>
+</div>
+</div>
+<!-- Request Item 3 -->
+<div class="bg-bg-ink rounded-xl p-lg border border-border-hairline flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md transition-all duration-300 hover:bg-bg-ink-raised">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 rounded-full bg-surface-container-high border border-border-hairline shrink-0 flex items-center justify-center text-text-dusk font-bold">
+                        EL
+                    </div>
+<div>
+<div class="flex items-center gap-xs">
+<h3 class="font-body-lg text-body-lg text-text-moonlight font-bold">Elena Rostova</h3>
+<span class="material-symbols-outlined text-[16px] text-signal-violet" data-icon="verified">verified</span>
+</div>
+<div class="flex items-center gap-xs mt-xs">
+<span class="font-mono-data text-mono-data text-text-dusk">Trust Score:</span>
+<span class="font-mono-data text-mono-data text-pulse-lilac">99</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm w-full sm:w-auto">
+<button class="flex-1 sm:flex-none px-4 py-2 rounded-full border border-border-hairline text-text-moonlight font-body-sm text-body-sm font-bold hover:bg-surface-variant/50 transition-colors">Decline</button>
+<button class="flex-1 sm:flex-none px-4 py-2 rounded-full bg-signal-violet text-bg-void font-body-sm text-body-sm font-bold hover:bg-pulse-lilac transition-colors">Accept</button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile only, hidden on md) -->
+<nav class="md:hidden flex justify-around items-center h-20 px-sm pb-safe w-full absolute bottom-0 w-full z-50 rounded-t-xl border-t border-border-hairline bg-bg-ink/90 backdrop-blur-xl">
+<a class="flex flex-col items-center justify-center text-text-dusk hover:text-pulse-lilac active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-label-md text-label-md mt-xs">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-dusk hover:text-pulse-lilac active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+<span class="font-label-md text-label-md mt-xs">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-signal-violet bg-secondary-container/30 rounded-full px-4 py-1 active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group_add">group_add</span>
+<span class="font-label-md text-label-md mt-xs">Requests</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-dusk hover:text-pulse-lilac active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-xs">Profile</span>
+</a>
+</nav>
+</body></html>

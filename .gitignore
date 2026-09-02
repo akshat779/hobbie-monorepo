@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables & Secrets (All variants)
+.env
+.env.*
+.env-*
+*.env
+*.env.*
+*.pem
+*.key
+*.cert
+*.p8
+*.p12
+*.jks
+*.keystore
+*.mobileprovision
+
+# Supabase Local Dev & CLI temp
+supabase/.temp/
+supabase/.branches/
+.temp/
+
+# Expo & Mobile builds
+.expo/
+.expo-shared/
+web-build/
+android/
+ios/
+*.orig.*
+
+# Build & Cache
+dist/
+build/
+out/
+.turbo/
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+.eslintcache
+
+# Logs & Debug
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+maestro-report/
+*.report.json
+
+# Operating System & Editors
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+.agents

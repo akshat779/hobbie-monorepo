@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-void: #0D0B14;
+  --bg-ink: #17131F;
+  --bg-ink-raised: #211C2E;
+  --border-hairline: #2C2739;
+  --signal-violet: #7B2FF7;
+  --signal-violet-light: #D2BBFF;
+  --pulse-lilac: #C77DFF;
+  --pulse-lilac-light: #E1B6FF;
+  --ember: #FF6B5E;
+  --ember-light: #FFB4AB;
+  --text-moonlight: #F5F0FF;
+  --text-dusk: #A99BC2;
+}

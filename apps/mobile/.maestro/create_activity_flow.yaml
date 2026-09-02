@@ -1,0 +1,15 @@
+appId: com.hobbie.app
+---
+# Test 2: Host Activity Creation Flow
+- launchApp
+- tapOn: "Skip to Map Discovery (Demo)"
+- assertVisible: "Radar"
+- tapOn: "+"
+- assertVisible: "Post Live Squad"
+- tapOn: "e.g. 5-a-side Football Turf match"
+- inputText: "Weekend Turf Soccer 5v5"
+- tapOn: "Need 2 more players.*"
+- inputText: "Casual game at EcoWorld pitch."
+- tapOn: "3h"
+- tapOn: "Broadcast Squad.*"
+- assertVisible: "Radar"

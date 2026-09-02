@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nocturnal Pulse - Notifications</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-dim": "#14121b",
+                        "surface": "#14121b",
+                        "surface-bright": "#3a3842",
+                        "on-primary-container": "#5b4883",
+                        "primary-fixed-dim": "#d2bbff",
+                        "ember": "#ffb4ab",
+                        "secondary-container": "#5b3776",
+                        "error": "#ffb4ab",
+                        "inverse-primary": "#685490",
+                        "border-hairline": "#2C2739",
+                        "pulse-lilac": "#e1b6ff",
+                        "inverse-surface": "#e6e0ed",
+                        "tertiary-container": "#feb3aa",
+                        "on-tertiary-fixed": "#360e0a",
+                        "inverse-on-surface": "#322f39",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "primary": "#eadcff",
+                        "surface-container-low": "#1c1a24",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "background": "#14121b",
+                        "surface-container": "#211e28",
+                        "surface-variant": "#36333d",
+                        "on-secondary-fixed": "#2c0647",
+                        "on-error-container": "#ffdad6",
+                        "on-primary": "#38255e",
+                        "secondary-fixed": "#f2daff",
+                        "on-tertiary-container": "#7a433c",
+                        "surface-tint": "#d2bbff",
+                        "error-container": "#93000a",
+                        "tertiary": "#ffd9d4",
+                        "bg-void": "#0D0B14",
+                        "on-primary-fixed": "#230e48",
+                        "on-tertiary": "#51221d",
+                        "surface-container-highest": "#36333d",
+                        "outline-variant": "#49454f",
+                        "text-moonlight": "#F5F0FF",
+                        "secondary": "#e1b6ff",
+                        "primary-container": "#d2bbff",
+                        "on-secondary-container": "#cfa5ed",
+                        "signal-violet": "#d2bbff",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "primary-fixed": "#eaddff",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-surface": "#e6e0ed",
+                        "surface-container-high": "#2b2932",
+                        "bg-ink": "#17131F",
+                        "on-error": "#690005",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "text-dusk": "#A99BC2",
+                        "surface-container-lowest": "#0f0d16",
+                        "on-secondary": "#43205e",
+                        "on-background": "#e6e0ed",
+                        "on-surface-variant": "#cbc4d0",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "bg-ink-raised": "#211C2E",
+                        "outline": "#948e9a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "12px",
+                        "xl": "24px",
+                        "3xl": "48px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "2xl": "32px",
+                        "lg": "16px"
+                    },
+                    "fontFamily": {
+                        "mono-data": ["JetBrains Mono"],
+                        "label-md": ["Bricolage Grotesque"],
+                        "headline-md": ["Bricolage Grotesque"],
+                        "display-xl": ["Bricolage Grotesque"],
+                        "body-sm": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"],
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "headline-lg": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0; }
+        .fill-icon { font-variation-settings: 'FILL' 1; }
+    </style>
+<style>
+    body {
+      width: 390px;
+      height: 844px;
+      margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body class="bg-bg-void text-text-moonlight font-body-lg text-body-lg antialiased pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="absolute top-0 w-full z-50 border-b border-border-hairline bg-bg-void/80 backdrop-blur-md hidden md:flex items-center justify-between px-lg h-16 w-full">
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 transition-transform duration-150 hover:bg-surface-container-high transition-colors p-sm rounded-full flex items-center justify-center text-text-moonlight">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-display-m text-display-m text-text-moonlight tracking-tight font-bold">Nocturnal Pulse</h1>
+</div>
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 transition-transform duration-150 hover:bg-surface-container-high transition-colors p-sm rounded-full flex items-center justify-center text-text-moonlight">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</header>
+<!-- Mobile Top Header (Semantic) -->
+<header class="md:hidden pt-xl px-lg pb-sm">
+<h1 class="font-display-xl-mobile text-display-xl-mobile text-text-moonlight font-bold">Alerts</h1>
+</header>
+<main class="px-lg pt-4 md:pt-24 max-w-2xl mx-auto flex flex-col gap-md">
+<!-- Interest Match Notification (Unread) -->
+<article class="bg-bg-ink border border-border-hairline rounded-[20px] p-lg flex gap-md items-start relative hover:bg-bg-ink-raised transition-colors cursor-pointer">
+<div class="absolute top-md right-lg flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-signal-violet shadow-[0_0_8px_rgba(210,187,255,0.6)]"></div>
+<span class="font-mono-data text-mono-data text-text-dusk">2m ago</span>
+</div>
+<div class="bg-surface-container-high rounded-full p-sm flex-shrink-0 text-signal-violet mt-1">
+<span class="material-symbols-outlined fill-icon" data-icon="sports_soccer" data-weight="fill">sports_soccer</span>
+</div>
+<div class="flex flex-col gap-xs pr-2xl">
+<h3 class="font-headline-md text-headline-md text-text-moonlight">Football nearby</h3>
+<p class="font-body-lg text-body-lg text-text-dusk">12 people interested in a pickup game within 1 mile.</p>
+</div>
+</article>
+<!-- Nudge to Create Notification (Unread) -->
+<article class="bg-bg-ink border border-border-hairline rounded-[20px] p-lg flex gap-md items-start relative hover:bg-bg-ink-raised transition-colors cursor-pointer overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-[4px] bg-pulse-lilac"></div>
+<div class="absolute top-md right-lg flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-signal-violet shadow-[0_0_8px_rgba(210,187,255,0.6)]"></div>
+<span class="font-mono-data text-mono-data text-text-dusk">15m ago</span>
+</div>
+<div class="flex flex-col gap-md pr-xl w-full pl-sm">
+<p class="font-body-lg text-body-lg text-text-moonlight pt-sm">12 people near you are into badminton — start something?</p>
+<div>
+<button class="bg-signal-violet text-bg-void font-label-md text-label-md px-md py-sm rounded-full active:scale-95 transition-transform">Create</button>
+</div>
+</div>
+</article>
+<!-- Interest Match Notification (Read) -->
+<article class="bg-bg-ink border border-border-hairline rounded-[20px] p-lg flex gap-md items-start relative hover:bg-bg-ink-raised transition-colors cursor-pointer opacity-80">
+<div class="absolute top-md right-lg flex items-center gap-xs">
+<span class="font-mono-data text-mono-data text-text-dusk">1h ago</span>
+</div>
+<div class="bg-surface-container-high rounded-full p-sm flex-shrink-0 text-text-dusk mt-1">
+<span class="material-symbols-outlined" data-icon="sports_esports">sports_esports</span>
+</div>
+<div class="flex flex-col gap-xs pr-2xl">
+<h3 class="font-headline-md text-headline-md text-text-moonlight">Smash Bros Tournament</h3>
+<p class="font-body-lg text-body-lg text-text-dusk">8 people looking for players at The Arcade downtown.</p>
+</div>
+</article>
+<!-- Nudge to Create Notification (Read) -->
+<article class="bg-bg-ink border border-border-hairline rounded-[20px] p-lg flex gap-md items-start relative hover:bg-bg-ink-raised transition-colors cursor-pointer overflow-hidden opacity-80">
+<div class="absolute left-0 top-0 bottom-0 w-[4px] bg-surface-container-highest"></div>
+<div class="absolute top-md right-lg flex items-center gap-xs">
+<span class="font-mono-data text-mono-data text-text-dusk">3h ago</span>
+</div>
+<div class="flex flex-col gap-md pr-xl w-full pl-sm">
+<p class="font-body-lg text-body-lg text-text-moonlight pt-sm">High interest in late night coffee runs nearby.</p>
+<div>
+<button class="border border-border-hairline text-text-moonlight font-label-md text-label-md px-md py-sm rounded-full active:scale-95 transition-transform hover:border-signal-violet">Create</button>
+</div>
+</div>
+</article>
+</main>
+<!-- BottomNavBar -->
+<nav class="absolute bottom-0 left-0 w-full flex justify-around items-center pt-sm pb-safe px-lg bg-bg-ink/95 backdrop-blur-lg border-t border-border-hairline z-50 rounded-t-lg md:hidden">
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200 w-16 h-14">
+<span class="material-symbols-outlined mb-1" data-icon="sensors">sensors</span>
+<span class="font-caption text-caption text-[10px]">Pulse</span>
+</button>
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200 w-16 h-14">
+<span class="material-symbols-outlined mb-1" data-icon="map">map</span>
+<span class="font-caption text-caption text-[10px]">Map</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-md py-xs active:scale-90 transition-all duration-200 w-16 h-14">
+<span class="material-symbols-outlined mb-1" data-icon="notifications" data-weight="fill">notifications</span>
+<span class="font-caption text-caption text-[10px] font-bold">Alerts</span>
+</button>
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200 w-16 h-14">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-caption text-caption text-[10px]">Profile</span>
+</button>
+</nav>
+</body></html>

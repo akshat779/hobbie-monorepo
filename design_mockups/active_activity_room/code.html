@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Active Activity Room - Pulse</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "pulse-lilac": "#e1b6ff",
+                      "on-secondary": "#43205e",
+                      "secondary-container": "#5b3776",
+                      "bg-void": "#0D0B14",
+                      "primary-fixed-dim": "#d2bbff",
+                      "inverse-on-surface": "#322f39",
+                      "on-error-container": "#ffdad6",
+                      "outline": "#948e9a",
+                      "on-secondary-container": "#cfa5ed",
+                      "on-tertiary-fixed-variant": "#6c3832",
+                      "surface-container-lowest": "#0f0d16",
+                      "border-hairline": "#2C2739",
+                      "on-primary-fixed-variant": "#4f3c76",
+                      "surface-container-low": "#1c1a24",
+                      "secondary-fixed-dim": "#e1b6ff",
+                      "tertiary-container": "#feb3aa",
+                      "bg-ink": "#17131F",
+                      "surface-variant": "#36333d",
+                      "on-background": "#e6e0ed",
+                      "inverse-primary": "#685490",
+                      "text-dusk": "#A99BC2",
+                      "surface-container-high": "#2b2932",
+                      "tertiary-fixed-dim": "#ffb4ab",
+                      "on-primary": "#38255e",
+                      "secondary-fixed": "#f2daff",
+                      "on-primary-fixed": "#230e48",
+                      "outline-variant": "#49454f",
+                      "on-surface-variant": "#cbc4d0",
+                      "on-tertiary-container": "#7a433c",
+                      "on-surface": "#e6e0ed",
+                      "on-secondary-fixed-variant": "#5b3776",
+                      "surface-dim": "#14121b",
+                      "error-container": "#93000a",
+                      "on-tertiary-fixed": "#360e0a",
+                      "ember": "#ffb4ab",
+                      "surface-container-highest": "#36333d",
+                      "primary-fixed": "#eaddff",
+                      "error": "#ffb4ab",
+                      "bg-ink-raised": "#211C2E",
+                      "on-error": "#690005",
+                      "primary-container": "#d2bbff",
+                      "tertiary-fixed": "#ffdad5",
+                      "background": "#14121b",
+                      "text-moonlight": "#F5F0FF",
+                      "signal-violet": "#d2bbff",
+                      "on-tertiary": "#51221d",
+                      "primary": "#eadcff",
+                      "tertiary": "#ffd9d4",
+                      "surface-container": "#211e28",
+                      "surface-bright": "#3a3842",
+                      "surface-tint": "#d2bbff",
+                      "on-primary-container": "#5b4883",
+                      "inverse-surface": "#e6e0ed",
+                      "on-secondary-fixed": "#2c0647",
+                      "surface": "#14121b",
+                      "secondary": "#e1b6ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "xl": "24px",
+                      "3xl": "48px",
+                      "lg": "16px",
+                      "md": "12px",
+                      "sm": "8px",
+                      "xs": "4px",
+                      "2xl": "32px"
+              },
+              "fontFamily": {
+                      "body-sm": [
+                              "Bricolage Grotesque"
+                      ],
+                      "display-xl": [
+                              "Bricolage Grotesque"
+                      ],
+                      "display-xl-mobile": [
+                              "Bricolage Grotesque"
+                      ],
+                      "label-md": [
+                              "Bricolage Grotesque"
+                      ],
+                      "mono-data": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-lg": [
+                              "Bricolage Grotesque"
+                      ],
+                      "headline-md": [
+                              "Bricolage Grotesque"
+                      ],
+                      "body-lg": [
+                              "Bricolage Grotesque"
+                      ]
+              },
+              "fontSize": {
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-xl": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.03em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-xl-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "mono-data": [
+                              "14px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<style>
+    body {
+      width: 390px;
+      height: 844px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body class="bg-bg-void text-text-moonlight font-body-lg antialiased flex flex-col overflow-hidden relative">
+<!-- TopAppBar -->
+<header class="bg-bg-void/80 backdrop-blur-md absolute top-0 w-full z-50 border-b border-border-hairline flex items-center justify-between px-lg h-16 transition-colors duration-200">
+<button aria-label="Back" class="text-on-surface-variant hover:bg-surface-variant/20 p-2 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<h1 class="font-headline-md text-headline-md text-signal-violet font-bold tracking-tighter">Midnight Run</h1>
+<span class="font-label-md text-label-md text-text-dusk">with Alex Chen</span>
+</div>
+<button aria-label="Menu" class="text-on-surface-variant hover:bg-surface-variant/20 p-2 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col pt-16 pb-[80px]">
+<!-- Top Banner: Countdown -->
+<div class="bg-bg-ink border-b border-border-hairline py-sm px-lg flex justify-center items-center">
+<span class="font-mono-data text-mono-data text-signal-violet animate-pulse">ROOM CLOSES IN: 01:59:59</span>
+</div>
+<!-- Map Snippet -->
+<div class="h-48 w-full relative border-b border-border-hairline overflow-hidden shrink-0">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A detailed map view of a dark, nocturnal city grid. The map style is minimalist with deep inky violets and near-black tones. Streets are subtle grey lines. A glowing, bright signal violet circular pin with a subtle radar-like pulse effect is centered on the map, indicating an active location. The aesthetic is high-tech, urban, and modern dark-mode UI." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC89kboQ8SbyNBerTxUXJpqtpIQtzlndHYmJWx4dDOGYOQXLFE2ymKukpEpBzPPHFtKz-EtN0ZW88zjV_yHqgvmS7hMuXf_HBp43VS-wiPmDJHYOcm-RzqwlVj5cW3jE8BiDa3OfvCfBNgA80TPF9OEU6GIcinivJr0YP9wZd3-1hO28FIptqmUi6D2-LPk20lSJcLSgTFnDDTy1BqKSqcl0vtAsIaQe9GeuGpgJp1DxFSpUlQCrIRE4w')"></div>
+<!-- Pulse Pin Overlay -->
+<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+<div class="relative flex items-center justify-center w-8 h-8">
+<div class="absolute w-full h-full bg-pulse-lilac rounded-full opacity-20 animate-ping"></div>
+<div class="w-4 h-4 bg-signal-violet rounded-full z-10 shadow-[0_0_10px_rgba(210,187,255,0.8)]"></div>
+</div>
+</div>
+<div class="absolute bottom-sm right-sm bg-bg-ink/80 backdrop-blur-sm px-md py-xs rounded-full border border-border-hairline flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px] text-signal-violet" data-icon="directions_walk">directions_walk</span>
+<span class="font-mono-data text-[12px] text-text-moonlight">0.8 mi</span>
+</div>
+</div>
+<!-- Chat Thread -->
+<div class="flex-1 overflow-y-auto no-scrollbar p-lg flex flex-col gap-lg bg-bg-void" id="chat-container">
+<!-- System Message -->
+<div class="flex justify-center my-2">
+<span class="font-label-md text-label-md text-text-dusk bg-bg-ink px-3 py-1 rounded-full border border-border-hairline">Alex Chen joined the room</span>
+</div>
+<!-- Other Person Message -->
+<div class="flex items-end gap-sm">
+<div class="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar portrait of an Asian male with dark hair in a cyberpunk or nocturnal urban setting, lit by purple neon lights. Minimalist, high contrast, professional photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2M3zGaqYivjpaFNvYVsnKeVDf4MbIOR0ZDtWEkRmrAXyOsXG5UNNVO-Ea1E8QIgSxWXFE7h3-M0QReqfMUryrx_u_vHTH9fWY2AUeTbGuj1e98cZf5i4CYge5CuUaSw2Oc058-vBBKP8oEy4BIt--gtb0OeNivGdMexobE4F4IDSoAzbnO0RWLNwIQK3T2MFPDTqJMZLSfYuu02WssMJCgx-XOXUggyCMtXM8J-Jfv8-ROFdGSB1rQQ"/>
+</div>
+<div class="bg-bg-ink-raised px-md py-sm rounded-2xl rounded-bl-sm max-w-[80%] border border-border-hairline">
+<p class="font-body-lg text-body-lg text-text-moonlight">Hey! I'm about 10 mins away from the meeting point.</p>
+</div>
+</div>
+<!-- Other Person Message -->
+<div class="flex items-end gap-sm">
+<div class="w-8 h-8 shrink-0"></div> <!-- Spacer for alignment -->
+<div class="bg-bg-ink-raised px-md py-sm rounded-2xl rounded-bl-sm max-w-[80%] border border-border-hairline">
+<p class="font-body-lg text-body-lg text-text-moonlight">Are we still good for the 5k loop?</p>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex items-end justify-end gap-sm">
+<div class="bg-signal-violet px-md py-sm rounded-2xl rounded-br-sm max-w-[80%]">
+<p class="font-body-lg text-body-lg text-on-primary">Yes, definitely! I'm already stretching near the fountain.</p>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex items-end justify-end gap-sm">
+<div class="bg-signal-violet px-md py-sm rounded-2xl rounded-br-sm max-w-[80%]">
+<p class="font-body-lg text-body-lg text-on-primary">See you soon 🏃‍♂️</p>
+</div>
+</div>
+<!-- Spacer to ensure last message isn't hidden behind input -->
+<div class="h-4 w-full shrink-0"></div>
+</div>
+</main>
+<!-- Input Bar -->
+<div class="absolute bottom-0 w-full bg-bg-ink/90 backdrop-blur-xl border-t border-border-hairline px-lg py-md pb-safe z-50 h-[80px] flex flex-col justify-center">
+<div class="flex items-center gap-sm">
+<button aria-label="Attach" class="text-text-dusk hover:text-signal-violet p-2 rounded-full transition-colors duration-200 shrink-0">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+<div class="flex-1 relative">
+<input class="w-full bg-bg-void border border-border-hairline rounded-full py-md pl-md pr-xl font-body-lg text-body-lg text-text-moonlight placeholder-text-dusk focus:outline-none focus:border-signal-violet focus:ring-1 focus:ring-signal-violet transition-colors" placeholder="Message..." type="text"/>
+</div>
+<button aria-label="Send" class="bg-signal-violet text-on-primary p-2 rounded-full hover:bg-pulse-lilac transition-colors duration-200 shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="send" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+<script>
+        // Simple auto-scroll for chat
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatContainer = document.getElementById('chat-container');
+            if(chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        });
+    </script>
+</body></html>

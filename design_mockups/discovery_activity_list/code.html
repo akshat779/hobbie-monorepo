@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nocturnal Pulse - Discovery List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#2c0647",
+                        "on-background": "#e6e0ed",
+                        "bg-ink": "#17131F",
+                        "tertiary": "#ffd9d4",
+                        "text-moonlight": "#F5F0FF",
+                        "primary-fixed-dim": "#d2bbff",
+                        "bg-ink-raised": "#211C2E",
+                        "on-tertiary": "#51221d",
+                        "border-hairline": "#2C2739",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "surface-variant": "#36333d",
+                        "surface-tint": "#d2bbff",
+                        "background": "#14121b",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#cfa5ed",
+                        "surface-container": "#211e28",
+                        "tertiary-container": "#feb3aa",
+                        "ember": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "on-surface-variant": "#cbc4d0",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "on-tertiary-container": "#7a433c",
+                        "surface-container-highest": "#36333d",
+                        "surface-container-lowest": "#0f0d16",
+                        "bg-void": "#0D0B14",
+                        "on-surface": "#e6e0ed",
+                        "on-error": "#690005",
+                        "inverse-on-surface": "#322f39",
+                        "surface-bright": "#3a3842",
+                        "on-secondary": "#43205e",
+                        "outline": "#948e9a",
+                        "signal-violet": "#d2bbff",
+                        "tertiary-fixed": "#ffdad5",
+                        "inverse-primary": "#685490",
+                        "surface-container-low": "#1c1a24",
+                        "primary-container": "#d2bbff",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "pulse-lilac": "#e1b6ff",
+                        "on-tertiary-fixed": "#360e0a",
+                        "secondary": "#e1b6ff",
+                        "inverse-surface": "#e6e0ed",
+                        "secondary-container": "#5b3776",
+                        "surface-container-high": "#2b2932",
+                        "primary-fixed": "#eaddff",
+                        "outline-variant": "#49454f",
+                        "on-primary": "#38255e",
+                        "text-dusk": "#A99BC2",
+                        "surface": "#14121b",
+                        "error-container": "#93000a",
+                        "surface-dim": "#14121b",
+                        "on-primary-container": "#5b4883",
+                        "primary": "#eadcff",
+                        "on-primary-fixed": "#230e48",
+                        "secondary-fixed": "#f2daff",
+                        "on-error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "2xl": "32px",
+                        "sm": "8px",
+                        "3xl": "48px",
+                        "lg": "16px",
+                        "xs": "4px",
+                        "xl": "24px",
+                        "md": "12px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Bricolage Grotesque"],
+                        "label-md": ["Bricolage Grotesque"],
+                        "headline-lg": ["Bricolage Grotesque"],
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "body-sm": ["Bricolage Grotesque"],
+                        "display-xl": ["Bricolage Grotesque"],
+                        "headline-md": ["Bricolage Grotesque"],
+                        "mono-data": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .custom-card-radius {
+            border-radius: 20px;
+        }
+    </style>
+<style>
+        body {
+            width: 390px;
+            height: 844px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-bg-void text-text-moonlight font-body-lg flex flex-col">
+<!-- TopAppBar -->
+<header class="absolute top-0 w-full z-50 bg-bg-void/80 backdrop-blur-md border-b border-border-hairline flex items-center justify-between px-lg h-16 w-full">
+<button class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 transition-transform duration-150 p-xs rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-display-xl-mobile text-display-xl-mobile text-primary tracking-tight">Nocturnal Pulse</h1>
+<button class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 transition-transform duration-150 p-xs rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</header>
+<!-- Filters Section -->
+<section class="absolute top-16 z-40 bg-bg-void/90 backdrop-blur-md py-md px-lg border-b border-border-hairline w-full overflow-x-auto hide-scrollbar">
+<div class="flex gap-sm w-max">
+<button class="px-lg py-xs rounded-full bg-signal-violet text-bg-ink font-label-md text-label-md transition-all active:scale-95">Filters</button>
+<button class="px-lg py-xs rounded-full border border-border-hairline text-text-moonlight hover:border-signal-violet font-label-md text-label-md transition-all active:scale-95">Physical</button>
+<button class="px-lg py-xs rounded-full border border-border-hairline text-text-moonlight hover:border-signal-violet font-label-md text-label-md transition-all active:scale-95">Virtual</button>
+<button class="px-lg py-xs rounded-full border border-border-hairline text-text-moonlight hover:border-signal-violet font-label-md text-label-md transition-all active:scale-95">Gaming</button>
+</div>
+</section>
+<!-- Main Content: Activity Cards -->
+<main class="flex-1 overflow-y-auto pt-[132px] pb-[100px] px-lg space-y-lg flex flex-col items-center">
+<div class="w-full max-w-2xl space-y-lg mt-lg">
+<!-- Card 1: Physical -->
+<article class="bg-bg-ink custom-card-radius border border-border-hairline p-lg flex flex-col gap-md relative">
+<div class="absolute top-lg right-lg font-mono-data text-mono-data text-pulse-lilac">
+                    02:14:38
+                </div>
+<div class="flex items-start gap-md w-full pr-24">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-text-moonlight" data-icon="sports_soccer">sports_soccer</span>
+</div>
+<div class="flex flex-col">
+<h2 class="font-headline-md text-headline-md text-text-moonlight">Midnight Turf War</h2>
+<div class="flex items-center gap-xs mt-xs">
+<span class="font-body-sm text-body-sm text-text-dusk">Host: UrbanKicks</span>
+<span class="material-symbols-outlined text-signal-violet text-[14px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+<span class="font-label-md text-label-md text-primary-fixed-dim mt-xs">0.8 miles away</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-text-dusk line-clamp-2 mt-xs">
+                    Looking for 3 more players for a 5v5 casual match under the stadium lights. Bring both dark and light shirts.
+                </p>
+<div class="mt-xs">
+<button class="w-full py-sm rounded-full bg-signal-violet text-bg-ink font-label-md text-label-md hover:bg-pulse-lilac transition-colors active:scale-95">Request to Join</button>
+</div>
+</article>
+<!-- Card 2: Virtual/Gaming -->
+<article class="bg-bg-ink custom-card-radius border border-border-hairline p-lg flex flex-col gap-md relative">
+<div class="absolute top-lg right-lg font-mono-data text-mono-data text-pulse-lilac">
+                    00:45:12
+                </div>
+<div class="flex items-start gap-md w-full pr-24">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-text-moonlight" data-icon="sports_esports">sports_esports</span>
+</div>
+<div class="flex flex-col">
+<h2 class="font-headline-md text-headline-md text-text-moonlight">Late Night Raid</h2>
+<div class="flex items-center gap-xs mt-xs">
+<span class="font-body-sm text-body-sm text-text-dusk">Host: ShadowGuild</span>
+<span class="material-symbols-outlined text-signal-violet text-[14px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+<span class="font-label-md text-label-md text-primary-fixed-dim mt-xs">Virtual Session</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-text-dusk line-clamp-2 mt-xs">
+                    Need a dedicated healer for the final boss phase. Must have comms and know mechanics. Dropping in soon.
+                </p>
+<div class="mt-xs">
+<button class="w-full py-sm rounded-full bg-signal-violet text-bg-ink font-label-md text-label-md hover:bg-pulse-lilac transition-colors active:scale-95">Request to Join</button>
+</div>
+</article>
+<!-- Card 3: Physical -->
+<article class="bg-bg-ink custom-card-radius border border-border-hairline p-lg flex flex-col gap-md relative">
+<div class="absolute top-lg right-lg font-mono-data text-mono-data text-pulse-lilac">
+                    04:20:00
+                </div>
+<div class="flex items-start gap-md w-full pr-24">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-text-moonlight" data-icon="local_cafe">local_cafe</span>
+</div>
+<div class="flex flex-col">
+<h2 class="font-headline-md text-headline-md text-text-moonlight">Insomnia Coders Meetup</h2>
+<div class="flex items-center gap-xs mt-xs">
+<span class="font-body-sm text-body-sm text-text-dusk">Host: ByteBrew</span>
+</div>
+<span class="font-label-md text-label-md text-primary-fixed-dim mt-xs">2.4 miles away</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-text-dusk line-clamp-2 mt-xs">
+                    Quiet co-working session at the 24/7 diner. Grab a booth, some coffee, and let's crush these bugs.
+                </p>
+<div class="mt-xs">
+<button class="w-full py-sm rounded-full border border-border-hairline text-text-moonlight font-label-md text-label-md hover:border-signal-violet transition-colors active:scale-95">Request to Join</button>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="absolute bottom-0 w-full z-50 rounded-t-lg bg-bg-ink/95 backdrop-blur-lg border-t border-border-hairline flex justify-around items-center pt-sm pb-safe px-lg h-20">
+<!-- Pulse (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-md py-xs active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sensors" data-weight="fill">sensors</span>
+<span class="font-caption text-caption mt-xs font-label-md text-label-md">Pulse</span>
+</a>
+<!-- Map (Inactive) -->
+<a class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-caption text-caption mt-xs font-label-md text-label-md">Map</span>
+</a>
+<!-- Alerts (Inactive) -->
+<a class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-caption text-caption mt-xs font-label-md text-label-md">Alerts</span>
+</a>
+<!-- Profile (Inactive) -->
+<a class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-caption text-caption mt-xs font-label-md text-label-md">Profile</span>
+</a>
+</nav>
+<!-- Support for safe area on mobile devices -->
+<style>
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 16px);
+        }
+    </style>
+</body></html>

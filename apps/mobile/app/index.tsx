@@ -1,0 +1,72 @@
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Sparkles, ArrowRight, Shield } from 'lucide-react-native';
+import { useAuthStore } from '../src/features/auth/useAuthStore';
+
+export default function WelcomeLandingScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { initialize, user, profile } = useAuthStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  return (
+    <View
+      style={{
+        paddingTop: Math.max(insets.top, 16),
+        paddingBottom: Math.max(insets.bottom, 24),
+      }}
+      className="flex-1 bg-void justify-between px-6"
+    >
+      {/* Top Brand Pill */}
+      <View className="items-center pt-6">
+        <View className="flex-row items-center px-3 py-1.5 rounded-full bg-ink border border-hairline mb-8">
+          <Shield size={14} color="#C77DFF" />
+          <Text className="text-xs font-semibold text-pulse-lilac ml-1.5">
+            Hyperlocal Physical Squads
+          </Text>
+        </View>
+
+        {/* Minimalist Logo */}
+        <View className="w-24 h-24 rounded-3xl bg-ink-raised border border-hairline items-center justify-center mb-6">
+          <Sparkles size={40} color="#C77DFF" />
+        </View>
+
+        <Text className="text-4xl font-extrabold font-display text-moonlight tracking-tight mb-3">
+          Hobbie
+        </Text>
+        <Text className="text-base text-dusk text-center px-4 leading-relaxed">
+          Activity-anchored coordination. Match with verified squads within 4.5km right now.
+        </Text>
+      </View>
+
+      {/* Bottom CTA Actions */}
+      <View className="w-full space-y-3">
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/phone')}
+          className="w-full h-14 bg-signal-violet rounded-full flex-row items-center justify-center shadow-lg"
+          activeOpacity={0.8}
+        >
+          <Text className="text-moonlight font-display text-lg font-bold">
+            {user && profile ? 'Continue to Squads' : 'Get Started'}
+          </Text>
+          <ArrowRight size={18} color="#F5F0FF" style={{ marginLeft: 8 }} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.push('/(main)')}
+          className="w-full h-14 bg-ink border border-hairline rounded-full items-center justify-center mt-3"
+          activeOpacity={0.7}
+        >
+          <Text className="text-dusk font-medium text-sm">
+            Explore Hobbie (Demo Mode)
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}

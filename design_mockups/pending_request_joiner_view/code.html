@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pending Request</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "pulse-lilac": "#e1b6ff",
+                        "on-secondary": "#43205e",
+                        "secondary-container": "#5b3776",
+                        "bg-void": "#0D0B14",
+                        "primary-fixed-dim": "#d2bbff",
+                        "inverse-on-surface": "#322f39",
+                        "on-error-container": "#ffdad6",
+                        "outline": "#948e9a",
+                        "on-secondary-container": "#cfa5ed",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "surface-container-lowest": "#0f0d16",
+                        "border-hairline": "#2C2739",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "surface-container-low": "#1c1a24",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "tertiary-container": "#feb3aa",
+                        "bg-ink": "#17131F",
+                        "surface-variant": "#36333d",
+                        "on-background": "#e6e0ed",
+                        "inverse-primary": "#685490",
+                        "text-dusk": "#A99BC2",
+                        "surface-container-high": "#2b2932",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-primary": "#38255e",
+                        "secondary-fixed": "#f2daff",
+                        "on-primary-fixed": "#230e48",
+                        "outline-variant": "#49454f",
+                        "on-surface-variant": "#cbc4d0",
+                        "on-tertiary-container": "#7a433c",
+                        "on-surface": "#e6e0ed",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "surface-dim": "#14121b",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#360e0a",
+                        "ember": "#ffb4ab",
+                        "surface-container-highest": "#36333d",
+                        "primary-fixed": "#eaddff",
+                        "error": "#ffb4ab",
+                        "bg-ink-raised": "#211C2E",
+                        "on-error": "#690005",
+                        "primary-container": "#d2bbff",
+                        "tertiary-fixed": "#ffdad5",
+                        "background": "#14121b",
+                        "text-moonlight": "#F5F0FF",
+                        "signal-violet": "#d2bbff",
+                        "on-tertiary": "#51221d",
+                        "primary": "#eadcff",
+                        "tertiary": "#ffd9d4",
+                        "surface-container": "#211e28",
+                        "surface-bright": "#3a3842",
+                        "surface-tint": "#d2bbff",
+                        "on-primary-container": "#5b4883",
+                        "inverse-surface": "#e6e0ed",
+                        "on-secondary-fixed": "#2c0647",
+                        "surface": "#14121b",
+                        "secondary": "#e1b6ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "24px",
+                        "3xl": "48px",
+                        "lg": "16px",
+                        "md": "12px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "2xl": "32px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Bricolage Grotesque"],
+                        "display-xl": ["Bricolage Grotesque"],
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "label-md": ["Bricolage Grotesque"],
+                        "mono-data": ["JetBrains Mono"],
+                        "headline-lg": ["Bricolage Grotesque"],
+                        "headline-md": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                    },
+                    "animation": {
+                        'pulse-ring': 'pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite',
+                    },
+                    "keyframes": {
+                        'pulse-ring': {
+                            '0%': { transform: 'scale(0.8)', opacity: '0.5' },
+                            '100%': { transform: 'scale(1.5)', opacity: '0' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    body {
+      width: 390px;
+      height: 844px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body class="bg-bg-void text-on-surface flex flex-col items-center justify-center overflow-hidden font-body-sm relative selection:bg-signal-violet selection:text-bg-void">
+<!-- Top App Bar (Suppressed due to contextual state rule for transactional/waiting screens) -->
+<main class="flex-1 flex flex-col items-center justify-center w-full px-lg max-w-md mx-auto relative z-10">
+<div class="relative flex items-center justify-center mb-xl">
+<!-- Pulsing Loader Animation (CSS-based) -->
+<div class="absolute w-2xl h-2xl bg-pulse-lilac rounded-full animate-pulse-ring"></div>
+<div class="absolute w-2xl h-2xl bg-pulse-lilac rounded-full animate-pulse-ring" style="animation-delay: 0.5s;"></div>
+<!-- Large Activity Icon in Ink Container -->
+<div class="relative w-3xl h-3xl bg-bg-ink rounded-full border border-border-hairline flex items-center justify-center shadow-[0_0_30px_rgba(225,182,255,0.15)] z-10">
+<span class="material-symbols-outlined text-signal-violet text-[40px]" style="font-variation-settings: 'FILL' 1;">
+                    sports_esports
+                </span>
+</div>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-text-moonlight text-center mb-lg tracking-tight">
+            Waiting for Alex to respond...
+        </h1>
+<p class="font-body-lg text-body-lg text-text-dusk text-center mb-3xl max-w-[280px]">
+            They'll be notified of your request to join this session.
+        </p>
+<!-- Secondary Action -->
+<button class="font-label-md text-label-md text-text-dusk hover:text-signal-violet transition-colors duration-200 py-md px-lg group flex items-center gap-xs">
+            Cancel Request
+        </button>
+</main>
+<!-- Background Atmospheric Effect -->
+<div class="absolute inset-0 pointer-events-none z-0 overflow-hidden flex items-center justify-center opacity-30">
+<div class="w-[300px] h-[300px] bg-pulse-lilac/20 rounded-full blur-[100px] translate-y-12"></div>
+</div>
+</body></html>

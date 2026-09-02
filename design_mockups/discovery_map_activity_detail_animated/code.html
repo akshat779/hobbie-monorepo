@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nocturnal Pulse - Discovery</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#2b2932",
+                        "tertiary-container": "#feb3aa",
+                        "on-surface": "#e6e0ed",
+                        "surface-variant": "#36333d",
+                        "outline": "#948e9a",
+                        "on-secondary": "#43205e",
+                        "background": "#14121b",
+                        "primary-fixed-dim": "#d2bbff",
+                        "on-primary-fixed": "#230e48",
+                        "secondary-container": "#5b3776",
+                        "primary": "#eadcff",
+                        "on-surface-variant": "#cbc4d0",
+                        "on-tertiary": "#51221d",
+                        "secondary": "#e1b6ff",
+                        "on-primary": "#38255e",
+                        "bg-ink-raised": "#211C2E",
+                        "on-primary-container": "#5b4883",
+                        "text-dusk": "#A99BC2",
+                        "on-error-container": "#ffdad6",
+                        "surface-container": "#211e28",
+                        "ember": "#ffb4ab",
+                        "surface-bright": "#3a3842",
+                        "secondary-fixed": "#f2daff",
+                        "outline-variant": "#49454f",
+                        "surface-container-lowest": "#0f0d16",
+                        "error": "#ffb4ab",
+                        "primary-container": "#d2bbff",
+                        "pulse-lilac": "#e1b6ff",
+                        "surface": "#14121b",
+                        "primary-fixed": "#eaddff",
+                        "bg-ink": "#17131F",
+                        "inverse-surface": "#e6e0ed",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "surface-container-highest": "#36333d",
+                        "surface-container-low": "#1c1a24",
+                        "surface-tint": "#d2bbff",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "inverse-on-surface": "#322f39",
+                        "error-container": "#93000a",
+                        "on-background": "#e6e0ed",
+                        "bg-void": "#0D0B14",
+                        "border-hairline": "#2C2739",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "on-tertiary-fixed": "#360e0a",
+                        "on-tertiary-container": "#7a433c",
+                        "on-error": "#690005",
+                        "inverse-primary": "#685490",
+                        "on-secondary-fixed": "#2c0647",
+                        "surface-dim": "#14121b",
+                        "text-moonlight": "#F5F0FF",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "tertiary": "#ffd9d4",
+                        "on-secondary-container": "#cfa5ed",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "signal-violet": "#d2bbff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "24px",
+                        "2xl": "32px",
+                        "3xl": "48px",
+                        "lg": "16px",
+                        "sm": "8px",
+                        "md": "12px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Bricolage Grotesque"],
+                        "display-xl": ["Bricolage Grotesque"],
+                        "headline-lg": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"],
+                        "label-md": ["Bricolage Grotesque"],
+                        "mono-data": ["JetBrains Mono"],
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "headline-md": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.8);
+                box-shadow: 0 0 0 0 rgba(225, 182, 255, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(225, 182, 255, 0);
+            }
+            100% {
+                transform: scale(0.8);
+                box-shadow: 0 0 0 0 rgba(225, 182, 255, 0);
+            }
+        }
+        
+        .map-bg {
+            background-color: #0D0B14;
+            background-image: radial-gradient(circle at center, #1a1625 0%, #0D0B14 100%);
+        }
+    </style>
+</head>
+<body class="bg-bg-void text-text-moonlight font-body-sm w-[390px] h-[844px] mx-auto overflow-hidden flex flex-col relative antialiased map-bg">
+<!-- Map Background WebGL Shader -->
+
+<!-- Top Navigation (Mobile/Tablet) -->
+<nav class="absolute top-0 w-full z-50 flex items-center justify-between px-lg h-16 border-b border-border-hairline bg-bg-void/80 backdrop-blur-md md:hidden">
+<div class="flex items-center gap-sm text-text-moonlight">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</div>
+<div class="font-display-xl-mobile text-display-xl-mobile text-primary tracking-tight">Nocturnal Pulse</div>
+<div class="flex items-center gap-sm text-text-moonlight">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</div>
+</nav>
+<!-- Top Navigation (Desktop) -->
+<nav class="hidden md:flex absolute top-0 w-full z-50 items-center justify-between px-xl h-20 border-b border-border-hairline bg-bg-void/80 backdrop-blur-md">
+<div class="flex items-center gap-lg">
+<div class="font-display-xl text-display-xl text-primary tracking-tight">Nocturnal Pulse</div>
+<div class="flex gap-md ml-xl">
+<button class="px-md py-xs rounded-full border border-border-hairline bg-bg-ink text-text-moonlight font-label-md hover:bg-surface-container-high transition-colors text-primary font-bold bg-surface-container-highest">Pulse</button>
+<button class="px-md py-xs rounded-full border border-border-hairline bg-transparent text-text-dusk font-label-md hover:bg-surface-container-high transition-colors">Map</button>
+<button class="px-md py-xs rounded-full border border-border-hairline bg-transparent text-text-dusk font-label-md hover:bg-surface-container-high transition-colors">Alerts</button>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex items-center gap-sm bg-bg-ink border border-border-hairline rounded-full px-md py-xs">
+<span class="material-symbols-outlined text-text-dusk" data-icon="search" style="font-size: 18px;">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-text-moonlight placeholder:text-text-dusk font-body-sm w-48" placeholder="Search the night..." type="text"/>
+</div>
+<button class="w-10 h-10 rounded-full border border-border-hairline bg-bg-ink flex items-center justify-center hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-text-moonlight" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full border border-border-hairline overflow-hidden ml-sm">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A moody, cyberpunk-inspired avatar portrait of a user. The lighting is dark with neon purple and blue rim lighting. The subject looks confident and modern. Minimalist composition fitting a dark mode app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdLtVnl60UwQZFcCLqGnAX5ZXpinr06LK0DwC7OyK4Qy5Nuufxd76mD_jrbxiw9dW0Ndzz5-TRpKmXCuOmxdXL8p9P6Gdd3wXLQVUraWlB1Ol6zmZXhi_kx54pMaSAs_kFFNcOLsSWgVcGKbcshr0qoJPsWDTDRfcn2bgPdHrIGknNEqFRPDtxYn-mZBjnIL9yaWtzwLMh8pkMu7YBCfNyqS7nGINjEHIifEwwAvIpATndKua1CnvEaw"/>
+</button>
+</div>
+</nav>
+<!-- Map Canvas Area -->
+<main class="flex-1 relative w-full h-full mt-16 md:mt-20 mb-20 md:mb-0">
+<!-- Filter Chips (Floating Top) -->
+<div class="absolute top-md left-md right-md z-30 flex gap-sm overflow-x-auto no-scrollbar pointer-events-auto md:top-xl md:left-xl md:right-auto md:w-auto">
+<button class="flex-shrink-0 px-md py-xs rounded-full border border-border-hairline bg-bg-ink text-text-moonlight font-label-md flex items-center gap-xs hover:border-signal-violet transition-colors">
+<span class="material-symbols-outlined text-text-dusk" data-icon="tune" style="font-size: 16px;">tune</span>
+                Filters
+            </button>
+<button class="flex-shrink-0 px-md py-xs rounded-full bg-signal-violet text-on-primary font-label-md font-bold transition-colors">
+                Physical
+            </button>
+<button class="flex-shrink-0 px-md py-xs rounded-full border border-border-hairline bg-bg-ink text-text-moonlight font-label-md transition-colors hover:border-signal-violet">
+                Virtual
+            </button>
+<button class="flex-shrink-0 px-md py-xs rounded-full border border-border-hairline bg-bg-ink text-text-moonlight font-label-md transition-colors hover:border-signal-violet">
+                Gaming
+            </button>
+<button class="flex-shrink-0 px-md py-xs rounded-full border border-border-hairline bg-bg-ink text-text-moonlight font-label-md transition-colors hover:border-signal-violet">
+                Food
+            </button>
+</div>
+<!-- Floating Action / Toggle (Top Right) -->
+<div class="absolute top-md right-md z-30 pointer-events-auto hidden md:block">
+<button class="w-10 h-10 rounded-full border border-border-hairline bg-bg-ink flex items-center justify-center hover:bg-surface-container-high transition-colors shadow-lg">
+<span class="material-symbols-outlined text-text-moonlight" data-icon="format_list_bulleted">format_list_bulleted</span>
+</button>
+</div>
+<!-- Map Pins (Scattered) -->
+<!-- User Location Pin -->
+<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+<div class="w-4 h-4 bg-signal-violet rounded-full pulse-ring border-2 border-bg-void shadow-[0_0_15px_rgba(210,187,255,0.5)]"></div>
+</div>
+<!-- Pin 1: Football -->
+<button class="absolute top-[30%] left-[20%] z-20 group">
+<div class="w-10 h-10 rounded-full bg-bg-ink border border-pulse-lilac flex items-center justify-center shadow-[0_0_10px_rgba(225,182,255,0.3)] transition-transform group-hover:scale-110">
+<span class="material-symbols-outlined text-pulse-lilac" data-icon="sports_soccer">sports_soccer</span>
+</div>
+</button>
+<!-- Pin 2: Coffee -->
+<button class="absolute top-[60%] left-[70%] z-20 group">
+<div class="w-10 h-10 rounded-full bg-bg-ink border border-border-hairline flex items-center justify-center transition-transform group-hover:scale-110 group-hover:border-signal-violet">
+<span class="material-symbols-outlined text-text-dusk" data-icon="local_cafe">local_cafe</span>
+</div>
+</button>
+<!-- Pin 3: Active Gaming (Selected) -->
+<div class="absolute top-[45%] left-[55%] z-20 group pointer-events-none">
+<!-- Connection Line to Sheet (Visual flair) -->
+<svg class="absolute top-full left-1/2 w-[2px] h-32 -translate-x-1/2 hidden md:block opacity-30" preserveaspectratio="none" viewbox="0 0 2 100">
+<line stroke="#d2bbff" stroke-dasharray="4 4" stroke-width="2" x1="1" x2="1" y1="0" y2="100"></line>
+</svg>
+<button class="w-12 h-12 rounded-full bg-bg-ink border-2 border-signal-violet flex items-center justify-center shadow-[0_0_20px_rgba(210,187,255,0.6)] pulse-ring pointer-events-auto">
+<span class="material-symbols-outlined text-signal-violet" data-icon="sports_esports" style="font-variation-settings: 'FILL' 1;">sports_esports</span>
+</button>
+</div>
+<!-- Pin 4: Cluster -->
+<button class="absolute top-[25%] left-[65%] z-20 group">
+<div class="w-12 h-12 rounded-full bg-bg-ink-raised border border-border-hairline flex items-center justify-center transition-transform group-hover:scale-110">
+<span class="font-mono-data text-mono-data text-text-moonlight">12</span>
+</div>
+</button>
+<!-- Active State Bottom Sheet -->
+<div class="absolute bottom-0 left-0 w-full bg-bg-ink/90 backdrop-blur-md border-t border-border-hairline rounded-t-xl p-lg z-40 transform transition-transform duration-300 md:bottom-xl md:left-xl md:w-96 md:rounded-xl md:border md:shadow-2xl">
+<!-- Drag Handle (Mobile) -->
+<div class="w-12 h-1 bg-border-hairline rounded-full mx-auto mb-md md:hidden"></div>
+<div class="flex justify-between items-start mb-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-border-hairline flex items-center justify-center">
+<span class="material-symbols-outlined text-signal-violet" data-icon="sports_esports">sports_esports</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md-mobile md:text-headline-md text-text-moonlight">Late Night Gaming Session</h2>
+<div class="flex items-center gap-xs mt-xs">
+<span class="font-label-md text-label-md text-text-dusk">Host: PixelGhost</span>
+<span class="material-symbols-outlined text-signal-violet" data-icon="verified" style="font-size: 14px; font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+</div>
+<div class="font-mono-data text-mono-data text-ember flex items-center gap-xs bg-bg-void px-sm py-xs rounded border border-border-hairline">
+<span class="material-symbols-outlined" data-icon="timer" style="font-size: 14px;">timer</span>
+                    02:14:38
+                </div>
+</div>
+<p class="font-body-sm text-body-sm text-text-dusk mb-lg">
+                Quick Valorant matches before the server resets. Looking for 2 more players to fill the squad. Mic preferred.
+            </p>
+<button class="w-full py-md bg-signal-violet text-on-primary font-body-lg text-body-lg font-bold rounded-full hover:bg-primary transition-colors active:scale-95">
+                Request to Join
+            </button>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="absolute bottom-0 left-0 w-full flex justify-around items-center pt-sm pb-safe px-lg border-t border-border-hairline bg-bg-ink/95 backdrop-blur-lg z-50 md:hidden h-20 pb-4">
+<button class="flex flex-col items-center justify-center text-primary bg-primary-container text-on-primary-container rounded-full px-md py-xs active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="sensors">sensors</span>
+<span class="font-caption text-caption mt-xs">Pulse</span>
+</button>
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-caption text-caption mt-xs">Map</span>
+</button>
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-caption text-caption mt-xs">Alerts</span>
+</button>
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-text-moonlight active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-caption text-caption mt-xs">Profile</span>
+</button>
+</nav>
+</body></html>

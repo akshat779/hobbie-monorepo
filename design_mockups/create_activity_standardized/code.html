@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Create Activity - Nocturnal Pulse</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&amp;family=JetBrains+Mono:wght@400..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#eaddff",
+                        "surface-container-high": "#2b2932",
+                        "secondary": "#e1b6ff",
+                        "surface-bright": "#3a3842",
+                        "on-primary-container": "#5b4883",
+                        "inverse-surface": "#e6e0ed",
+                        "bg-ink-raised": "#211C2E",
+                        "signal-violet": "#d2bbff",
+                        "on-tertiary-container": "#7a433c",
+                        "outline-variant": "#49454f",
+                        "on-surface-variant": "#cbc4d0",
+                        "on-tertiary-fixed": "#360e0a",
+                        "surface": "#14121b",
+                        "surface-container-low": "#1c1a24",
+                        "inverse-on-surface": "#322f39",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "primary-container": "#d2bbff",
+                        "on-secondary": "#43205e",
+                        "inverse-primary": "#685490",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "tertiary-container": "#feb3aa",
+                        "on-primary": "#38255e",
+                        "text-moonlight": "#F5F0FF",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "on-primary-fixed": "#230e48",
+                        "outline": "#948e9a",
+                        "surface-variant": "#36333d",
+                        "on-secondary-container": "#cfa5ed",
+                        "on-surface": "#e6e0ed",
+                        "bg-void": "#0D0B14",
+                        "bg-ink": "#17131F",
+                        "on-secondary-fixed": "#2c0647",
+                        "primary": "#eadcff",
+                        "border-hairline": "#2C2739",
+                        "surface-container-lowest": "#0f0d16",
+                        "text-dusk": "#A99BC2",
+                        "on-error": "#690005",
+                        "tertiary": "#ffd9d4",
+                        "primary-fixed-dim": "#d2bbff",
+                        "on-error-container": "#ffdad6",
+                        "pulse-lilac": "#e1b6ff",
+                        "on-background": "#e6e0ed",
+                        "on-tertiary": "#51221d",
+                        "surface-container-highest": "#36333d",
+                        "surface-container": "#211e28",
+                        "secondary-fixed": "#f2daff",
+                        "surface-tint": "#d2bbff",
+                        "ember": "#ffb4ab",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "surface-dim": "#14121b",
+                        "secondary-container": "#5b3776",
+                        "background": "#14121b",
+                        "on-tertiary-fixed-variant": "#6c3832"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "sm": "8px",
+                        "xl": "24px",
+                        "2xl": "32px",
+                        "lg": "16px",
+                        "3xl": "48px",
+                        "md": "12px"
+                    },
+                    "fontFamily": {
+                        "display-xl": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"],
+                        "mono-data": ["JetBrains Mono"],
+                        "body-sm": ["Bricolage Grotesque"],
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "headline-lg": ["Bricolage Grotesque"],
+                        "headline-md": ["Bricolage Grotesque"],
+                        "label-md": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>.material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24
+    }
+.icon-fill {
+    font-variation-settings: "FILL" 1
+    }
+/* Custom map styling to match dark theme */
+.map-container {
+    background-image: linear-gradient(to bottom, rgba(23, 19, 31, 0.8), rgba(13, 11, 20, 0.9)), url(https://lh3.googleusercontent.com/aida-public/AB6AXuCYYm4loIF9MzeoXEIU4Y8FQXqIFZP4arwEnWc3UKB1wNtBczuzstW-il_nQAiGvZjKkocYT6hPh0Snr2jOaaSCECmzQZT4OjzD6f7iyITci4ad8-nqWvoEvI8myUUn0qv73vdoNBIunG4qo-nBvbC_YJs_8zRg9mOMyDb7-Gz1ahtfWhlLu5i3OkGBkaLu2rEjiviRifQUDcq7An1VK9OgqG3rxPSJHblFDY_7gHkRBritfgMHKQaC1A);
+    background-size: cover;
+    background-position: center
+    }</style>
+<style>
+    body {
+      width: 390px !important;
+      height: 844px !important;
+      min-width: 390px !important;
+      min-height: 844px !important;
+      max-width: 390px !important;
+      max-height: 844px !important;
+      margin: 0 auto;
+      position: relative;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+  </style>
+</head>
+<body class="bg-bg-void text-text-moonlight font-body-lg flex flex-col pt-16 pb-24 w-[390px] h-[844px] mx-auto overflow-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface text-primary dark:text-primary font-headline-md text-headline-md absolute top-0 w-full z-50 border-b border-border-hairline shadow-none transition-transform duration-150 flex items-center justify-between px-lg h-16">
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity flex items-center justify-center p-sm">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<span class="font-display-xl-mobile text-display-xl-mobile text-primary tracking-tighter">Create Activity</span>
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity flex items-center justify-center p-sm invisible">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-1 px-lg py-xl space-y-xl w-full overflow-y-auto">
+<!-- Activity Title Input -->
+<section class="space-y-sm">
+<input class="w-full bg-transparent border-none text-headline-lg font-headline-lg text-text-moonlight placeholder:text-text-dusk focus:ring-0 p-0" placeholder="Activity Title" type="text"/>
+<div class="h-px w-full bg-border-hairline"></div>
+</section>
+<!-- Interest Picker -->
+<section class="space-y-md">
+<h2 class="font-body-sm text-body-sm text-text-dusk uppercase tracking-widest">Category</h2>
+<div class="flex flex-wrap gap-sm">
+<button class="px-lg py-sm rounded-full border border-signal-violet bg-signal-violet text-bg-void font-label-md text-label-md transition-colors">Sports</button>
+<button class="px-lg py-sm rounded-full border border-border-hairline text-text-moonlight hover:border-signal-violet font-label-md text-label-md transition-colors">Gaming</button>
+<button class="px-lg py-sm rounded-full border border-border-hairline text-text-moonlight hover:border-signal-violet font-label-md text-label-md transition-colors">Music</button>
+<button class="px-lg py-sm rounded-full border border-border-hairline text-text-moonlight hover:border-signal-violet font-label-md text-label-md transition-colors">Food</button>
+<button class="px-lg py-sm rounded-full border border-border-hairline text-text-moonlight hover:border-signal-violet font-label-md text-label-md transition-colors">Party</button>
+<button class="px-lg py-sm rounded-full border border-border-hairline text-text-moonlight hover:border-signal-violet font-label-md text-label-md transition-colors">Study</button>
+</div>
+</section>
+<!-- Physical/Virtual Toggle -->
+<section class="bg-bg-ink rounded-full p-xs flex border border-border-hairline">
+<button class="flex-1 py-sm rounded-full bg-surface-container-high text-signal-violet font-label-md text-label-md transition-colors shadow-sm">Physical</button>
+<button class="flex-1 py-sm rounded-full text-text-dusk hover:text-text-moonlight font-label-md text-label-md transition-colors">Virtual</button>
+</section>
+<!-- Map Preview (Physical) -->
+<section class="rounded-xl overflow-hidden border border-border-hairline bg-bg-ink relative h-48 map-container group cursor-pointer" data-alt="A stylized dark mode city map at night with vibrant neon violet roads and subtle blue glowing highlights, minimalist and abstract, top-down view, futuristic urban atmosphere.">
+<div class="absolute inset-0 bg-bg-void/40 group-hover:bg-bg-void/20 transition-colors flex items-center justify-center flex-col">
+<span class="material-symbols-outlined text-signal-violet text-3xl mb-xs icon-fill" data-icon="location_on">location_on</span>
+<span class="font-body-sm text-body-sm text-text-moonlight bg-bg-ink-raised px-md py-xs rounded-full border border-border-hairline">Set Location</span>
+</div>
+</section>
+<!-- Date & Time Range -->
+<section class="grid grid-cols-2 gap-md">
+<div class="bg-bg-ink border border-border-hairline rounded-xl p-md flex flex-col space-y-xs cursor-pointer hover:border-signal-violet transition-colors">
+<span class="font-body-sm text-body-sm text-text-dusk flex items-center gap-xs">
+<span class="material-symbols-outlined text-sm" data-icon="calendar_today">calendar_today</span> Start
+                </span>
+<span class="font-mono-data text-mono-data text-text-moonlight">Today, 21:00</span>
+</div>
+<div class="bg-bg-ink border border-border-hairline rounded-xl p-md flex flex-col space-y-xs cursor-pointer hover:border-signal-violet transition-colors">
+<span class="font-body-sm text-body-sm text-text-dusk flex items-center gap-xs">
+<span class="material-symbols-outlined text-sm" data-icon="schedule">schedule</span> End
+                </span>
+<span class="font-mono-data text-mono-data text-text-moonlight">Tomorrow, 02:00</span>
+</div>
+</section>
+<!-- Demographics -->
+<section class="space-y-lg bg-bg-ink border border-border-hairline rounded-xl p-lg">
+<div class="space-y-md">
+<div class="flex justify-between items-center">
+<h2 class="font-body-sm text-body-sm text-text-dusk uppercase tracking-widest">Age Range</h2>
+<span class="font-mono-data text-mono-data text-signal-violet">18 - 35</span>
+</div>
+<!-- Custom Slider Track -->
+<div class="relative h-1 bg-border-hairline rounded-full w-full">
+<div class="absolute left-[10%] right-[30%] h-full bg-signal-violet rounded-full"></div>
+<div class="absolute left-[10%] top-1/2 -translate-y-1/2 w-4 h-4 bg-signal-violet rounded-full border-2 border-bg-ink cursor-pointer hover:scale-110 transition-transform shadow-[0_0_8px_rgba(210,187,255,0.4)]"></div>
+<div class="absolute right-[30%] top-1/2 -translate-y-1/2 w-4 h-4 bg-signal-violet rounded-full border-2 border-bg-ink cursor-pointer hover:scale-110 transition-transform shadow-[0_0_8px_rgba(210,187,255,0.4)]"></div>
+</div>
+</div>
+<div class="space-y-md pt-sm">
+<h2 class="font-body-sm text-body-sm text-text-dusk uppercase tracking-widest">Gender</h2>
+<div class="flex gap-sm">
+<button class="flex-1 py-sm rounded-full border border-signal-violet bg-signal-violet/10 text-signal-violet font-label-md text-label-md transition-colors">All</button>
+<button class="flex-1 py-sm rounded-full border border-border-hairline text-text-dusk hover:text-text-moonlight font-label-md text-label-md transition-colors">Men</button>
+<button class="flex-1 py-sm rounded-full border border-border-hairline text-text-dusk hover:text-text-moonlight font-label-md text-label-md transition-colors">Women</button>
+</div>
+</div>
+</section>
+<!-- Description -->
+<section class="space-y-xs">
+<textarea class="w-full bg-bg-ink border border-border-hairline rounded-xl p-md text-body-lg font-body-lg text-text-moonlight placeholder:text-text-dusk focus:border-signal-violet focus:ring-0 min-h-[120px] resize-none transition-colors" placeholder="What's happening? Add details..."></textarea>
+</section>
+</main>
+<!-- Fixed Bottom Action -->
+<div class="absolute bottom-0 left-0 w-full p-lg bg-bg-void/80 backdrop-blur-md border-t border-border-hairline z-40">
+<button class="w-full mx-auto block py-md rounded-full bg-signal-violet text-bg-void font-headline-md text-headline-md shadow-[0_4px_24px_-4px_rgba(210,187,255,0.3)] active:scale-[0.98] transition-all hover:bg-pulse-lilac">
+            Post Activity
+        </button>
+</div>
+</body></html>

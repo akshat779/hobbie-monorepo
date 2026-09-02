@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nocturnal Pulse - Face Verification</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#eaddff",
+                        "surface-container-high": "#2b2932",
+                        "secondary": "#e1b6ff",
+                        "surface-bright": "#3a3842",
+                        "on-primary-container": "#5b4883",
+                        "inverse-surface": "#e6e0ed",
+                        "bg-ink-raised": "#211C2E",
+                        "signal-violet": "#d2bbff",
+                        "on-tertiary-container": "#7a433c",
+                        "outline-variant": "#49454f",
+                        "on-surface-variant": "#cbc4d0",
+                        "on-tertiary-fixed": "#360e0a",
+                        "surface": "#14121b",
+                        "surface-container-low": "#1c1a24",
+                        "inverse-on-surface": "#322f39",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#4f3c76",
+                        "primary-container": "#d2bbff",
+                        "on-secondary": "#43205e",
+                        "inverse-primary": "#685490",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "tertiary-container": "#feb3aa",
+                        "on-primary": "#38255e",
+                        "text-moonlight": "#F5F0FF",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#e1b6ff",
+                        "on-primary-fixed": "#230e48",
+                        "outline": "#948e9a",
+                        "surface-variant": "#36333d",
+                        "on-secondary-container": "#cfa5ed",
+                        "on-surface": "#e6e0ed",
+                        "bg-void": "#0D0B14",
+                        "bg-ink": "#17131F",
+                        "on-secondary-fixed": "#2c0647",
+                        "primary": "#eadcff",
+                        "border-hairline": "#2C2739",
+                        "surface-container-lowest": "#0f0d16",
+                        "text-dusk": "#A99BC2",
+                        "on-error": "#690005",
+                        "tertiary": "#ffd9d4",
+                        "primary-fixed-dim": "#d2bbff",
+                        "on-error-container": "#ffdad6",
+                        "pulse-lilac": "#e1b6ff",
+                        "on-background": "#e6e0ed",
+                        "on-tertiary": "#51221d",
+                        "surface-container-highest": "#36333d",
+                        "surface-container": "#211e28",
+                        "secondary-fixed": "#f2daff",
+                        "surface-tint": "#d2bbff",
+                        "ember": "#ffb4ab",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-secondary-fixed-variant": "#5b3776",
+                        "surface-dim": "#14121b",
+                        "secondary-container": "#5b3776",
+                        "background": "#14121b",
+                        "on-tertiary-fixed-variant": "#6c3832"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "sm": "8px",
+                        "md": "12px",
+                        "lg": "16px",
+                        "xl": "24px",
+                        "2xl": "32px",
+                        "3xl": "48px"
+                    },
+                    "fontFamily": {
+                        "display-xl": ["Bricolage Grotesque"],
+                        "body-lg": ["Bricolage Grotesque"],
+                        "mono-data": ["JetBrains Mono"],
+                        "body-sm": ["Bricolage Grotesque"],
+                        "display-xl-mobile": ["Bricolage Grotesque"],
+                        "headline-lg": ["Bricolage Grotesque"],
+                        "headline-md": ["Bricolage Grotesque"],
+                        "label-md": ["Bricolage Grotesque"]
+                    },
+                    "fontSize": {
+                        "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .scan-line {
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .pulse-glow {
+            animation: pulseGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { filter: drop-shadow(0 0 4px rgba(225, 182, 255, 0.2)); }
+            100% { filter: drop-shadow(0 0 12px rgba(225, 182, 255, 0.8)); }
+        }
+
+        .progress-ring {
+            stroke-dasharray: 800;
+            stroke-dashoffset: 400; /* Partially filled */
+            animation: progress 4s ease-out forwards;
+        }
+
+        @keyframes progress {
+            0% { stroke-dashoffset: 800; }
+            100% { stroke-dashoffset: 400; }
+        }
+    </style>
+</head>
+<body class="bg-black text-text-moonlight overflow-hidden antialiased min-h-screen flex items-center justify-center">
+<!-- Container for full screen camera view -->
+<div class="relative w-[390px] h-[844px] flex flex-col items-center justify-center bg-void overflow-hidden">
+<!-- Camera Background Simulation -->
+<div class="absolute inset-0 z-0 bg-cover bg-center" data-alt="A POV shot from a smartphone front-facing camera at night, showing a dimly lit urban environment in the background with subtle neon streetlights in shades of deep violet and blue. The scene is slightly out of focus to simulate a depth-of-field effect behind a user's face, maintaining the 'Nocturnal Pulse' dark urban aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCgv0CpV-ePMxhp_Hf4qm11F9k5NadeFAcZMC7Zc_PNok-TtE2pSJNv0UHu0UUp4An1jKdZ6Sc84XE3ygqvOiY4M61JP03KDFjnQ0N1-nzxIvSeaLSZ5PX0T9G1EWL6uXBXGQKXstd7neBFY8qG6_-4rYF8jHXbEOOpjvScuTZNqhiZdYyiOxJGueoSjjoF6zdui1_RXMm6v4tYnhB4kkISsC3hdyo__h9E81-VM1290IVaTza2k_kFRA')">
+</div>
+<!-- Vignette / Dimmed Edges Overlay -->
+<div class="absolute inset-0 z-10" style="background: radial-gradient(circle at center, transparent 20%, rgba(13, 11, 20, 0.95) 70%);">
+</div>
+<!-- Scanning Overlay Effect -->
+<div class="absolute inset-0 z-20 pointer-events-none overflow-hidden mix-blend-screen opacity-30">
+<div class="w-full h-1 bg-signal-violet shadow-[0_0_8px_rgba(210,187,255,0.8)] scan-line absolute top-1/2"></div>
+<div class="w-full h-full bg-[linear-gradient(rgba(210,187,255,0.03)_1px,transparent_1px)] bg-[size:100%_4px]"></div>
+</div>
+<!-- Top Actions -->
+<div class="absolute top-0 left-0 w-full z-50 p-lg flex justify-between items-center mt-[44px]">
+<!-- Blank space for balance or future back button if needed, but per prompt only Close is needed -->
+<div></div>
+<button aria-label="Close Verification" class="w-10 h-10 rounded-full border border-border-hairline bg-ink/50 backdrop-blur-md flex items-center justify-center text-text-moonlight hover:border-signal-violet transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Main Content Area -->
+<div class="relative z-30 flex flex-col items-center w-full max-w-sm px-xl">
+<!-- Instruction Text -->
+<div class="mb-3xl text-center">
+<h1 class="font-display-xl-mobile text-display-xl-mobile tracking-tighter text-text-moonlight drop-shadow-md">
+                    Look straight and blink slowly
+                </h1>
+<p class="font-mono-data text-mono-data text-pulse-lilac mt-sm uppercase tracking-widest opacity-80">
+                    Scanning biometric data
+                </p>
+</div>
+<!-- Viewfinder Guide -->
+<div class="relative w-64 h-80 flex items-center justify-center">
+<svg class="absolute inset-0 overflow-visible" height="100%" viewbox="0 0 256 320" width="100%">
+<!-- Base Guide (Dashed Oval) -->
+<ellipse class="text-pulse-lilac/30" cx="128" cy="160" fill="none" rx="120" ry="156" stroke="currentColor" stroke-dasharray="8 8" stroke-width="2"></ellipse>
+<!-- Progress Ring -->
+<ellipse class="text-signal-violet progress-ring pulse-glow" cx="128" cy="160" fill="none" rx="120" ry="156" stroke="currentColor" stroke-linecap="round" stroke-width="4" style="transform-origin: center; transform: rotate(-90deg);"></ellipse>
+</svg>
+<!-- Center Target Reticle (Subtle) -->
+<div class="w-1 h-1 rounded-full bg-pulse-lilac opacity-50 pulse-glow"></div>
+</div>
+</div>
+<!-- Bottom Status/Data -->
+<div class="absolute bottom-[34px] w-full z-30 flex justify-center">
+<div class="bg-ink-raised border border-border-hairline rounded-full px-lg py-sm flex items-center gap-sm">
+<span class="w-2 h-2 rounded-full bg-pulse-lilac animate-pulse"></span>
+<span class="font-mono-data text-mono-data text-text-dusk">SYS_LINK_ACTIVE</span>
+</div>
+</div>
+</div>
+</body></html>

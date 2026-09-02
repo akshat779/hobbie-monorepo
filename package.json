@@ -1,0 +1,27 @@
+{
+  "name": "hobbie-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:mobile": "npm run --workspace=apps/mobile start",
+    "dev:server": "npm run --workspace=apps/server dev",
+    "build:shared": "npm run --workspace=packages/shared build",
+    "build:server": "npm run --workspace=apps/server build",
+    "test": "npm run test:shared && npm run test:server && npm run test:mobile",
+    "test:shared": "npm run --workspace=packages/shared test",
+    "test:server": "npm run --workspace=apps/server test",
+    "test:mobile": "npm run --workspace=apps/mobile test",
+    "lint": "npm run --workspaces lint",
+    "typecheck": "npm run --workspaces typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

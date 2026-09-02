@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nocturnal Pulse - Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-container": "#5b4883",
+                      "surface-bright": "#3a3842",
+                      "surface-tint": "#d2bbff",
+                      "on-secondary-fixed-variant": "#5b3776",
+                      "tertiary-container": "#feb3aa",
+                      "tertiary-fixed-dim": "#ffb4ab",
+                      "inverse-surface": "#e6e0ed",
+                      "on-primary-fixed-variant": "#4f3c76",
+                      "outline": "#948e9a",
+                      "surface-container-high": "#2b2932",
+                      "surface-container-highest": "#36333d",
+                      "pulse-lilac": "#e1b6ff",
+                      "on-error": "#690005",
+                      "surface-container": "#211e28",
+                      "border-hairline": "#2C2739",
+                      "primary-fixed": "#eaddff",
+                      "signal-violet": "#d2bbff",
+                      "error-container": "#93000a",
+                      "surface-dim": "#14121b",
+                      "tertiary-fixed": "#ffdad5",
+                      "error": "#ffb4ab",
+                      "text-dusk": "#A99BC2",
+                      "ember": "#ffb4ab",
+                      "on-tertiary-container": "#7a433c",
+                      "surface-container-lowest": "#0f0d16",
+                      "secondary-container": "#5b3776",
+                      "surface-container-low": "#1c1a24",
+                      "on-primary": "#38255e",
+                      "on-secondary-container": "#cfa5ed",
+                      "inverse-on-surface": "#322f39",
+                      "primary-container": "#d2bbff",
+                      "on-primary-fixed": "#230e48",
+                      "on-tertiary": "#51221d",
+                      "primary": "#eadcff",
+                      "on-error-container": "#ffdad6",
+                      "primary-fixed-dim": "#d2bbff",
+                      "bg-ink-raised": "#211C2E",
+                      "bg-void": "#0D0B14",
+                      "tertiary": "#ffd9d4",
+                      "on-surface": "#e6e0ed",
+                      "on-tertiary-fixed": "#360e0a",
+                      "on-secondary-fixed": "#2c0647",
+                      "on-tertiary-fixed-variant": "#6c3832",
+                      "surface-variant": "#36333d",
+                      "inverse-primary": "#685490",
+                      "secondary-fixed": "#f2daff",
+                      "on-surface-variant": "#cbc4d0",
+                      "secondary-fixed-dim": "#e1b6ff",
+                      "outline-variant": "#49454f",
+                      "background": "#14121b",
+                      "bg-ink": "#17131F",
+                      "surface": "#14121b",
+                      "secondary": "#e1b6ff",
+                      "text-moonlight": "#F5F0FF",
+                      "on-background": "#e6e0ed",
+                      "on-secondary": "#43205e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sm": "8px",
+                      "lg": "16px",
+                      "md": "12px",
+                      "xs": "4px",
+                      "xl": "24px",
+                      "3xl": "48px",
+                      "2xl": "32px",
+                      "safe": "env(safe-area-inset-bottom, 20px)"
+              },
+              "fontFamily": {
+                      "display-xl-mobile": ["Bricolage Grotesque"],
+                      "body-lg": ["Bricolage Grotesque"],
+                      "body-sm": ["Bricolage Grotesque"],
+                      "display-xl": ["Bricolage Grotesque"],
+                      "headline-lg": ["Bricolage Grotesque"],
+                      "mono-data": ["JetBrains Mono"],
+                      "headline-md": ["Bricolage Grotesque"],
+                      "label-md": ["Bricolage Grotesque"]
+              },
+              "fontSize": {
+                      "display-xl-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                      "body-lg": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                      "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                      "display-xl": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                      "headline-lg": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                      "mono-data": ["14px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                      "headline-md": ["20px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                      "label-md": ["12px", { "lineHeight": "1", "letterSpacing": "0.02em", "fontWeight": "600" }]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: #000000;
+        }
+        /* Custom Switch Styling */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #d2bbff; /* signal-violet */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #d2bbff; /* signal-violet */
+        }
+        .toggle-checkbox:checked + .toggle-label::after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex items-center justify-center font-body-sm">
+<div class="w-[390px] h-[844px] bg-bg-void relative overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl">
+<!-- TopAppBar -->
+<header class="bg-surface-container dark:bg-surface-container docked full-width top-0 border-b border-border-hairline flat no shadows flex justify-between items-center px-lg w-full h-16 sticky z-40 hidden md:flex">
+<button aria-label="Menu" class="text-on-surface-variant hover:text-pulse-lilac transition-colors active:scale-95 duration-150 p-xs">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-display-xl-mobile text-display-xl-mobile text-signal-violet uppercase tracking-tighter">Profile</h1>
+<button aria-label="Notifications" class="text-on-surface-variant hover:text-pulse-lilac transition-colors active:scale-95 duration-150 p-xs">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<!-- Mobile Top Header Context (Alternative to Nav if needed, but keeping simple for this spec) -->
+<div class="md:hidden sticky top-0 z-40 bg-surface-container/90 backdrop-blur-md border-b border-border-hairline h-16 flex shrink-0 items-center justify-center px-lg">
+<h1 class="font-headline-md text-headline-md-mobile text-signal-violet font-bold">Profile</h1>
+</div>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-3xl mx-auto px-lg py-xl flex flex-col gap-xl pb-28">
+<!-- Minimalist Header (Avatar, Name, Status) -->
+<section class="flex flex-col items-center justify-center pt-lg pb-md gap-sm">
+<div class="w-24 h-24 rounded-full bg-bg-ink border border-border-hairline flex items-center justify-center overflow-hidden mb-2">
+<span class="material-symbols-outlined text-4xl text-text-dusk">person</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg-mobile text-text-moonlight">Alex Vance</h2>
+<div class="flex items-center gap-xs bg-bg-ink-raised px-md py-xs rounded-full border border-border-hairline">
+<span class="material-symbols-outlined text-signal-violet text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Verified</span>
+</div>
+</section>
+<!-- Editable Interests Section -->
+<section class="bg-bg-ink rounded-xl border border-border-hairline p-lg flex flex-col gap-md">
+<div class="flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md-mobile text-text-moonlight">Interests</h3>
+<button class="text-signal-violet hover:text-pulse-lilac font-label-md text-label-md transition-colors">Edit</button>
+</div>
+<div class="flex flex-wrap gap-sm">
+<!-- Active Chip -->
+<button class="px-md py-xs rounded-full bg-signal-violet text-on-primary font-body-sm text-body-sm flex items-center gap-xs transition-colors active:scale-95">
+                    Live Music
+                </button>
+<!-- Active Chip -->
+<button class="px-md py-xs rounded-full bg-signal-violet text-on-primary font-body-sm text-body-sm flex items-center gap-xs transition-colors active:scale-95">
+                    Underground Art
+                </button>
+<!-- Inactive Chip -->
+<button class="px-md py-xs rounded-full bg-transparent border border-border-hairline text-text-moonlight hover:border-signal-violet font-body-sm text-body-sm flex items-center gap-xs transition-colors active:scale-95">
+                    Late Night Eats
+                </button>
+<!-- Inactive Chip -->
+<button class="px-md py-xs rounded-full bg-transparent border border-border-hairline text-text-moonlight hover:border-signal-violet font-body-sm text-body-sm flex items-center gap-xs transition-colors active:scale-95">
+                    Pop-up Markets
+                </button>
+<!-- Inactive Chip -->
+<button class="px-md py-xs rounded-full bg-transparent border border-border-hairline text-text-moonlight hover:border-signal-violet font-body-sm text-body-sm flex items-center gap-xs transition-colors active:scale-95">
+                    Rooftop Bars
+                </button>
+</div>
+</section>
+<!-- Settings Section -->
+<section class="bg-bg-ink rounded-xl border border-border-hairline flex flex-col overflow-hidden">
+<h3 class="font-headline-md text-headline-md-mobile text-text-moonlight p-lg border-b border-border-hairline bg-bg-ink-raised/50">Preferences</h3>
+<div class="flex flex-col">
+<!-- Toggle 1 -->
+<div class="flex justify-between items-center p-lg border-b border-border-hairline">
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-text-moonlight">Pulse Alerts</span>
+<span class="font-body-sm text-body-sm text-text-dusk">Notify me of nearby live events</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border border-border-hairline peer-checked:bg-signal-violet"></div>
+</label>
+</div>
+<!-- Toggle 2 -->
+<div class="flex justify-between items-center p-lg border-b border-border-hairline">
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-text-moonlight">Chat Messages</span>
+<span class="font-body-sm text-body-sm text-text-dusk">Direct messages from connections</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border border-border-hairline peer-checked:bg-signal-violet"></div>
+</label>
+</div>
+<!-- Toggle 3 -->
+<div class="flex justify-between items-center p-lg">
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-text-moonlight">System Nudges</span>
+<span class="font-body-sm text-body-sm text-text-dusk">App updates and tips</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border border-border-hairline peer-checked:bg-signal-violet"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Footer Actions -->
+<section class="pt-xl pb-xl flex justify-center mt-auto">
+<button class="font-body-lg text-body-lg text-ember hover:text-tertiary-fixed-dim transition-colors py-sm px-lg bg-transparent border border-transparent active:scale-95 duration-150">
+                Log Out
+            </button>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="bg-bg-ink dark:bg-bg-ink absolute bottom-0 w-full z-50 rounded-t-xl border-t border-border-hairline backdrop-blur-md flat no shadows flex justify-around items-center px-md pb-safe h-20 md:hidden">
+<!-- Inactive: Pulse -->
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-moonlight active:scale-90 transition-transform duration-200 w-16 group">
+<span class="material-symbols-outlined text-2xl mb-xs group-hover:text-pulse-lilac transition-colors">bolt</span>
+<span class="font-label-md text-label-md">Pulse</span>
+</button>
+<!-- Inactive: Map -->
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-moonlight active:scale-90 transition-transform duration-200 w-16 group">
+<span class="material-symbols-outlined text-2xl mb-xs group-hover:text-pulse-lilac transition-colors">map</span>
+<span class="font-label-md text-label-md">Map</span>
+</button>
+<!-- Inactive: Alerts -->
+<button class="flex flex-col items-center justify-center text-text-dusk hover:text-moonlight active:scale-90 transition-transform duration-200 w-16 group">
+<span class="material-symbols-outlined text-2xl mb-xs group-hover:text-pulse-lilac transition-colors">notifications</span>
+<span class="font-label-md text-label-md">Alerts</span>
+</button>
+<!-- Active: Profile -->
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 hover:text-moonlight active:scale-90 transition-transform duration-200 w-16">
+<span class="material-symbols-outlined text-2xl mb-xs" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</button>
+</nav>
+</div>
+</body></html>

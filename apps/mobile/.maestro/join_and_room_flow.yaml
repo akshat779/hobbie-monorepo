@@ -1,0 +1,17 @@
+appId: com.hobbie.app
+---
+# Test 3: Join Request and Ephemeral Realtime Room
+- launchApp
+- tapOn: "Skip to Map Discovery (Demo)"
+- assertVisible: "Request to Join.*"
+- tapOn: "Request to Join.*"
+- assertVisible: "5-a-side Turf Football"
+- tapOn: "Request to Join"
+- assertVisible: "Join Request Sent!"
+# Room unlocks upon simulated host acceptance
+- assertVisible: "Unlocked Venue.*"
+- assertVisible: "Self-Destructs in.*"
+- tapOn: "Message squad..."
+- inputText: "See you all in 10 mins!"
+- tapOn: "Send"
+- assertVisible: "See you all in 10 mins!"
