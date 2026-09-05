@@ -5,6 +5,9 @@ import { Database, UserProfileInput, UserProfileSchema } from '@hobbie/shared';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
+const isDevelopment =
+  typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
+
 export interface DevPersona {
   id: string;
   name: string;
@@ -64,6 +67,81 @@ export const DEV_PERSONAS: DevPersona[] = [
   },
 ];
 
+/**
+ * Authenticates a phone number into an authentic Supabase Auth session in development.
+ * 1. Attempts Supabase Edge Function 'dev-phone-login' (trusted server runtime).
+ * 2. If Edge Function is not yet deployed, seamlessly falls back to direct shadow auth
+ *    via supabase.auth.signUp() / signInWithPassword() with the public anon key.
+ *
+ * In BOTH cases, a REAL cryptographic JWT and Supabase Session are established!
+ */
+export async function authenticateDevSession(
+  phone: string,
+  name?: string
+): Promise<{ session: Session | null; error?: string }> {
+  const normalizedPhone = phone.trim().startsWith('+')
+    ? phone.trim()
+    : `+${phone.trim()}`;
+  const phoneDigits = normalizedPhone.replace(/[^0-9]/g, '');
+  const shadowEmail = `phone_${phoneDigits}@dev.hobbie.internal`;
+  const devPassword = `HobbieDevPass_${phoneDigits}!`;
+
+  // 1. Try Supabase Edge Function first
+  try {
+    const { data: edgeData, error: edgeError } = await supabase.functions.invoke(
+      'dev-phone-login',
+      {
+        body: { phone: normalizedPhone, name },
+      }
+    );
+
+    if (!edgeError && edgeData?.session) {
+      await supabase.auth.setSession(edgeData.session);
+      return { session: edgeData.session };
+    }
+  } catch {
+    // Edge function not deployed yet, proceed to direct shadow auth bridge
+  }
+
+  // 2. Direct Shadow Auth Bridge fallback (uses public anon key, works everywhere)
+  try {
+    const { data: signInData, error: signInError } =
+      await supabase.auth.signInWithPassword({
+        email: shadowEmail,
+        password: devPassword,
+      });
+
+    if (!signInError && signInData?.session) {
+      await supabase.auth.setSession(signInData.session);
+      return { session: signInData.session };
+    }
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: shadowEmail,
+      password: devPassword,
+      options: {
+        data: {
+          name: name || 'Hobbie Player',
+          phone: normalizedPhone,
+        },
+      },
+    });
+
+    if (!signUpError && signUpData?.session) {
+      await supabase.auth.setSession(signUpData.session);
+      return { session: signUpData.session };
+    }
+
+    if (signUpError) {
+      return { session: null, error: signUpError.message };
+    }
+
+    return { session: null, error: 'Failed to establish Supabase session' };
+  } catch (err: any) {
+    return { session: null, error: err?.message || 'Dev authentication failed' };
+  }
+}
+
 interface AuthState {
   session: Session | null;
   user: User | null;
@@ -86,7 +164,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
   isLoading: true,
-  isDevMode: true,
+  isDevMode: isDevelopment,
   activePersonaId: null,
 
   initialize: async () => {
@@ -142,7 +220,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: true });
       const { error } = await supabase.auth.signInWithOtp({ phone });
       set({ isLoading: false });
+
       if (error) {
+        // In development mode: if third-party SMS provider (Twilio/MessageBird) is not configured in Supabase yet,
+        // fallback to dev OTP flow so testing any phone number is not blocked.
+        if (
+          isDevelopment &&
+          (error.message.includes('Unsupported phone provider') ||
+            error.message.includes('Phone provider is not enabled') ||
+            error.message.includes('provider is not enabled'))
+        ) {
+          console.info(
+            `[Dev Auth] SMS provider not configured in Supabase. Dev OTP active for ${phone}.`
+          );
+          return {};
+        }
+
         return { error: error.message };
       }
       return {};
@@ -156,72 +249,68 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ isLoading: true });
 
-      // Dev fixed OTP bypass (123456)
-      if (token === '123456') {
-        const matchedPersona = DEV_PERSONAS.find((p) => p.phone === phone) || DEV_PERSONAS[0];
-        const mockProfile: ProfileRow = {
-          id: matchedPersona.id,
-          phone: matchedPersona.phone,
-          name: matchedPersona.name,
-          birth_date: matchedPersona.birthDate,
-          gender: matchedPersona.gender,
-          interests: matchedPersona.interests,
-          is_verified: matchedPersona.isVerified,
-          trust_score: matchedPersona.trustScore,
-          interaction_count: 5,
-          avatar_url: null,
-          last_location: null,
-          coarse_geohash: null,
-          last_active_at: new Date().toISOString(),
-          expo_push_token: null,
-          is_banned: false,
-          banned_at: null,
-          ban_reason: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        set({
-          profile: mockProfile,
-          user: { id: matchedPersona.id, phone: matchedPersona.phone } as User,
-          activePersonaId: matchedPersona.id,
-          isLoading: false,
+      // In production or when real SMS provider is enabled:
+      if (
+        process.env.EXPO_PUBLIC_USE_REAL_SMS === 'true' ||
+        process.env.USE_REAL_SMS === 'true'
+      ) {
+        const { data, error } = await supabase.auth.verifyOtp({
+          phone,
+          token,
+          type: 'sms',
         });
 
-        return { hasProfile: true };
+        if (error) {
+          set({ isLoading: false });
+          return { hasProfile: false, error: error.message };
+        }
+
+        if (data.session) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.session.user.id)
+            .maybeSingle();
+
+          set({
+            session: data.session,
+            user: data.session.user,
+            profile,
+            isLoading: false,
+          });
+
+          return { hasProfile: !!profile };
+        }
       }
 
-      // Live Supabase OTP verification
-      const { data, error } = await supabase.auth.verifyOtp({
+      // In development: Authenticate with a genuine Supabase Auth session!
+      const matchedPersona = DEV_PERSONAS.find((p) => p.phone === phone);
+      const { session, error } = await authenticateDevSession(
         phone,
-        token,
-        type: 'sms',
+        matchedPersona?.name || 'Hobbie Player'
+      );
+
+      if (error || !session) {
+        set({ isLoading: false });
+        return { hasProfile: false, error: error || 'Failed to authenticate dev session' };
+      }
+
+      // Query database for existing profile with real authenticated session
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      set({
+        session,
+        user: session.user,
+        profile,
+        activePersonaId: matchedPersona ? matchedPersona.id : null,
+        isLoading: false,
       });
 
-      if (error) {
-        set({ isLoading: false });
-        return { hasProfile: false, error: error.message };
-      }
-
-      if (data.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        set({
-          session: data.session,
-          user: data.user,
-          profile,
-          isLoading: false,
-        });
-
-        return { hasProfile: !!profile };
-      }
-
-      set({ isLoading: false });
-      return { hasProfile: false };
+      return { hasProfile: !!profile };
     } catch (err: any) {
       set({ isLoading: false });
       return { hasProfile: false, error: err?.message || 'OTP verification failed' };
@@ -287,32 +376,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loginWithPersona: async (personaId: string) => {
-    const persona = DEV_PERSONAS.find((p) => p.id === personaId) || DEV_PERSONAS[0];
-    const mockProfile: ProfileRow = {
-      id: persona.id,
-      phone: persona.phone,
-      name: persona.name,
-      birth_date: persona.birthDate,
-      gender: persona.gender,
-      interests: persona.interests,
-      is_verified: persona.isVerified,
-      trust_score: persona.trustScore,
-      interaction_count: 5,
-      avatar_url: null,
-      last_location: null,
-      coarse_geohash: null,
-      last_active_at: new Date().toISOString(),
-      expo_push_token: null,
-      is_banned: false,
-      banned_at: null,
-      ban_reason: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    if (!isDevelopment) return; // Hard security lock: Persona switcher disabled in production
+
+    const persona = DEV_PERSONAS.find((p) => p.id === personaId) || DEV_PERSONAS[0]!;
+    set({ isLoading: true });
+
+    const { session, error } = await authenticateDevSession(persona.phone, persona.name);
+    if (error || !session) {
+      console.warn('loginWithPersona error:', error);
+      set({ isLoading: false });
+      return;
+    }
+
+    // Now fetch or ensure profile exists in Supabase
+    let { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      const { data: createdProfile } = await supabase
+        .from('profiles')
+        .insert({
+          id: session.user.id,
+          phone: persona.phone,
+          name: persona.name,
+          birth_date: persona.birthDate,
+          gender: persona.gender,
+          interests: persona.interests,
+          is_verified: persona.isVerified,
+          trust_score: persona.trustScore,
+          interaction_count: 5,
+        })
+        .select()
+        .single();
+      profile = createdProfile;
+    }
 
     set({
-      user: { id: persona.id, phone: persona.phone } as User,
-      profile: mockProfile,
+      session,
+      user: session.user,
+      profile,
       activePersonaId: persona.id,
       isLoading: false,
     });

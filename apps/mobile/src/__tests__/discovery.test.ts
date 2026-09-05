@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getTtlStatus,
   getPinTheme,
@@ -10,6 +10,27 @@ import {
   filterActivities,
 } from '../features/discovery/useDiscoveryQuery';
 import { NearbyActivity } from '../features/discovery/types';
+import { supabase } from '../services/supabase';
+
+vi.mock('../services/supabase', () => {
+  const mockSelect = vi.fn();
+  const mockIn = vi.fn();
+
+  const queryBuilder = {
+    select: mockSelect.mockReturnThis(),
+    in: mockIn,
+  };
+
+  const mockFrom = vi.fn(() => queryBuilder);
+  const mockRpc = vi.fn();
+
+  return {
+    supabase: {
+      from: mockFrom,
+      rpc: mockRpc,
+    },
+  };
+});
 
 describe('Discovery Utilities', () => {
   describe('getTtlStatus', () => {
@@ -218,7 +239,70 @@ describe('Discovery Utilities', () => {
   });
 
   describe('fetchNearbyActivities', () => {
-    it('should fetch and filter fallback activities by category', async () => {
+    const mockRpcActivities = [
+      {
+        id: 'act-1',
+        host_id: 'host-1',
+        interest_id: 'football',
+        title: 'Turf Football 5v5',
+        description: 'Friendly match',
+        tier: 'physical',
+        lat: 12.9716,
+        lng: 77.5946,
+        venue_name: 'Turf Arena',
+        expires_at: new Date(Date.now() + 7200000).toISOString(),
+        max_participants: 10,
+        current_participants_count: 6,
+        distance_meters: 650,
+      },
+      {
+        id: 'act-2',
+        host_id: 'host-2',
+        interest_id: 'badminton',
+        title: 'Badminton Doubles',
+        description: 'Need 2 more',
+        tier: 'physical',
+        lat: 12.978,
+        lng: 77.599,
+        venue_name: 'Smash Zone',
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        max_participants: 4,
+        current_participants_count: 2,
+        distance_meters: 1200,
+      },
+    ];
+
+    const mockProfiles = [
+      {
+        id: 'host-1',
+        name: 'Alex Rivera',
+        trust_score: 4.95,
+        is_verified: true,
+        avatar_url: null,
+      },
+      {
+        id: 'host-2',
+        name: 'Sam Chen',
+        trust_score: 4.88,
+        is_verified: true,
+        avatar_url: null,
+      },
+    ];
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      (supabase.rpc as any).mockResolvedValue({
+        data: mockRpcActivities,
+        error: null,
+      });
+      const qb = (supabase.from as any)('profiles');
+      qb.in.mockResolvedValue({
+        data: mockProfiles,
+        error: null,
+      });
+    });
+
+    it('should call get_nearby_activities RPC and enrich with host profiles', async () => {
       const allActivities = await fetchNearbyActivities({
         userLat: 12.9716,
         userLng: 77.5946,
@@ -226,8 +310,18 @@ describe('Discovery Utilities', () => {
         category: 'all',
       });
 
-      expect(allActivities.length).toBeGreaterThanOrEqual(2);
+      expect(supabase.rpc).toHaveBeenCalledWith('get_nearby_activities', {
+        user_lat: 12.9716,
+        user_lng: 77.5946,
+        radius_km: 4.5,
+      });
+      expect(allActivities.length).toBe(2);
+      expect(allActivities[0]?.hostName).toBe('Alex Rivera');
+      expect(allActivities[0]?.hostTrustScore).toBe(4.95);
+      expect(allActivities[0]?.ttlStatus.urgency).toBe('fresh');
+    });
 
+    it('should filter RPC activities by category', async () => {
       const footballOnly = await fetchNearbyActivities({
         userLat: 12.9716,
         userLng: 77.5946,
@@ -238,6 +332,21 @@ describe('Discovery Utilities', () => {
       expect(footballOnly.length).toBe(1);
       expect(footballOnly[0]?.interestId).toBe('football');
       expect(footballOnly[0]?.hostTrustScore).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('should return empty array when RPC errors or finds no squads', async () => {
+      (supabase.rpc as any).mockResolvedValue({
+        data: null,
+        error: { message: 'Network error' },
+      });
+
+      const activities = await fetchNearbyActivities({
+        userLat: 12.9716,
+        userLng: 77.5946,
+        radiusKm: 4.5,
+      });
+
+      expect(activities).toEqual([]);
     });
   });
 });

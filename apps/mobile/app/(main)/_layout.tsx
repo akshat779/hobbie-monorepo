@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
-import { Sparkles, ListFilter, Users, User } from 'lucide-react-native';
+import { Map, Rss, Users, User } from 'lucide-react-native';
 
 export default function MainTabLayout() {
   return (
@@ -23,7 +23,7 @@ export default function MainTabLayout() {
         name="index"
         options={{
           title: 'Hobbie',
-          tabBarIcon: ({ color }) => <Sparkles color={color} size={20} />,
+          tabBarIcon: ({ color }) => <Map color={color} size={20} />,
           tabBarLabel: ({ color }) => (
             <Text style={{ color, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
               Hobbie
@@ -35,7 +35,7 @@ export default function MainTabLayout() {
         name="list"
         options={{
           title: 'Feed',
-          tabBarIcon: ({ color }) => <ListFilter color={color} size={20} />,
+          tabBarIcon: ({ color }) => <Rss color={color} size={20} />,
           tabBarLabel: ({ color }) => (
             <Text style={{ color, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
               Feed

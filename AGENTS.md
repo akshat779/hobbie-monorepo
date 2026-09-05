@@ -85,3 +85,19 @@ export const supabase = createClient<Database>(
 ### Mandatory Rules:
 * Never write untyped Supabase queries (`createClient()` without `<Database>`).
 * All table queries (`.from('activities')`, `.from('profiles')`), RPC calls (`.rpc('get_nearby_activities')`), and Realtime subscriptions must be 100% type-safe with zero `any` casts.
+
+---
+
+## 🎬 Animation, Layout Cascade & Gesture Directives (STRICT):
+
+1. **Impact Analysis Before Code Edits:**
+   * **NEVER** apply a UI animation, state change, or layout modification without first tracing all parent, child, and adjacent component dependencies.
+   * If a component moves (e.g. bottom sheet, modal, drawer), explicitly check how floating action buttons (FABs), map controls, header overlays, and adjacent views will respond.
+
+2. **Zero Desync Animation Hierarchy:**
+   * **NEVER** mix un-animated JS state toggles (e.g. `bottom: active ? 310 : 50`) with asynchronous GPU animations (`Animated.spring`).
+   * UI elements that move together **MUST** be unified under the exact same native driver animation thread (`useNativeDriver: true`) or rendered inside the same `Animated.View` parent layout container.
+
+3. **Stale Closure Prevention in Custom Gesture Handlers:**
+   * Any custom `PanResponder` or gesture responder reading dynamic coordinates or layout dimensions **MUST** back those values with a `useRef` (e.g. `trackWidthRef`) and use `measureInWindow` to prevent stale closure touch bugs inside modals or scroll views.
+

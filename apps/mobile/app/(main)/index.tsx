@@ -90,9 +90,6 @@ export default function DiscoveryMapScreen() {
 
   return (
     <View className="flex-1 bg-void">
-      {/* Dev Persona Switcher Floating Quick Switch */}
-      <DevPersonaSwitcher />
-
       {/* Interactive Nocturnal Map Canvas */}
       <View className="flex-1 relative">
         <MapView
@@ -157,7 +154,7 @@ export default function DiscoveryMapScreen() {
           className="absolute top-0 left-0 right-0 z-40 px-4 pb-2 bg-void/85 backdrop-blur-md border-b border-hairline/40"
         >
           {/* Header Row: Location Pill + Filter Button + Sync + Notification */}
-          <View className="flex-row items-center justify-between mb-3 pr-28">
+          <View className="flex-row items-center justify-between mb-3">
             <TouchableOpacity
               onPress={() => setFilterModalVisible(true)}
               activeOpacity={0.8}
@@ -244,35 +241,37 @@ export default function DiscoveryMapScreen() {
           </View>
         )}
 
-        {/* Floating Controls (Recenter & Host Squad FAB) */}
-        <View
-          style={{ bottom: selectedActivity ? 310 : 80 }}
-          className="absolute right-5 z-40 items-end pointer-events-box-none"
-        >
-          {/* Floating Recenter Radar Button */}
-          <TouchableOpacity
-            onPress={() => {
-              mapRef.current?.animateToRegion(mapRegion, 400);
-              refreshLocation();
-            }}
-            className="w-11 h-11 rounded-full bg-ink/95 border border-hairline items-center justify-center mb-3 active:bg-ink-raised"
-            activeOpacity={0.8}
-          >
-            <LocateFixed size={18} color="#C77DFF" />
-          </TouchableOpacity>
+        {/* Floating Controls when no sheet is open */}
+        {!selectedActivity && (
+          <View className="absolute bottom-6 right-5 z-40 items-end pointer-events-box-none">
+            {/* Dev Persona Switcher FAB */}
+            <DevPersonaSwitcher variant="fab" />
 
-          {/* Floating Action Button (Host Squad) */}
-          <TouchableOpacity
-            onPress={() => router.push('/activity/create')}
-            className="bg-signal-violet px-4 py-3.5 rounded-full flex-row items-center border border-signal-violet-light/30"
-            activeOpacity={0.85}
-          >
-            <Plus size={18} color="#F5F0FF" />
-            <Text className="text-moonlight font-display text-sm font-bold ml-1.5">
-              Host Squad
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {/* Floating Recenter Radar Button */}
+            <TouchableOpacity
+              onPress={() => {
+                mapRef.current?.animateToRegion(mapRegion, 400);
+                refreshLocation();
+              }}
+              className="w-11 h-11 rounded-full bg-ink/95 border border-hairline items-center justify-center mb-3 active:bg-ink-raised"
+              activeOpacity={0.8}
+            >
+              <LocateFixed size={18} color="#C77DFF" />
+            </TouchableOpacity>
+
+            {/* Floating Action Button (Host Squad) */}
+            <TouchableOpacity
+              onPress={() => router.push('/activity/create')}
+              className="bg-signal-violet px-4 py-3.5 rounded-full flex-row items-center border border-signal-violet-light/30"
+              activeOpacity={0.85}
+            >
+              <Plus size={18} color="#F5F0FF" />
+              <Text className="text-moonlight font-display text-sm font-bold ml-1.5">
+                Host Squad
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Interactive Activity Detail Bottom Sheet */}
@@ -284,6 +283,10 @@ export default function DiscoveryMapScreen() {
           <ActivityBottomSheet
             activity={selectedActivity}
             onClose={handleCloseSheet}
+            onRecenter={() => {
+              mapRef.current?.animateToRegion(mapRegion, 400);
+              refreshLocation();
+            }}
           />
         </View>
       )}

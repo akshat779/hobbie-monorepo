@@ -797,6 +797,18 @@ export type Database = {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
       }
+      accept_join_request_tx: {
+        Args: { p_host_id: string; p_request_id: string }
+        Returns: Json
+      }
+      decline_join_request: {
+        Args: { p_host_id: string; p_request_id: string }
+        Returns: Json
+      }
+      request_to_join_activity: {
+        Args: { p_activity_id: string; p_message?: string; p_user_id: string }
+        Returns: Json
+      }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_nearby_activities: {
         Args: { radius_km: number; user_lat: number; user_lng: number }

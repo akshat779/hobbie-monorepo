@@ -205,19 +205,21 @@ export default function OtpVerificationScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Dev Bypass Button */}
-        <View className="pt-4 border-t border-hairline/60">
-          <TouchableOpacity
-            onPress={handleDevBypass}
-            className="h-11 rounded-xl bg-ink border border-hairline flex-row items-center justify-center"
-            activeOpacity={0.7}
-          >
-            <Zap size={14} color="#C77DFF" />
-            <Text className="text-xs font-semibold text-moonlight ml-2">
-              ⚡ Dev Fast Bypass (Auto-fill 123456)
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Dev Bypass Button (Compiled out in production) */}
+        {__DEV__ && (
+          <View className="pt-4 border-t border-hairline/60">
+            <TouchableOpacity
+              onPress={handleDevBypass}
+              className="h-11 rounded-xl bg-ink border border-hairline flex-row items-center justify-center"
+              activeOpacity={0.7}
+            >
+              <Zap size={14} color="#C77DFF" />
+              <Text className="text-xs font-semibold text-moonlight ml-2">
+                ⚡ Dev Fast Bypass (Auto-fill 123456)
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShieldCheck, LogOut, Sparkles, Zap } from 'lucide-react-native';
 import { useAuthStore, DEV_PERSONAS } from '../../src/features/auth/useAuthStore';
+import { HobbieLogo } from '../../src/components/common/HobbieLogo';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -157,12 +158,18 @@ export default function ProfileScreen() {
         {/* Sign Out Button */}
         <TouchableOpacity
           onPress={handleSignOut}
-          className="w-full h-14 bg-ink border border-hairline rounded-full flex-row items-center justify-center mb-8"
+          className="w-full h-14 bg-ink border border-hairline rounded-full flex-row items-center justify-center mb-6"
           activeOpacity={0.7}
         >
           <LogOut size={16} color="#FF6B5E" style={{ marginRight: 8 }} />
           <Text className="text-ember font-display text-sm font-bold">Sign Out</Text>
         </TouchableOpacity>
+
+        {/* Brand Signature Footer */}
+        <View className="items-center justify-center pt-2 pb-10 opacity-50">
+          <HobbieLogo width={110} />
+          <Text className="text-[10px] text-dusk font-mono mt-2">v0.1.0 • Nocturnal Pulse</Text>
+        </View>
       </ScrollView>
     </View>
   );

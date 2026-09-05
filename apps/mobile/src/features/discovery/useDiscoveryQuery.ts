@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../services/supabase';
-import { DEV_PERSONAS } from '../auth/useAuthStore';
 import {
   AgeGroupOption,
   DiscoveryQueryParams,
@@ -9,82 +8,6 @@ import {
   NearbyActivity,
 } from './types';
 import { getTtlStatus } from './utils';
-
-// Fallback seed activities for simulator/dev preview when database has 0 activities
-const FALLBACK_DEV_ACTIVITIES: NearbyActivity[] = [
-  {
-    id: '10000000-0000-0000-0000-000000000001',
-    hostId: '00000000-0000-0000-0000-000000000001',
-    hostName: 'Alex Rivera',
-    hostTrustScore: 4.95,
-    hostIsVerified: true,
-    hostAvatarUrl: null,
-    interestId: 'football',
-    title: '5-a-side Turf Football Match',
-    description: 'Need 2 more players for casual match at EcoWorld turf. Bibs provided.',
-    tier: 'physical',
-    lat: 12.9720,
-    lng: 77.5950,
-    venueName: 'EcoWorld Turf Club Pitch 2',
-    expiresAt: new Date(Date.now() + 145 * 60 * 1000).toISOString(), // ~2h 25m -> fresh
-    maxParticipants: 10,
-    currentParticipantsCount: 3,
-    distanceMeters: 800,
-    distanceKm: 0.8,
-    ttlStatus: getTtlStatus(new Date(Date.now() + 145 * 60 * 1000)),
-    filterGender: 'all',
-    filterAgeMin: 18,
-    filterAgeMax: 30,
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000002',
-    hostId: '00000000-0000-0000-0000-000000000003',
-    hostName: 'Priya Sharma',
-    hostTrustScore: 5.0,
-    hostIsVerified: true,
-    hostAvatarUrl: null,
-    interestId: 'badminton',
-    title: 'Badminton Doubles Match',
-    description: 'Court booked till 9:30 PM. Need 1 intermediate player.',
-    tier: 'physical',
-    lat: 12.9805,
-    lng: 77.6005,
-    venueName: 'Smash Zone Indoor Arena',
-    expiresAt: new Date(Date.now() + 25 * 60 * 1000).toISOString(), // 25m -> urgent ember
-    maxParticipants: 4,
-    currentParticipantsCount: 3,
-    distanceMeters: 1400,
-    distanceKm: 1.4,
-    ttlStatus: getTtlStatus(new Date(Date.now() + 25 * 60 * 1000)),
-    filterGender: 'women_only',
-    filterAgeMin: 21,
-    filterAgeMax: 32,
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000003',
-    hostId: '00000000-0000-0000-0000-000000000002',
-    hostName: 'Sam Chen',
-    hostTrustScore: 4.88,
-    hostIsVerified: true,
-    hostAvatarUrl: null,
-    interestId: 'cafe_coffee',
-    title: 'Filter Coffee & Tech Chat',
-    description: 'Casual morning coffee & discussing startup ideas in Indiranagar.',
-    tier: 'physical',
-    lat: 12.9650,
-    lng: 77.6100,
-    venueName: 'Third Wave Coffee Roasters',
-    expiresAt: new Date(Date.now() + 50 * 60 * 1000).toISOString(), // 50m -> moderate signal violet
-    maxParticipants: 4,
-    currentParticipantsCount: 2,
-    distanceMeters: 2100,
-    distanceKm: 2.1,
-    ttlStatus: getTtlStatus(new Date(Date.now() + 50 * 60 * 1000)),
-    filterGender: 'coed',
-    filterAgeMin: 25,
-    filterAgeMax: 45,
-  },
-];
 
 export async function fetchNearbyActivities(
   params: DiscoveryQueryParams
@@ -109,14 +32,11 @@ export async function fetchNearbyActivities(
     );
 
     if (error) {
-      console.warn('get_nearby_activities RPC error, using fallback:', error.message);
-      return filterActivities(FALLBACK_DEV_ACTIVITIES, category, gender, ageGroup);
+      console.warn('get_nearby_activities RPC error:', error.message);
+      return [];
     }
 
     if (!rawActivities || rawActivities.length === 0) {
-      if (__DEV__) {
-        return filterActivities(FALLBACK_DEV_ACTIVITIES, category, gender, ageGroup);
-      }
       return [];
     }
 
@@ -130,7 +50,6 @@ export async function fetchNearbyActivities(
 
     const profileMap = new Map<string, HostProfile>();
 
-    // Index DB host profiles
     if (hostProfiles) {
       hostProfiles.forEach((p) => {
         profileMap.set(p.id, {
@@ -142,19 +61,6 @@ export async function fetchNearbyActivities(
         });
       });
     }
-
-    // Fallback to dev personas if any profile is missing
-    DEV_PERSONAS.forEach((p) => {
-      if (!profileMap.has(p.id)) {
-        profileMap.set(p.id, {
-          id: p.id,
-          name: p.name,
-          trustScore: p.trustScore,
-          isVerified: p.isVerified,
-          avatarUrl: null,
-        });
-      }
-    });
 
     const enriched: NearbyActivity[] = rawActivities.map((act) => {
       const host = profileMap.get(act.host_id);
@@ -186,7 +92,7 @@ export async function fetchNearbyActivities(
     return filterActivities(enriched, category, gender, ageGroup);
   } catch (err) {
     console.warn('fetchNearbyActivities catch error:', err);
-    return filterActivities(FALLBACK_DEV_ACTIVITIES, category, gender, ageGroup);
+    return [];
   }
 }
 

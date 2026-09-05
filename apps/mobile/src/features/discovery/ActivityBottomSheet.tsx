@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   ShieldCheck,
@@ -8,20 +8,66 @@ import {
   Users,
   X,
   ChevronRight,
+  LocateFixed,
+  Plus,
 } from 'lucide-react-native';
 import { NearbyActivity } from './types';
 import { formatDistance, getPinTheme } from './utils';
+import { useAuthStore } from '../auth/useAuthStore';
 
 interface ActivityBottomSheetProps {
   activity: NearbyActivity | null;
   onClose: () => void;
+  onRecenter?: () => void;
 }
 
 export function ActivityBottomSheet({
   activity,
   onClose,
+  onRecenter,
 }: ActivityBottomSheetProps) {
   const router = useRouter();
+  const { user, profile } = useAuthStore();
+  const slideAnim = useRef(new Animated.Value(150)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (activity) {
+      slideAnim.setValue(150);
+      opacityAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          bounciness: 4,
+          speed: 16,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [activity, slideAnim, opacityAnim]);
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 150,
+        duration: 140,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
 
   if (!activity) return null;
 
@@ -29,10 +75,43 @@ export function ActivityBottomSheet({
   const theme = getPinTheme(ttlStatus.urgency);
 
   return (
-    <View className="bg-ink border-t border-hairline px-5 pt-3 pb-8 rounded-t-3xl">
+    <Animated.View
+      style={{
+        transform: [{ translateY: slideAnim }],
+        opacity: opacityAnim,
+      }}
+      className="bg-ink border-t border-hairline px-5 pt-3 pb-8 rounded-t-3xl shadow-2xl relative"
+    >
+      {/* Floating Controls attached to top-right of sheet (Frame-Perfect Lockstep) */}
+      <View
+        style={{ position: 'absolute', top: -110, right: 20 }}
+        className="items-end pointer-events-box-none"
+      >
+        {onRecenter && (
+          <TouchableOpacity
+            onPress={onRecenter}
+            className="w-11 h-11 rounded-full bg-ink/95 border border-hairline items-center justify-center shadow-xl mb-3 active:bg-ink-raised"
+            activeOpacity={0.8}
+          >
+            <LocateFixed size={18} color="#C77DFF" />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          onPress={() => router.push('/activity/create')}
+          className="bg-signal-violet px-4 py-3.5 rounded-full flex-row items-center shadow-2xl border border-signal-violet-light/30"
+          activeOpacity={0.85}
+        >
+          <Plus size={18} color="#F5F0FF" />
+          <Text className="text-moonlight font-display text-sm font-bold ml-1.5">
+            Host Squad
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Top Handle Bar */}
       <TouchableOpacity
-        onPress={onClose}
+        onPress={handleClose}
         activeOpacity={0.6}
         className="py-1 self-center w-16 items-center mb-2"
       >
@@ -65,7 +144,7 @@ export function ActivityBottomSheet({
         </View>
 
         <TouchableOpacity
-          onPress={onClose}
+          onPress={handleClose}
           className="w-7 h-7 rounded-full bg-ink-raised border border-hairline items-center justify-center"
           activeOpacity={0.7}
         >
@@ -125,18 +204,26 @@ export function ActivityBottomSheet({
         </Text>
       ) : null}
 
-      {/* Request to Join CTA Button */}
-      <TouchableOpacity
-        onPress={() => router.push(`/activity/${activity.id}`)}
-        className="w-full bg-signal-violet py-3.5 rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
-        activeOpacity={0.85}
-      >
-        <Text className="text-moonlight font-display text-sm font-bold mr-1">
-          Request to Join Squad ({activity.currentParticipantsCount}/
-          {activity.maxParticipants})
-        </Text>
-        <ChevronRight size={16} color="#F5F0FF" />
-      </TouchableOpacity>
-    </View>
+      {/* Request to Join / Host Manage CTA Button */}
+      {(() => {
+        const currentUserId = user?.id || profile?.id;
+        const isHost = currentUserId ? activity.hostId === currentUserId : false;
+
+        return (
+          <TouchableOpacity
+            onPress={() => router.push(`/activity/${activity.id}`)}
+            className="w-full bg-signal-violet py-3.5 rounded-full flex-row items-center justify-center border border-signal-violet-light/30 active:scale-95"
+            activeOpacity={0.85}
+          >
+            <Text className="text-moonlight font-display text-sm font-bold mr-1">
+              {isHost
+                ? `Manage Squad Requests (${activity.currentParticipantsCount}/${activity.maxParticipants})`
+                : `Request to Join Squad (${activity.currentParticipantsCount}/${activity.maxParticipants})`}
+            </Text>
+            <ChevronRight size={16} color="#F5F0FF" />
+          </TouchableOpacity>
+        );
+      })()}
+    </Animated.View>
   );
 }

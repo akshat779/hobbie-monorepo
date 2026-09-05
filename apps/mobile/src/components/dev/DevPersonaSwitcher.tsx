@@ -4,7 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore, DEV_PERSONAS } from '../../features/auth/useAuthStore';
 import { Zap, X } from 'lucide-react-native';
 
-export function DevPersonaSwitcher() {
+export interface DevPersonaSwitcherProps {
+  variant?: 'fab' | 'pill';
+  className?: string;
+}
+
+export function DevPersonaSwitcher({ variant = 'fab', className }: DevPersonaSwitcherProps) {
   const insets = useSafeAreaInsets();
   const { activePersonaId, loginWithPersona, isDevMode } = useAuthStore();
   const [modalVisible, setModalVisible] = useState(false);
@@ -16,17 +21,33 @@ export function DevPersonaSwitcher() {
 
   return (
     <>
-      <TouchableOpacity
-        onPress={() => setModalVisible(true)}
-        style={{ top: Math.max(insets.top + 8, 48) }}
-        className="absolute right-4 z-50 bg-ink-raised border border-signal-violet/80 px-2.5 py-1 rounded-full flex-row items-center"
-        activeOpacity={0.8}
-      >
-        <Zap size={11} color="#C77DFF" style={{ marginRight: 4 }} />
-        <Text className="text-pulse-lilac text-[11px] font-mono font-bold">
-          {currentPersona.name.split(' ')[0]} ({currentPersona.role})
-        </Text>
-      </TouchableOpacity>
+      {variant === 'fab' ? (
+        <TouchableOpacity
+          onPress={() => setModalVisible(true)}
+          className={`w-11 h-11 rounded-full bg-ink/95 border border-signal-violet/80 items-center justify-center mb-3 active:bg-ink-raised ${className || ''}`}
+          activeOpacity={0.8}
+          accessibilityLabel={`Dev Persona: ${currentPersona.name}`}
+        >
+          <Zap size={18} color="#C77DFF" />
+          <View
+            className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full border border-ink ${
+              currentPersona.role === 'host' ? 'bg-signal-violet' : 'bg-pulse-lilac'
+            }`}
+          />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          onPress={() => setModalVisible(true)}
+          style={{ top: Math.max(insets.top + 8, 48) }}
+          className={`absolute right-4 z-50 bg-ink-raised border border-signal-violet/80 px-2.5 py-1 rounded-full flex-row items-center ${className || ''}`}
+          activeOpacity={0.8}
+        >
+          <Zap size={11} color="#C77DFF" style={{ marginRight: 4 }} />
+          <Text className="text-pulse-lilac text-[11px] font-mono font-bold">
+            {currentPersona.name.split(' ')[0]} ({currentPersona.role})
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <Modal visible={modalVisible} transparent animationType="fade">
         <View className="flex-1 bg-black/80 justify-center items-center px-5">

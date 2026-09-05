@@ -2,8 +2,9 @@ import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sparkles, ArrowRight, Shield } from 'lucide-react-native';
+import { ArrowRight, Shield } from 'lucide-react-native';
 import { useAuthStore } from '../src/features/auth/useAuthStore';
+import { HobbieLogo } from '../src/components/common/HobbieLogo';
 
 export default function WelcomeLandingScreen() {
   const router = useRouter();
@@ -22,24 +23,21 @@ export default function WelcomeLandingScreen() {
       }}
       className="flex-1 bg-void justify-between px-6"
     >
-      {/* Top Brand Pill */}
-      <View className="items-center pt-6">
-        <View className="flex-row items-center px-3 py-1.5 rounded-full bg-ink border border-hairline mb-8">
+      {/* Top Brand Pill & Hero Logo */}
+      <View className="items-center pt-8">
+        <View className="flex-row items-center px-3.5 py-1.5 rounded-full bg-ink border border-hairline mb-12">
           <Shield size={14} color="#C77DFF" />
           <Text className="text-xs font-semibold text-pulse-lilac ml-1.5">
             Hyperlocal Physical Squads
           </Text>
         </View>
 
-        {/* Minimalist Logo */}
-        <View className="w-24 h-24 rounded-3xl bg-ink-raised border border-hairline items-center justify-center mb-6">
-          <Sparkles size={40} color="#C77DFF" />
+        {/* Bespoke Hobbie Wordmark SVG Logo */}
+        <View className="items-center justify-center my-6">
+          <HobbieLogo width={240} />
         </View>
 
-        <Text className="text-4xl font-extrabold font-display text-moonlight tracking-tight mb-3">
-          Hobbie
-        </Text>
-        <Text className="text-base text-dusk text-center px-4 leading-relaxed">
+        <Text className="text-base text-dusk text-center px-4 leading-relaxed mt-4">
           Activity-anchored coordination. Match with verified squads within 4.5km right now.
         </Text>
       </View>

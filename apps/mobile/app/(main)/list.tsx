@@ -33,7 +33,7 @@ export default function DiscoveryListScreen() {
       style={{ paddingTop: Math.max(insets.top, 16) }}
       className="flex-1 bg-void px-5 pb-8"
     >
-      <DevPersonaSwitcher />
+      <DevPersonaSwitcher variant="pill" />
 
       {/* Header */}
       <View className="mb-3 pr-24">

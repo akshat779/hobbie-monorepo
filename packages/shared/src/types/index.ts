@@ -7,4 +7,5 @@ export * from '../constants/interests.js';
 export * from '../constants/ttl.js';
 export * from '../constants/trust.js';
 export * from './database.types.js';
+export * from '../utils/geo.js';
 

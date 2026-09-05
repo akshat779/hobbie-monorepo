@@ -9,9 +9,12 @@ if (typeof globalThis.WebSocket === 'undefined') {
 
 const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL ||
+  process.env.SUPABASE_URL ||
   'https://htwllxznxgnukbiyymwz.supabase.co';
 const supabaseAnonKey =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  'placeholder-anon-key';
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {

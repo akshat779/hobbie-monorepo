@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Send, MapPin, Clock, ShieldAlert } from 'lucide-react-native';
+
+import { supabase } from '../../src/services/supabase';
 
 interface Message {
   id: string;
@@ -25,6 +27,24 @@ export default function ActiveEphemeralRoomScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [input, setInput] = useState('');
+  const [title, setTitle] = useState('5-a-side Turf Football');
+  const [venueName, setVenueName] = useState('Pitch 2, EcoWorld Turf Club');
+
+  useEffect(() => {
+    if (!id) return;
+    supabase
+      .from('activities')
+      .select('title, venue_name')
+      .eq('id', id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          if (data.title) setTitle(data.title);
+          if (data.venue_name) setVenueName(data.venue_name);
+        }
+      });
+  }, [id]);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -85,12 +105,12 @@ export default function ActiveEphemeralRoomScreen() {
         </View>
 
         <Text className="text-moonlight font-display text-lg font-bold">
-          5-a-side Turf Football
+          {title}
         </Text>
         <View className="flex-row items-center mt-0.5">
           <MapPin size={12} color="#D2BBFF" />
           <Text className="text-signal-violet-light font-body text-xs ml-1">
-            Unlocked Venue: Pitch 2, EcoWorld Turf Club
+            Unlocked Venue: {venueName}
           </Text>
         </View>
       </View>
