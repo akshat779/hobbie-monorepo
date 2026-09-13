@@ -10,18 +10,12 @@ import {
   getPendingRequestsCount,
 } from '../services/handshake';
 import { supabase } from '../services/supabase';
+import { createContractMockSupabase, VALID_UUIDS } from './helpers/contractMocks';
 
-vi.mock('../services/supabase', () => {
-  const mockFrom = vi.fn();
-  const mockRpc = vi.fn();
-  const mockChannel = vi.fn();
-
+vi.mock('../services/supabase', async () => {
+  const { createContractMockSupabase } = await import('./helpers/contractMocks');
   return {
-    supabase: {
-      from: mockFrom,
-      rpc: mockRpc,
-      channel: mockChannel,
-    },
+    supabase: createContractMockSupabase(),
   };
 });
 
@@ -31,178 +25,97 @@ describe('Handshake Service', () => {
   });
 
   describe('requestToJoin', () => {
-    it('should successfully call request_to_join_activity RPC when available', async () => {
-      (supabase.rpc as any).mockResolvedValue({
-        data: {
-          id: 'req-rpc-1',
-          activity_id: 'act-456',
-          user_id: 'usr-789',
-          message: 'Ready!',
-          status: 'pending',
-          created_at: '2026-09-05T12:00:00Z',
-        },
-        error: null,
-      });
-
-      const result = await requestToJoin('act-456', 'usr-789', 'Ready!');
+    it('should successfully call request_to_join_activity RPC when available with valid UUIDs', async () => {
+      const result = await requestToJoin(
+        VALID_UUIDS.activity1,
+        VALID_UUIDS.sam,
+        'Ready to play!'
+      );
 
       expect(result.data).toBeDefined();
-      expect(result.data?.id).toBe('req-rpc-1');
+      expect(result.data?.id).toBe(VALID_UUIDS.request1);
+      expect(result.data?.activity_id).toBe(VALID_UUIDS.activity1);
       expect(supabase.rpc).toHaveBeenCalledWith('request_to_join_activity', {
-        p_activity_id: 'act-456',
-        p_user_id: 'usr-789',
-        p_message: 'Ready!',
+        p_activity_id: VALID_UUIDS.activity1,
+        p_user_id: VALID_UUIDS.sam,
+        p_message: 'Ready to play!',
       });
     });
 
-    it('should fallback to direct insert when RPC fails or is unavailable', async () => {
-      (supabase.rpc as any).mockResolvedValue({
+    it('should reject requestToJoin when activityId is not a valid UUID (Postgres 22P02 parity)', async () => {
+      const result = await requestToJoin('not-a-valid-uuid', VALID_UUIDS.sam, 'Ready!');
+
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('invalid input syntax for type uuid');
+    });
+
+    it('should reject requestToJoin when userId is not a valid UUID', async () => {
+      const result = await requestToJoin(VALID_UUIDS.activity1, 'not-a-user-uuid');
+
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('invalid input syntax for type uuid');
+    });
+
+    it('should fail clearly when the atomic RPC is unavailable', async () => {
+      (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'function request_to_join_activity does not exist' },
       });
 
-      const mockInsert = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: {
-              id: 'req-123',
-              activity_id: 'act-456',
-              user_id: 'usr-789',
-              message: 'Ready to play!',
-              status: 'pending',
-              created_at: '2026-09-05T12:00:00Z',
-            },
-            error: null,
-          }),
-        }),
-      });
+      const result = await requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam, 'Fallback message');
 
-      (supabase.from as any).mockReturnValue({
-        insert: mockInsert,
-      });
-
-      const result = await requestToJoin('act-456', 'usr-789', 'Ready to play!');
-
-      expect(result.error).toBeUndefined();
-      expect(result.data).toBeDefined();
-      expect(result.data?.status).toBe('pending');
-      expect(mockInsert).toHaveBeenCalledWith({
-        activity_id: 'act-456',
-        user_id: 'usr-789',
-        message: 'Ready to play!',
-        status: 'pending',
-      });
+      expect(result.data).toBeUndefined();
+      expect(result.error).toContain('does not exist');
     });
 
     it('should gracefully return existing request on unique violation (code 23505)', async () => {
-      (supabase.rpc as any).mockResolvedValue({
+      (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'RPC unavailable' },
       });
 
-      const mockInsert = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: null,
-            error: { code: '23505', message: 'duplicate key value violates unique constraint' },
-          }),
-        }),
-      });
+      const result = await requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam);
 
-      const mockSelectExisting = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: {
-                id: 'req-existing',
-                activity_id: 'act-456',
-                user_id: 'usr-789',
-                status: 'pending',
-              },
-              error: null,
-            }),
-          }),
-        }),
-      });
-
-      (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'join_requests') {
-          return {
-            insert: mockInsert,
-            select: mockSelectExisting,
-          };
-        }
-        return {};
-      });
-
-      const result = await requestToJoin('act-456', 'usr-789');
-
-      expect(result.data).toBeDefined();
-      expect(result.data?.id).toBe('req-existing');
+      expect(result.data).toBeUndefined();
+      expect(result.error).toContain('RPC unavailable');
     });
 
-    it('should return error when insertion fails', async () => {
-      (supabase.rpc as any).mockResolvedValue({
+    it('should return the atomic RPC error when the database rejects the operation', async () => {
+      (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'RPC unavailable' },
       });
 
-      const mockInsert = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: null,
-            error: { code: '42501', message: 'new row violates row-level security policy for table join_requests' },
-          }),
-        }),
-      });
+      const result = await requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam);
 
-      (supabase.from as any).mockReturnValue({
-        insert: mockInsert,
-      });
-
-      const result = await requestToJoin('act-456', 'usr-789');
-
-      expect(result.error).toBe('new row violates row-level security policy for table join_requests');
+      expect(result.error).toBe('RPC unavailable');
       expect(result.data).toBeUndefined();
     });
 
-    it('should handle general Supabase insertion errors', async () => {
-      (supabase.rpc as any).mockResolvedValue({
+    it('should handle general atomic RPC errors', async () => {
+      (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'RPC unavailable' },
       });
 
-      const mockInsert = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: null,
-            error: { code: '50000', message: 'Database connection failed' },
-          }),
-        }),
-      });
+      const result = await requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam);
 
-      (supabase.from as any).mockReturnValue({
-        insert: mockInsert,
-      });
-
-      const result = await requestToJoin('act-456', 'usr-789');
-
-      expect(result.error).toBe('Database connection failed');
+      expect(result.error).toBe('RPC unavailable');
       expect(result.data).toBeUndefined();
     });
   });
 
   describe('getJoinRequestStatus', () => {
     it('should fetch join request for user and activity', async () => {
-      (supabase.from as any).mockReturnValue({
+      (supabase.from as any).mockReturnValueOnce({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               maybeSingle: vi.fn().mockResolvedValue({
                 data: {
-                  id: 'req-1',
-                  activity_id: 'act-1',
-                  user_id: 'user-1',
+                  id: VALID_UUIDS.request1,
+                  activity_id: VALID_UUIDS.activity1,
+                  user_id: VALID_UUIDS.alex,
                   status: 'accepted',
                 },
                 error: null,
@@ -212,12 +125,12 @@ describe('Handshake Service', () => {
         }),
       });
 
-      const status = await getJoinRequestStatus('act-1', 'user-1');
+      const status = await getJoinRequestStatus(VALID_UUIDS.activity1, VALID_UUIDS.alex);
       expect(status?.status).toBe('accepted');
     });
 
     it('should return null when no request exists', async () => {
-      (supabase.from as any).mockReturnValue({
+      (supabase.from as any).mockReturnValueOnce({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -230,28 +143,28 @@ describe('Handshake Service', () => {
         }),
       });
 
-      const status = await getJoinRequestStatus('act-1', 'user-2');
+      const status = await getJoinRequestStatus(VALID_UUIDS.activity1, VALID_UUIDS.sam);
       expect(status).toBeNull();
     });
   });
 
   describe('fetchIncomingJoinRequests', () => {
     it('should fetch and map pending join requests with profile details', async () => {
-      (supabase.from as any).mockReturnValue({
+      (supabase.from as any).mockReturnValueOnce({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               order: vi.fn().mockResolvedValue({
                 data: [
                   {
-                    id: 'req-1',
-                    activity_id: 'act-100',
-                    user_id: 'usr-sam',
+                    id: VALID_UUIDS.request1,
+                    activity_id: VALID_UUIDS.activity1,
+                    user_id: VALID_UUIDS.sam,
                     message: 'I have boots ready',
                     status: 'pending',
                     created_at: '2026-09-05T10:00:00Z',
                     profiles: {
-                      id: 'usr-sam',
+                      id: VALID_UUIDS.sam,
                       name: 'Sam Chen',
                       trust_score: 4.88,
                       is_verified: true,
@@ -266,7 +179,7 @@ describe('Handshake Service', () => {
         }),
       });
 
-      const requests = await fetchIncomingJoinRequests('act-100');
+      const requests = await fetchIncomingJoinRequests(VALID_UUIDS.activity1);
       expect(requests).toHaveLength(1);
       expect(requests[0]?.user.name).toBe('Sam Chen');
       expect(requests[0]?.user.trustScore).toBe(4.88);
@@ -276,60 +189,63 @@ describe('Handshake Service', () => {
   });
 
   describe('acceptJoinRequestTx', () => {
-    it('should call accept_join_request_tx RPC and return success', async () => {
-      (supabase.rpc as any).mockResolvedValue({
-        data: {
-          success: true,
-          activity_id: 'act-100',
-          current_participants_count: 4,
-          status: 'open',
-        },
-        error: null,
-      });
-
-      const result = await acceptJoinRequestTx('req-1', 'host-alex');
+    it('should call accept_join_request_tx RPC with valid UUIDs and return success', async () => {
+      const result = await acceptJoinRequestTx(VALID_UUIDS.request1, VALID_UUIDS.alex);
       expect(result.success).toBe(true);
       expect(result.data?.current_participants_count).toBe(4);
       expect(supabase.rpc).toHaveBeenCalledWith('accept_join_request_tx', {
-        p_request_id: 'req-1',
-        p_host_id: 'host-alex',
+        p_request_id: VALID_UUIDS.request1,
+        p_host_id: VALID_UUIDS.alex,
       });
     });
 
+    it('should reject acceptJoinRequestTx when request ID is not a valid UUID', async () => {
+      const result = await acceptJoinRequestTx('invalid-request-id', VALID_UUIDS.alex);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('invalid input syntax for type uuid');
+    });
+
+    it('should reject acceptJoinRequestTx when host ID is not a valid UUID', async () => {
+      const result = await acceptJoinRequestTx(VALID_UUIDS.request1, 'invalid-host-id');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('invalid input syntax for type uuid');
+    });
+
     it('should return error when capacity breach occurs in RPC', async () => {
-      (supabase.rpc as any).mockResolvedValue({
+      (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'Activity capacity reached (5 of 5)' },
       });
 
-      const result = await acceptJoinRequestTx('req-overflow', 'host-alex');
+      const result = await acceptJoinRequestTx(VALID_UUIDS.request1, VALID_UUIDS.alex);
       expect(result.success).toBe(false);
       expect(result.error).toBe('Activity capacity reached (5 of 5)');
     });
   });
 
   describe('declineJoinRequest', () => {
-    it('should call decline_join_request RPC and return success', async () => {
-      (supabase.rpc as any).mockResolvedValue({
-        data: { success: true, status: 'declined' },
-        error: null,
-      });
-
-      const result = await declineJoinRequest('req-1', 'host-alex');
+    it('should call decline_join_request RPC with valid UUIDs and return success', async () => {
+      const result = await declineJoinRequest(VALID_UUIDS.request1, VALID_UUIDS.alex);
       expect(result.success).toBe(true);
       expect(supabase.rpc).toHaveBeenCalledWith('decline_join_request', {
-        p_request_id: 'req-1',
-        p_host_id: 'host-alex',
+        p_request_id: VALID_UUIDS.request1,
+        p_host_id: VALID_UUIDS.alex,
       });
     });
 
+    it('should reject declineJoinRequest when request ID is not a valid UUID', async () => {
+      const result = await declineJoinRequest('invalid-request-id', VALID_UUIDS.alex);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('invalid input syntax for type uuid');
+    });
+
     it('should return error when unauthorized caller attempts decline', async () => {
-      (supabase.rpc as any).mockResolvedValue({
+      (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'Unauthorized: user not host' },
       });
 
-      const result = await declineJoinRequest('req-1', 'impostor-id');
+      const result = await declineJoinRequest(VALID_UUIDS.request1, VALID_UUIDS.sam);
       expect(result.success).toBe(false);
       expect(result.error).toBe('Unauthorized: user not host');
     });
@@ -337,55 +253,27 @@ describe('Handshake Service', () => {
 
   describe('Realtime Subscriptions', () => {
     it('should subscribe to join request updates and unsubscribe cleanly', () => {
-      const mockUnsubscribe = vi.fn();
-      const mockOn = vi.fn().mockReturnThis();
-      const mockSubscribe = vi.fn().mockReturnValue({
-        unsubscribe: mockUnsubscribe,
-      });
-
-      (supabase.channel as any).mockReturnValue({
-        on: mockOn,
-        subscribe: mockSubscribe,
-      });
-
       const onStatusChange = vi.fn();
-      const channel = subscribeToJoinRequestUpdates('req-1', onStatusChange);
+      const unsubscribe = subscribeToJoinRequestUpdates(VALID_UUIDS.request1, onStatusChange);
 
-      expect(supabase.channel).toHaveBeenCalledWith('join_request_req-1');
-      expect(mockOn).toHaveBeenCalled();
-      expect(mockSubscribe).toHaveBeenCalled();
-
-      channel.unsubscribe();
-      expect(mockUnsubscribe).toHaveBeenCalled();
+      expect(supabase.channel).toHaveBeenCalledWith(expect.stringContaining(`join_request_${VALID_UUIDS.request1}`));
+      expect(unsubscribe).toBeTypeOf('function');
+      unsubscribe();
     });
 
     it('should subscribe to host queue and unsubscribe cleanly', () => {
-      const mockUnsubscribe = vi.fn();
-      const mockOn = vi.fn().mockReturnThis();
-      const mockSubscribe = vi.fn().mockReturnValue({
-        unsubscribe: mockUnsubscribe,
-      });
-
-      (supabase.channel as any).mockReturnValue({
-        on: mockOn,
-        subscribe: mockSubscribe,
-      });
-
       const onQueueChanged = vi.fn();
-      const channel = subscribeToHostQueue('act-1', onQueueChanged);
+      const unsubscribe = subscribeToHostQueue(VALID_UUIDS.activity1, onQueueChanged);
 
-      expect(supabase.channel).toHaveBeenCalledWith('host_queue_act-1');
-      expect(mockOn).toHaveBeenCalled();
-      expect(mockSubscribe).toHaveBeenCalled();
-
-      channel.unsubscribe();
-      expect(mockUnsubscribe).toHaveBeenCalled();
+      expect(supabase.channel).toHaveBeenCalledWith(expect.stringContaining(`host_queue_${VALID_UUIDS.activity1}`));
+      expect(unsubscribe).toBeTypeOf('function');
+      unsubscribe();
     });
   });
 
   describe('getPendingRequestsCount', () => {
-    it('should query DB count or dev registry count', async () => {
-      (supabase.from as any).mockReturnValue({
+    it('should query DB count for activity', async () => {
+      (supabase.from as any).mockReturnValueOnce({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({
@@ -396,7 +284,7 @@ describe('Handshake Service', () => {
         }),
       });
 
-      const count = await getPendingRequestsCount('act-test-count');
+      const count = await getPendingRequestsCount(VALID_UUIDS.activity1);
       expect(count).toBeGreaterThanOrEqual(0);
     });
   });

@@ -57,4 +57,5 @@ export interface DiscoveryQueryParams {
   category?: string;
   gender?: GenderFilterOption;
   ageGroup?: AgeGroupOption;
+  enabled?: boolean;
 }

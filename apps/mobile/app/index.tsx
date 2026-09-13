@@ -3,13 +3,20 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowRight, Shield } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../src/features/auth/useAuthStore';
 import { HobbieLogo } from '../src/components/common/HobbieLogo';
 
 export default function WelcomeLandingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { initialize, user, profile } = useAuthStore();
+  const { initialize, user, profile } = useAuthStore(
+    useShallow((s) => ({
+      initialize: s.initialize,
+      user: s.user,
+      profile: s.profile,
+    }))
+  );
 
   useEffect(() => {
     initialize();
@@ -45,6 +52,8 @@ export default function WelcomeLandingScreen() {
       {/* Bottom CTA Actions */}
       <View className="w-full space-y-3">
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={user && profile ? 'Continue to Squads' : 'Get Started'}
           onPress={() => router.push('/(auth)/phone')}
           className="w-full h-14 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
           activeOpacity={0.8}
@@ -56,6 +65,8 @@ export default function WelcomeLandingScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Explore Hobbie Demo Mode"
           onPress={() => router.push('/(main)')}
           className="w-full h-14 bg-ink border border-hairline rounded-full items-center justify-center mt-3"
           activeOpacity={0.7}

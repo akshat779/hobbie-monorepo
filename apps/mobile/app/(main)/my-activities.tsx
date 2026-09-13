@@ -17,129 +17,135 @@ import {
   Inbox,
   UserCheck,
 } from 'lucide-react-native';
-import { supabase } from '../../src/services/supabase';
 import { useAuthStore } from '../../src/features/auth/useAuthStore';
 import { HostReviewModal } from '../../src/features/handshake/HostReviewModal';
-import { getPendingRequestsCount } from '../../src/services/handshake';
+import { useMyActivitiesQuery, MySquadItem } from '../../src/features/activity/useMyActivitiesQuery';
+import { useRefreshByUser } from '../../src/hooks/useRefreshByUser';
+import { useCountdown } from '../../src/hooks/useCountdown';
 
-interface MySquadItem {
-  id: string;
-  title: string;
-  interestId: string;
-  hostId: string;
-  venueName: string | null;
-  expiresAt: string;
-  currentParticipantsCount: number;
-  maxParticipants: number;
-  status: string;
-  isHost: boolean;
-  pendingRequestsCount?: number;
+function MySquadCard({
+  squad,
+  onReview,
+  onEnterRoom,
+}: {
+  squad: MySquadItem;
+  onReview?: (squad: MySquadItem) => void;
+  onEnterRoom: (squadId: string) => void;
+}) {
+  const { isExpired, formattedTtl, theme } = useCountdown(squad.expiresAt);
+
+  return (
+    <View
+      key={squad.id}
+      className={`bg-ink border border-hairline p-5 rounded-3xl mb-4 ${
+        isExpired ? 'opacity-70' : ''
+      }`}
+    >
+      {/* Header */}
+      <View className="flex-row justify-between items-start mb-2">
+        <View className="flex-1 mr-2">
+          <Text className="text-moonlight font-bold font-display text-base mb-0.5">
+            {squad.title}
+          </Text>
+          <Text className="text-dusk font-mono text-2xs">
+            {squad.venueName || 'Geofenced Location'} • {squad.currentParticipantsCount}/
+            {squad.maxParticipants} players
+          </Text>
+        </View>
+
+        <View
+          className={`px-2.5 py-0.5 rounded-full border ${
+            squad.isHost
+              ? 'bg-signal-violet/20 border-signal-violet'
+              : 'bg-ink-raised border-hairline'
+          }`}
+        >
+          <Text
+            className={`text-2xs font-bold ${
+              squad.isHost ? 'text-signal-violet-light' : 'text-dusk'
+            }`}
+          >
+            {squad.isHost ? 'Host' : 'Member'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Live Self-Destruct Countdown Banner */}
+      <View className="flex-row items-center mb-4">
+        <Clock size={12} color={isExpired ? '#5A536B' : theme.primary} />
+        <Text
+          style={{ color: isExpired ? '#A99BC2' : theme.badgeText }}
+          className="font-mono text-xs font-bold ml-1.5"
+        >
+          {isExpired ? 'Squad Expired' : `Self-destructs in ${formattedTtl}`}
+        </Text>
+      </View>
+
+      {/* Actions */}
+      <View className="flex-row gap-2.5">
+        {squad.isHost && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Review ${squad.pendingRequestsCount || 0} requests for ${squad.title}`}
+            onPress={() => onReview?.(squad)}
+            className="flex-1 h-12 bg-ink border border-signal-violet/50 rounded-full flex-row items-center justify-center relative active:bg-ink-raised"
+            activeOpacity={0.8}
+          >
+            <Users size={15} color="#C77DFF" style={{ marginRight: 6 }} />
+            <Text className="text-pulse-lilac font-display text-xs font-bold">
+              Requests {squad.pendingRequestsCount ? `(${squad.pendingRequestsCount})` : ''}
+            </Text>
+            {!!squad.pendingRequestsCount && (
+              <View className="absolute -top-1.5 -right-1.5 bg-signal-violet rounded-full px-2 py-0.5 border border-void">
+                <Text className="text-moonlight font-mono text-2xs font-bold">
+                  {squad.pendingRequestsCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`Enter chat room for ${squad.title}`}
+          onPress={() => onEnterRoom(squad.id)}
+          className={`flex-1 h-12 rounded-full flex-row items-center justify-center border ${
+            isExpired
+              ? 'bg-ink border-hairline opacity-60'
+              : 'bg-signal-violet border-signal-violet-light/30 active:scale-95'
+          }`}
+          activeOpacity={0.8}
+        >
+          <Text className="text-moonlight font-display text-xs font-bold mr-1.5">
+            {isExpired ? 'View Closed Room' : 'Enter Chat Room'}
+          </Text>
+          <ArrowRight size={14} color="#F5F0FF" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
 
 export default function MyActivitiesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, profile } = useAuthStore();
-  const currentUserId = user?.id || profile?.id || '';
+  const currentUserId = useAuthStore((s) => s.user?.id);
 
-  const [squads, setSquads] = useState<MySquadItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const {
+    data: squads = [],
+    isLoading,
+    refetch,
+  } = useMyActivitiesQuery(currentUserId);
+
+  const { isRefetchingByUser, refetchByUser } = useRefreshByUser(refetch);
 
   // Selected squad for host review modal
   const [activeHostReview, setActiveHostReview] = useState<MySquadItem | null>(null);
 
-  const fetchMySquads = useCallback(async () => {
-    if (!currentUserId) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // 1. Fetch activities hosted by user
-      const { data: hosted } = await supabase
-        .from('activities')
-        .select('*')
-        .eq('host_id', currentUserId)
-        .order('created_at', { ascending: false });
-
-      // 2. Fetch activities where user is an accepted member
-      const { data: memberships } = await supabase
-        .from('activity_members')
-        .select('activity_id, is_host')
-        .eq('user_id', currentUserId)
-        .eq('is_host', false);
-
-      const memberActivityIds = memberships?.map((m) => m.activity_id) || [];
-      let memberActivities: any[] = [];
-      if (memberActivityIds.length > 0) {
-        const { data: acts } = await supabase
-          .from('activities')
-          .select('*')
-          .in('id', memberActivityIds);
-        memberActivities = acts || [];
-      }
-
-      // 3. For hosted activities, count pending requests
-      const squadList: MySquadItem[] = [];
-
-      if (hosted) {
-        for (const act of hosted) {
-          const pendingCount = await getPendingRequestsCount(act.id);
-
-          squadList.push({
-            id: act.id,
-            title: act.title,
-            interestId: act.interest_id,
-            hostId: act.host_id,
-            venueName: act.venue_name,
-            expiresAt: act.expires_at,
-            currentParticipantsCount: act.current_participants_count,
-            maxParticipants: act.max_participants,
-            status: act.status,
-            isHost: true,
-            pendingRequestsCount: pendingCount,
-          });
-        }
-      }
-
-      for (const act of memberActivities) {
-        squadList.push({
-          id: act.id,
-          title: act.title,
-          interestId: act.interest_id,
-          hostId: act.host_id,
-          venueName: act.venue_name,
-          expiresAt: act.expires_at,
-          currentParticipantsCount: act.current_participants_count,
-          maxParticipants: act.max_participants,
-          status: act.status,
-          isHost: false,
-        });
-      }
-
-      setSquads(squadList);
-    } catch (err) {
-      console.warn('fetchMySquads error:', err);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [currentUserId]);
-
-  useEffect(() => {
-    fetchMySquads();
-  }, [fetchMySquads]);
-
-  const onRefresh = () => {
-    setIsRefreshing(true);
-    fetchMySquads();
-  };
-
   return (
     <View
       style={{ paddingTop: Math.max(insets.top, 16) }}
-      className="flex-1 bg-void px-5 pb-8"
+      className="flex-1 bg-void px-5"
     >
       <View className="mb-5">
         <View className="flex-row items-center mb-1">
@@ -163,10 +169,12 @@ export default function MyActivitiesScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={
             <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={onRefresh}
+              refreshing={isRefetchingByUser}
+              onRefresh={refetchByUser}
               tintColor="#7B2FF7"
             />
           }
@@ -184,93 +192,27 @@ export default function MyActivitiesScreen() {
                 You haven't hosted or joined any squads yet. Discover live squads on the radar or host your own!
               </Text>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Host a Squad"
                 onPress={() => router.push('/activity/create')}
                 className="bg-signal-violet px-6 py-3.5 rounded-full flex-row items-center border border-signal-violet-light/30"
                 activeOpacity={0.85}
               >
-                <Text className="text-moonlight font-display text-xs font-bold">
+                <Text className="text-moonlight font-display text-sm font-bold">
                   Host a Squad
                 </Text>
               </TouchableOpacity>
             </View>
           ) : (
             squads.map((squad) => (
-              <View
+              <MySquadCard
                 key={squad.id}
-                className="bg-ink border border-hairline p-5 rounded-3xl mb-4"
-              >
-              {/* Header */}
-              <View className="flex-row justify-between items-start mb-2">
-                <View className="flex-1 mr-2">
-                  <Text className="text-moonlight font-bold font-display text-base mb-0.5">
-                    {squad.title}
-                  </Text>
-                  <Text className="text-dusk font-mono text-[11px]">
-                    {squad.venueName || 'Geofenced Location'} • {squad.currentParticipantsCount}/
-                    {squad.maxParticipants} players
-                  </Text>
-                </View>
-
-                <View
-                  className={`px-2.5 py-0.5 rounded-full border ${
-                    squad.isHost
-                      ? 'bg-signal-violet/20 border-signal-violet'
-                      : 'bg-ink-raised border-hairline'
-                  }`}
-                >
-                  <Text
-                    className={`text-[10px] font-bold ${
-                      squad.isHost ? 'text-signal-violet-light' : 'text-dusk'
-                    }`}
-                  >
-                    {squad.isHost ? 'Host' : 'Member'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* TTL Banner */}
-              <View className="flex-row items-center mb-4">
-                <Clock size={12} color="#FF6B5E" />
-                <Text className="text-ember font-mono text-xs font-bold ml-1.5">
-                  Self-Destructs with Squad TTL
-                </Text>
-              </View>
-
-              {/* Actions */}
-              <View className="flex-row gap-2.5">
-                {squad.isHost && (
-                  <TouchableOpacity
-                    onPress={() => setActiveHostReview(squad)}
-                    className="flex-1 h-12 bg-ink border border-signal-violet/50 rounded-full flex-row items-center justify-center relative active:bg-ink-raised"
-                    activeOpacity={0.8}
-                  >
-                    <Users size={14} color="#C77DFF" style={{ marginRight: 6 }} />
-                    <Text className="text-pulse-lilac font-display text-xs font-bold">
-                      Requests {squad.pendingRequestsCount ? `(${squad.pendingRequestsCount})` : ''}
-                    </Text>
-                    {!!squad.pendingRequestsCount && (
-                      <View className="absolute -top-1.5 -right-1.5 bg-signal-violet rounded-full px-2 py-0.5 border border-void">
-                        <Text className="text-moonlight font-mono text-[9px] font-bold">
-                          {squad.pendingRequestsCount}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  onPress={() => router.push(`/room/${squad.id}`)}
-                  className="flex-1 h-12 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30 active:scale-95"
-                  activeOpacity={0.8}
-                >
-                  <Text className="text-moonlight font-display text-xs font-bold mr-1.5">
-                    Enter Chat Room
-                  </Text>
-                  <ArrowRight size={14} color="#F5F0FF" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )))}
+                squad={squad}
+                onReview={setActiveHostReview}
+                onEnterRoom={(squadId) => router.push(`/room/${squadId}`)}
+              />
+            ))
+          )}
         </ScrollView>
       )}
 
@@ -284,10 +226,10 @@ export default function MyActivitiesScreen() {
           maxParticipants={activeHostReview.maxParticipants}
           onClose={() => {
             setActiveHostReview(null);
-            fetchMySquads();
+            refetch();
           }}
           onSquadUpdated={() => {
-            fetchMySquads();
+            refetch();
           }}
         />
       )}

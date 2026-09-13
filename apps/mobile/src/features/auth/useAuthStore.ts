@@ -1,12 +1,21 @@
 import { create } from 'zustand';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../services/supabase';
-import { Database, UserProfileInput, UserProfileSchema } from '@hobbie/shared';
+import { Database, UserProfileInput, UserProfileSchema, PhoneAuthSchema } from '@hobbie/shared';
 
-type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+type ProfileState = Pick<Database['public']['Tables']['profiles']['Row'],
+  'id' | 'name' | 'birth_date' | 'gender' | 'interests' | 'is_verified' |
+  'trust_score' | 'interaction_count' | 'avatar_url' | 'created_at' | 'updated_at'> & {
+  phone?: string;
+};
+const PROFILE_COLUMNS = 'id, name, birth_date, gender, interests, is_verified, trust_score, interaction_count, avatar_url, created_at, updated_at';
 
 const isDevelopment =
   typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
+// Keep the long-lived dev auth workflow available by default in non-production
+// builds, while allowing CI/release builds to explicitly disable it.
+const isDevAuthEnabled =
+  isDevelopment && process.env.EXPO_PUBLIC_DEV_AUTH_ENABLED !== 'false';
 
 export interface DevPersona {
   id: string;
@@ -79,9 +88,17 @@ export async function authenticateDevSession(
   phone: string,
   name?: string
 ): Promise<{ session: Session | null; error?: string }> {
+  if (!isDevAuthEnabled) {
+    return { session: null, error: 'Development authentication is disabled' };
+  }
+
   const normalizedPhone = phone.trim().startsWith('+')
     ? phone.trim()
     : `+${phone.trim()}`;
+  const phoneValidation = PhoneAuthSchema.safeParse({ phone: normalizedPhone });
+  if (!phoneValidation.success) {
+    return { session: null, error: 'Invalid phone number format' };
+  }
   const phoneDigits = normalizedPhone.replace(/[^0-9]/g, '');
   const shadowEmail = `phone_${phoneDigits}@dev.hobbie.internal`;
   const devPassword = `HobbieDevPass_${phoneDigits}!`;
@@ -96,7 +113,10 @@ export async function authenticateDevSession(
     );
 
     if (!edgeError && edgeData?.session) {
-      await supabase.auth.setSession(edgeData.session);
+      const { error: sessionError } = await supabase.auth.setSession(edgeData.session);
+      if (sessionError) {
+        return { session: null, error: sessionError.message };
+      }
       return { session: edgeData.session };
     }
   } catch {
@@ -112,7 +132,10 @@ export async function authenticateDevSession(
       });
 
     if (!signInError && signInData?.session) {
-      await supabase.auth.setSession(signInData.session);
+      const { error: sessionError } = await supabase.auth.setSession(signInData.session);
+      if (sessionError) {
+        return { session: null, error: sessionError.message };
+      }
       return { session: signInData.session };
     }
 
@@ -128,7 +151,10 @@ export async function authenticateDevSession(
     });
 
     if (!signUpError && signUpData?.session) {
-      await supabase.auth.setSession(signUpData.session);
+      const { error: sessionError } = await supabase.auth.setSession(signUpData.session);
+      if (sessionError) {
+        return { session: null, error: sessionError.message };
+      }
       return { session: signUpData.session };
     }
 
@@ -145,7 +171,7 @@ export async function authenticateDevSession(
 interface AuthState {
   session: Session | null;
   user: User | null;
-  profile: ProfileRow | null;
+  profile: ProfileState | null;
   isLoading: boolean;
   isDevMode: boolean;
   activePersonaId: string | null;
@@ -176,7 +202,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('*')
+          .select(PROFILE_COLUMNS)
           .eq('id', session.user.id)
           .maybeSingle();
 
@@ -195,7 +221,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (session?.user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('*')
+            .select(PROFILE_COLUMNS)
             .eq('id', session.user.id)
             .maybeSingle();
 
@@ -251,6 +277,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // In production or when real SMS provider is enabled:
       if (
+        !isDevAuthEnabled ||
         process.env.EXPO_PUBLIC_USE_REAL_SMS === 'true' ||
         process.env.USE_REAL_SMS === 'true'
       ) {
@@ -268,7 +295,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (data.session) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('*')
+            .select(PROFILE_COLUMNS)
             .eq('id', data.session.user.id)
             .maybeSingle();
 
@@ -287,7 +314,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const matchedPersona = DEV_PERSONAS.find((p) => p.phone === phone);
       const { session, error } = await authenticateDevSession(
         phone,
-        matchedPersona?.name || 'Hobbie Player'
+        matchedPersona ? matchedPersona.name : undefined
       );
 
       if (error || !session) {
@@ -298,7 +325,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Query database for existing profile with real authenticated session
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PROFILE_COLUMNS)
         .eq('id', session.user.id)
         .maybeSingle();
 
@@ -325,11 +352,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return { error: 'You must be signed in to create a profile' };
       }
 
+      // Resolve user's authenticated phone number
+      const rawPhone = (user.phone || (user.user_metadata?.phone as string) || '').trim();
+      if (!rawPhone) {
+        return { error: 'Authentication session is missing a verified phone number' };
+      }
+
+      // Normalize to E.164 standard (guarantee leading '+')
+      const normalizedPhone = rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`;
+
+      // Validate against shared E.164 Zod schema
+      const phoneValidation = PhoneAuthSchema.safeParse({ phone: normalizedPhone });
+      if (!phoneValidation.success) {
+        return { error: 'Invalid phone number format for profile' };
+      }
+
       set({ isLoading: true });
 
       const profilePayload = {
         id: user.id,
-        phone: user.phone || '+919999999999',
+        phone: normalizedPhone,
         name: validated.name,
         birth_date: validated.birthDate,
         gender: validated.gender,
@@ -344,7 +386,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { data, error } = await supabase
         .from('profiles')
         .upsert(profilePayload)
-        .select()
+        .select(PROFILE_COLUMNS)
         .single();
 
       set({ isLoading: false });
@@ -376,7 +418,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loginWithPersona: async (personaId: string) => {
-    if (!isDevelopment) return; // Hard security lock: Persona switcher disabled in production
+    if (!isDevAuthEnabled) return; // Hard security lock: Persona switcher disabled in production
 
     const persona = DEV_PERSONAS.find((p) => p.id === personaId) || DEV_PERSONAS[0]!;
     set({ isLoading: true });
@@ -388,10 +430,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
+    const { data: verifiedUser, error: verificationError } = await supabase.auth.getUser();
+    if (verificationError || verifiedUser.user?.id !== session.user.id) {
+      console.warn('loginWithPersona session verification failed:', verificationError?.message);
+      await supabase.auth.signOut();
+      set({ isLoading: false });
+      return;
+    }
+
     // Now fetch or ensure profile exists in Supabase
     let { data: profile } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .eq('id', session.user.id)
       .maybeSingle();
 
@@ -409,7 +459,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           trust_score: persona.trustScore,
           interaction_count: 5,
         })
-        .select()
+        .select(PROFILE_COLUMNS)
         .single();
       profile = createdProfile;
     }

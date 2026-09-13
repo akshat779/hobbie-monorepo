@@ -334,6 +334,12 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+# The development phone-login endpoint is intentionally callable before a user
+# has a session; the function itself enforces the development environment and
+# allowlist guards.
+[functions.dev-phone-login]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

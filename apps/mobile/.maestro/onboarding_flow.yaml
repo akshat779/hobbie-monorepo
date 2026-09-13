@@ -1,19 +1,52 @@
-appId: com.hobbie.app
+appId: host.exp.Exponent
 ---
 # Test 1: Full Onboarding Flow (Phone -> Dev OTP -> Interests -> Radar)
-- launchApp
-- assertVisible: "Hobbie"
-- tapOn: "Get Started"
-- assertVisible: "What's your number?"
-- tapOn: "98765 43210"
-- inputText: "9876543210"
-- tapOn: "Send Code"
-- assertVisible: "Verify your code"
-- tapOn: "• • • • • •"
-- inputText: "123456"
-- tapOn: "Verify & Continue"
-- assertVisible: "Pick your interests"
-- tapOn: "Football"
-- tapOn: "Badminton"
-- tapOn: "Enter Live Radar.*"
-- assertVisible: "Radar"
+- openLink: "exp://localhost:8081"
+# If on create modal, close it
+- tapOn:
+    text: "Cancel"
+    optional: true
+
+# If on Squad Details, go back
+- tapOn:
+    text: "Back to Feed"
+    optional: true
+
+- tapOn:
+    text: ".*(Get Started|Continue to Squads).*"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*(Enter your mobile number|Enter 6-digit code|Build your identity|Hobbie|Feed).*"
+    timeout: 25000
+
+# Handle Phone screen if visible
+- runFlow:
+    when:
+      visible: ".*Enter your mobile number.*"
+    commands:
+      - tapOn: ".*98765 43210.*"
+      - inputText: "9876543210"
+      - tapOn: "Send Verification Code"
+
+# Handle OTP screen if visible
+- runFlow:
+    when:
+      visible: ".*Enter 6-digit code.*"
+    commands:
+      - tapOn: ".*Dev Fast Bypass.*"
+
+# Handle Profile & Interests screen if visible
+- runFlow:
+    when:
+      visible: ".*Build your identity.*"
+    commands:
+      - tapOn: "e.g. Alex Rivera"
+      - inputText: "Maestro Tester"
+      - tapOn: "Enter Hobbie"
+
+# Assert we are on the main discovery radar or tabs
+- extendedWaitUntil:
+    visible: ".*(Hobbie|Feed).*"
+    timeout: 20000
+- assertVisible: ".*(Hobbie|Feed).*"
+

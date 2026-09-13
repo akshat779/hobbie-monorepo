@@ -9,31 +9,11 @@
     "backgroundColor": "#0D0B14",
     "primaryColor": "#7B2FF7",
     "owner": "akshat779s-team",
-    "splash": {
-      "image": "./assets/logo/splash-light.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0D0B14",
-      "dark": {
-        "image": "./assets/logo/splash-light.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#0D0B14"
-      }
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.hobbie.app",
       "backgroundColor": "#0D0B14",
-      "userInterfaceStyle": "dark",
-      "splash": {
-        "image": "./assets/logo/splash-light.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#0D0B14",
-        "dark": {
-          "image": "./assets/logo/splash-light.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#0D0B14"
-        }
-      }
+      "userInterfaceStyle": "dark"
     },
     "android": {
       "adaptiveIcon": {
@@ -42,30 +22,28 @@
       },
       "backgroundColor": "#0D0B14",
       "userInterfaceStyle": "dark",
-      "package": "com.hobbie.app",
-      "splash": {
-        "image": "./assets/logo/splash-light.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#0D0B14",
-        "dark": {
-          "image": "./assets/logo/splash-light.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#0D0B14"
-        }
-      }
+      "package": "com.hobbie.app"
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro",
-      "splash": {
-        "image": "./assets/logo/splash-light.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#0D0B14"
-      }
+      "bundler": "metro"
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo/splash-light.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0D0B14",
+          "dark": {
+            "image": "./assets/logo/splash-light.png",
+            "backgroundColor": "#0D0B14"
+          }
+        }
+      ]
     ],
     "scheme": "hobbie",
     "extra": {

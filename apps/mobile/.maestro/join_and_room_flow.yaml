@@ -1,17 +1,63 @@
-appId: com.hobbie.app
+appId: host.exp.Exponent
 ---
-# Test 3: Join Request and Ephemeral Realtime Room
-- launchApp
-- tapOn: "Skip to Map Discovery (Demo)"
-- assertVisible: "Request to Join.*"
-- tapOn: "Request to Join.*"
-- assertVisible: "5-a-side Turf Football"
-- tapOn: "Request to Join"
-- assertVisible: "Join Request Sent!"
-# Room unlocks upon simulated host acceptance
-- assertVisible: "Unlocked Venue.*"
-- assertVisible: "Self-Destructs in.*"
-- tapOn: "Message squad..."
-- inputText: "See you all in 10 mins!"
-- tapOn: "Send"
-- assertVisible: "See you all in 10 mins!"
+# Run after create_activity_flow.yaml. Uses real dev personas and Supabase state.
+- openLink: "exp://localhost:8081"
+- tapOn:
+    text: ".*(Get Started|Continue to Squads|Explore Hobbie).*"
+    optional: true
+- tapOn:
+    text: ".*Sam \\(joiner\\).*"
+    optional: true
+- tapOn: "Feed"
+- extendedWaitUntil:
+    visible:
+      id: "discovery-feed"
+    timeout: 25000
+- tapOn:
+    text: "Squad Weekend Turf Soccer 5v5"
+- assertVisible: "Request to Join Squad"
+- tapOn:
+    id: "request-to-join"
+- extendedWaitUntil:
+    visible: "Join Request Pending"
+    timeout: 15000
+
+# Switch to the host persona and accept the real request.
+- tapOn:
+    text: ".*Dev Persona: Sam Chen.*"
+- tapOn:
+    text: "Dev Persona Option: Alex Rivera"
+- tapOn: "Feed"
+- tapOn:
+    text: "Squad Weekend Turf Soccer 5v5"
+- tapOn:
+    id: "review-requests"
+- extendedWaitUntil:
+    visible: ".*Sam Chen.*"
+    timeout: 15000
+- tapOn:
+    text: ".*Accept.*"
+
+# Switch back to the joiner and verify room persistence.
+- tapOn:
+    text: ".*Dev Persona: Alex Rivera.*"
+- tapOn:
+    text: "Dev Persona Option: Sam Chen"
+- tapOn: "Feed"
+- tapOn:
+    text: "Squad Weekend Turf Soccer 5v5"
+- extendedWaitUntil:
+    visible: "You are Accepted!"
+    timeout: 15000
+- tapOn:
+    text: "Enter Room"
+- assertVisible:
+    id: "room-messages"
+- tapOn:
+    id: "Room Message Input"
+- inputText: "Maestro persisted message"
+- tapOn:
+    id: "Send Room Message"
+- extendedWaitUntil:
+    visible: "Maestro persisted message"
+    timeout: 10000

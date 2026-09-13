@@ -101,3 +101,26 @@ export const supabase = createClient<Database>(
 3. **Stale Closure Prevention in Custom Gesture Handlers:**
    * Any custom `PanResponder` or gesture responder reading dynamic coordinates or layout dimensions **MUST** back those values with a `useRef` (e.g. `trackWidthRef`) and use `measureInWindow` to prevent stale closure touch bugs inside modals or scroll views.
 
+---
+
+## 🧪 Real-Code Execution & Anti-Mocking Directives (STRICT — NO HOLLOW TESTS):
+
+1. **Target Real Code Execution Over Mocking:**
+   * Unit tests must execute real business logic, state machines, normalization routines, and mathematical algorithms.
+   * **Never create tautological mocks** that blindly return `{ data: mock, error: null }` without exercising real validation logic.
+   * If an external network boundary must be mocked in unit tests (e.g. Supabase HTTP/RPC client), the mock **MUST validate incoming arguments against real shared Zod schemas** (`PhoneAuthSchema`, `UserProfileSchema`, `CreateActivitySchema`) and reject invalid payloads just like PostgreSQL would.
+
+2. **Zero Fabricated / Dummy Fallbacks in Production Code:**
+   * **NEVER** mask missing session or user data with fake defaults (e.g. `phone: user.phone || '+919999999999'`).
+   * Production code must **fail fast with explicit, typed errors** when mandatory data is missing.
+   * Every phone number, coordinate, or user identifier must be normalized and verified against `@hobbie/shared` schemas before mutating state or sending queries to the database.
+
+3. **Database Constraint & Schema Parity:**
+   * Every PostgreSQL check constraint (e.g. `check_e164_phone`, trust score bounds `[1, 5]`, positive participant counts) **MUST** have an exact counterpart in `packages/shared/src/schemas`.
+   * Unit tests must explicitly test boundary conditions, invalid formats, un-normalized inputs, and edge cases to ensure bugs cannot slip past the test suite.
+
+4. **Integration Testing Standard:**
+   * Server endpoint tests in `apps/server` must execute the real Fastify server instance using `app.inject()` and real route handlers—never mock route controllers.
+   * Critical mobile user flows (auth onboarding, squad creation, join handshake, chat) must be tested on live simulators with Maestro YAML specs against real PostgreSQL instances to verify actual triggers, RLS policies, and database constraints.
+
+

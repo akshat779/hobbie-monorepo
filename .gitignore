@@ -53,6 +53,8 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 maestro-report/
+maestro_test/
+apps/mobile/maestro_test/
 *.report.json
 
 # Operating System & Editors

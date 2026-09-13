@@ -7,6 +7,8 @@ import {
   TextInput,
   Animated,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,45 +24,39 @@ import {
   Settings,
   ArrowRight,
 } from 'lucide-react-native';
-import { supabase } from '../../src/services/supabase';
 import { useAuthStore } from '../../src/features/auth/useAuthStore';
+import { subscribeToJoinRequestUpdates } from '../../src/services/handshake';
 import {
-  requestToJoin,
-  getJoinRequestStatus,
-  subscribeToJoinRequestUpdates,
-  JoinRequestRow,
-} from '../../src/services/handshake';
+  useActivityDetailQuery,
+  useJoinStatusQuery,
+} from '../../src/features/activity/useActivityDetailQuery';
+import { useJoinRequestMutation } from '../../src/features/activity/useActivityMutations';
 import { HostReviewModal } from '../../src/features/handshake/HostReviewModal';
 
-interface ActivityDetails {
-  id: string;
-  hostId: string;
-  hostName: string;
-  hostTrustScore: number;
-  hostIsVerified: boolean;
-  title: string;
-  description: string;
-  venueName: string | null;
-  expiresAt: string;
-  maxParticipants: number;
-  currentParticipantsCount: number;
-  status: string;
-}
+import { useCountdown } from '../../src/hooks/useCountdown';
 
 export default function ActivityDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, profile } = useAuthStore();
-  const currentUserId = user?.id || profile?.id || '';
+  const currentUserId = useAuthStore((s) => s.user?.id || '');
 
-  const [activity, setActivity] = useState<ActivityDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [existingRequest, setExistingRequest] = useState<JoinRequestRow | null>(null);
+  const {
+    data: activity,
+    isLoading,
+    refetch: refetchActivity,
+  } = useActivityDetailQuery(id);
+  const { data: existingRequest, refetch: refetchJoinStatus } =
+    useJoinStatusQuery(id, currentUserId);
+  const joinMutation = useJoinRequestMutation();
+
+  const { isExpired, formattedTtl, theme } = useCountdown(activity?.expiresAt);
+
   const [message, setMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hostModalVisible, setHostModalVisible] = useState(false);
+
+  const isSubmitting = joinMutation.isPending;
 
   // Pulse animation for pending state
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -104,80 +100,31 @@ export default function ActivityDetailScreen() {
     };
   }, [existingRequest?.status, pulseAnim, pulseOpacity]);
 
-  // Load activity details and check join request status
-  const loadActivityData = useCallback(async () => {
-    if (!id) return;
-    setIsLoading(true);
-
-    try {
-      // 1. Fetch activity row
-      const { data: actData } = await supabase
-        .from('activities')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (actData) {
-        // Fetch host profile
-        const { data: hostProfile } = await supabase
-          .from('profiles')
-          .select('name, trust_score, is_verified')
-          .eq('id', actData.host_id)
-          .maybeSingle();
-
-        setActivity({
-          id: actData.id,
-          hostId: actData.host_id,
-          hostName: hostProfile?.name || 'Hobbie Host',
-          hostTrustScore: hostProfile?.trust_score ?? 5.0,
-          hostIsVerified: hostProfile?.is_verified ?? false,
-          title: actData.title,
-          description: actData.description || '',
-          venueName: actData.venue_name,
-          expiresAt: actData.expires_at,
-          maxParticipants: actData.max_participants,
-          currentParticipantsCount: actData.current_participants_count,
-          status: actData.status,
-        });
-      } else {
-        setActivity(null);
-      }
-
-      // 2. Check if current user has an existing request
-      if (currentUserId) {
-        const req = await getJoinRequestStatus(id, currentUserId);
-        setExistingRequest(req);
-      }
-    } catch (err) {
-      console.warn('Load activity data error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id, currentUserId]);
-
-  useEffect(() => {
-    loadActivityData();
-  }, [loadActivityData]);
+  const loadActivityData = useCallback(() => {
+    refetchActivity();
+    refetchJoinStatus();
+  }, [refetchActivity, refetchJoinStatus]);
 
   // Realtime subscription for pending request status changes
   useEffect(() => {
     if (!existingRequest || existingRequest.status !== 'pending') return;
 
-    const channel = subscribeToJoinRequestUpdates(existingRequest.id, (newStatus) => {
-      setExistingRequest((prev) => (prev ? { ...prev, status: newStatus } : null));
-
+    const unsubscribe = subscribeToJoinRequestUpdates(existingRequest.id, (newStatus) => {
       if (newStatus === 'accepted') {
         // Automatically transition into the ephemeral room upon acceptance!
         setTimeout(() => {
           router.replace(`/room/${id}`);
         }, 600);
+      } else {
+        refetchJoinStatus();
+        refetchActivity();
       }
     });
 
     return () => {
-      channel.unsubscribe();
+      unsubscribe();
     };
-  }, [existingRequest?.id, existingRequest?.status, id, router]);
+  }, [existingRequest?.id, existingRequest?.status, id, router, refetchJoinStatus, refetchActivity]);
 
   const handleJoin = async () => {
     if (!currentUserId) {
@@ -185,35 +132,50 @@ export default function ActivityDetailScreen() {
       return;
     }
 
-    setIsSubmitting(true);
     setErrorMessage(null);
+    try {
+      const result = await joinMutation.mutateAsync({
+        activityId: id,
+        userId: currentUserId,
+        message,
+      });
 
-    const result = await requestToJoin(id, currentUserId, message);
-    setIsSubmitting(false);
-
-    if (result.error) {
-      setErrorMessage(result.error);
-      return;
-    }
-
-    if (result.data) {
-      setExistingRequest(result.data);
+      if (result.error) {
+        setErrorMessage(result.error);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to submit join request');
     }
   };
 
   const isHost = activity ? activity.hostId === currentUserId : false;
 
   return (
-    <View
-      style={{ paddingTop: Math.max(insets.top, 16) }}
-      className="flex-1 bg-void px-5 justify-between pb-8"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1 bg-void"
     >
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+      <View
+        style={{
+          paddingTop: Math.max(insets.top, 16),
+          paddingBottom: Math.max(insets.bottom, 16),
+        }}
+        className="flex-1 px-5 justify-between"
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+          className="flex-1"
+        >
         {/* Top Header Navigation */}
         <View className="flex-row items-center justify-between mb-4">
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Back to Feed"
             onPress={() => router.back()}
-            className="w-10 h-10 rounded-full bg-ink border border-hairline items-center justify-center"
+            className="w-11 h-11 rounded-full bg-ink border border-hairline items-center justify-center"
             activeOpacity={0.7}
           >
             <ChevronLeft size={20} color="#F5F0FF" />
@@ -227,14 +189,16 @@ export default function ActivityDetailScreen() {
 
           {isHost ? (
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Host squad settings"
               onPress={() => setHostModalVisible(true)}
-              className="w-10 h-10 rounded-full bg-signal-violet/20 border border-signal-violet items-center justify-center"
+              className="w-11 h-11 rounded-full bg-signal-violet/20 border border-signal-violet items-center justify-center"
               activeOpacity={0.7}
             >
               <Settings size={18} color="#C77DFF" />
             </TouchableOpacity>
           ) : (
-            <View className="w-10" />
+            <View className="w-11" />
           )}
         </View>
 
@@ -249,13 +213,30 @@ export default function ActivityDetailScreen() {
               {activity.title}
             </Text>
 
-            {/* TTL Remaining Header */}
-            <View className="flex-row items-center mb-4">
-              <Clock size={13} color="#C77DFF" />
-              <Text className="text-pulse-lilac font-mono text-xs font-bold ml-1.5">
-                Active Broadcast • {activity.currentParticipantsCount} /{' '}
-                {activity.maxParticipants} spots filled
-              </Text>
+            {/* Live Status & Capacity Header */}
+            <View className="flex-row items-center mb-4 flex-wrap gap-2">
+              <View
+                style={{
+                  borderColor: isExpired ? '#2C2739' : theme.badgeBorder,
+                  backgroundColor: isExpired ? '#17131F' : theme.bg,
+                }}
+                className="flex-row items-center px-3 py-1 rounded-full border"
+              >
+                <Clock size={12} color={isExpired ? '#5A536B' : theme.primary} />
+                <Text
+                  style={{ color: isExpired ? '#A99BC2' : theme.badgeText }}
+                  className="font-mono text-xs font-bold ml-1.5"
+                >
+                  {isExpired ? 'Squad Expired' : `${formattedTtl} left`}
+                </Text>
+              </View>
+
+              <View className="flex-row items-center px-3 py-1 rounded-full bg-ink border border-hairline">
+                <Users size={12} color="#C77DFF" />
+                <Text className="text-pulse-lilac font-mono text-xs font-bold ml-1.5">
+                  {activity.currentParticipantsCount} / {activity.maxParticipants} spots filled
+                </Text>
+              </View>
             </View>
 
             {/* Error Banner */}
@@ -284,7 +265,7 @@ export default function ActivityDetailScreen() {
                   )}
                   <View className="bg-void border border-hairline px-2 py-0.5 rounded-full">
                     <Text className="text-pulse-lilac font-mono text-xs font-bold">
-                      ★ {activity.hostTrustScore.toFixed(2)}
+                      ★ {activity.hostTrustScore !== null ? activity.hostTrustScore.toFixed(2) : '5.00'}
                     </Text>
                   </View>
                 </View>
@@ -321,25 +302,31 @@ export default function ActivityDetailScreen() {
 
                 <View className="flex-row gap-2">
                   <TouchableOpacity
+                    testID="review-requests"
+                    accessibilityRole="button"
+                    accessibilityLabel="Review Requests"
                     onPress={() => setHostModalVisible(true)}
-                    className="flex-1 py-3 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30 active:scale-95"
+                    className="flex-1 h-12 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30 active:scale-95"
                     activeOpacity={0.85}
                   >
-                    <Users size={14} color="#F5F0FF" style={{ marginRight: 6 }} />
+                    <Users size={15} color="#F5F0FF" style={{ marginRight: 6 }} />
                     <Text className="text-moonlight font-display text-xs font-bold">
                       Review Requests
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
+                    testID="enter-room"
+                    accessibilityRole="button"
+                    accessibilityLabel="Enter Room"
                     onPress={() => router.replace(`/room/${activity.id}`)}
-                    className="flex-1 py-3 bg-ink border border-hairline rounded-full flex-row items-center justify-center active:bg-ink-raised"
+                    className="flex-1 h-12 bg-ink border border-hairline rounded-full flex-row items-center justify-center active:bg-ink-raised"
                     activeOpacity={0.85}
                   >
                     <Text className="text-moonlight font-display text-xs font-bold mr-1">
                       Enter Room
                     </Text>
-                    <ArrowRight size={14} color="#F5F0FF" />
+                    <ArrowRight size={15} color="#F5F0FF" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -358,8 +345,10 @@ export default function ActivityDetailScreen() {
                   The host approved your join request. The ephemeral chat room and exact venue pin are unlocked.
                 </Text>
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Enter Squad Chat and Venue"
                   onPress={() => router.replace(`/room/${activity.id}`)}
-                  className="w-full py-3.5 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
+                  className="w-full h-12 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
                   activeOpacity={0.85}
                 >
                   <Text className="text-moonlight font-display text-sm font-bold mr-2">
@@ -412,7 +401,7 @@ export default function ActivityDetailScreen() {
                   value={message}
                   onChangeText={setMessage}
                   maxLength={150}
-                  className="border border-hairline bg-ink rounded-2xl px-4 py-3.5 text-moonlight text-sm focus:border-signal-violet"
+                  className="border border-hairline bg-ink rounded-2xl px-4 py-3.5 text-moonlight text-base focus:border-signal-violet"
                 />
               </View>
             )}
@@ -427,10 +416,13 @@ export default function ActivityDetailScreen() {
       {/* Primary CTA Button for Joiner without request */}
       {!isHost && !existingRequest && activity && (
         <TouchableOpacity
+          testID="request-to-join"
+          accessibilityRole="button"
+          accessibilityLabel="Request to Join Squad"
           onPress={handleJoin}
-          disabled={isSubmitting || activity.currentParticipantsCount >= activity.maxParticipants}
+          disabled={isSubmitting || isExpired || activity.currentParticipantsCount >= activity.maxParticipants}
           className={`w-full h-14 rounded-full flex-row items-center justify-center border ${
-            activity.currentParticipantsCount >= activity.maxParticipants
+            isExpired || activity.currentParticipantsCount >= activity.maxParticipants
               ? 'bg-ink border-hairline opacity-50'
               : 'bg-signal-violet border-signal-violet-light/30 active:scale-95'
           }`}
@@ -442,7 +434,9 @@ export default function ActivityDetailScreen() {
             <>
               <Send size={16} color="#F5F0FF" style={{ marginRight: 8 }} />
               <Text className="text-moonlight font-display text-base font-bold">
-                {activity.currentParticipantsCount >= activity.maxParticipants
+                {isExpired
+                  ? 'Squad Expired'
+                  : activity.currentParticipantsCount >= activity.maxParticipants
                   ? 'Squad Capacity Full'
                   : `Request to Join Squad (${activity.currentParticipantsCount}/${activity.maxParticipants})`}
               </Text>
@@ -468,6 +462,7 @@ export default function ActivityDetailScreen() {
           }}
         />
       )}
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

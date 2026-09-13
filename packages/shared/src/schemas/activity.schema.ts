@@ -21,6 +21,10 @@ export const CreateActivitySchema = z.object({
   filterGender: z
     .enum(['any', 'male-only', 'female-only'])
     .default('any'),
+}).superRefine((value, ctx) => {
+  if (value.filterAgeMin !== undefined && value.filterAgeMax !== undefined && value.filterAgeMin > value.filterAgeMax) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['filterAgeMax'], message: 'Maximum age must be greater than or equal to minimum age' });
+  }
 });
 
 export const ActivityPublicSchema = z.object({
@@ -56,6 +60,9 @@ export const DiscoveryQuerySchema = z.object({
 });
 
 export type Coordinates = z.infer<typeof CoordinatesSchema>;
-export type CreateActivityInput = z.infer<typeof CreateActivitySchema>;
+// Input keeps defaulted fields optional at call sites; parsing produces the
+// fully-defaulted output shape internally.
+export type CreateActivityInput = z.input<typeof CreateActivitySchema>;
+export type CreateActivityOutput = z.infer<typeof CreateActivitySchema>;
 export type ActivityPublic = z.infer<typeof ActivityPublicSchema>;
 export type DiscoveryQuery = z.infer<typeof DiscoveryQuerySchema>;

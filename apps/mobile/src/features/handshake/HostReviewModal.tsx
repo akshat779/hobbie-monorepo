@@ -25,6 +25,7 @@ import {
   subscribeToHostQueue,
 } from '../../services/handshake';
 import { useAuthStore } from '../auth/useAuthStore';
+import { useReviewRequestMutation } from '../activity/useActivityMutations';
 
 interface HostReviewModalProps {
   visible: boolean;
@@ -45,8 +46,8 @@ export function HostReviewModal({
   onClose,
   onSquadUpdated,
 }: HostReviewModalProps) {
-  const { user, profile } = useAuthStore();
-  const hostId = user?.id || profile?.id || '';
+  const hostId = useAuthStore((s) => s.user?.id || '');
+  const reviewMutation = useReviewRequestMutation();
 
   const [requests, setRequests] = useState<IncomingJoinRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,12 +73,12 @@ export function HostReviewModal({
     loadRequests();
 
     // Subscribe to realtime join request additions / updates
-    const channel = subscribeToHostQueue(activityId, () => {
+    const unsubscribe = subscribeToHostQueue(activityId, () => {
       loadRequests();
     });
 
     return () => {
-      channel.unsubscribe();
+      unsubscribe();
     };
   }, [visible, activityId, loadRequests]);
 
@@ -86,12 +87,12 @@ export function HostReviewModal({
       setProcessingId(requestId);
       setStatusMessage(null);
 
-      const result = await acceptJoinRequestTx(requestId, hostId);
-      if (!result.success) {
-        setStatusMessage({ text: result.error || 'Failed to accept request', isError: true });
-        setProcessingId(null);
-        return;
-      }
+      await reviewMutation.mutateAsync({
+        action: 'accept',
+        requestId,
+        hostId,
+        activityId,
+      });
 
       // Optimistic removal from queue
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
@@ -110,12 +111,12 @@ export function HostReviewModal({
       setProcessingId(requestId);
       setStatusMessage(null);
 
-      const result = await declineJoinRequest(requestId, hostId);
-      if (!result.success) {
-        setStatusMessage({ text: result.error || 'Failed to decline request', isError: true });
-        setProcessingId(null);
-        return;
-      }
+      await reviewMutation.mutateAsync({
+        action: 'decline',
+        requestId,
+        hostId,
+        activityId,
+      });
 
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
       setStatusMessage({ text: `Declined request from ${joinerName}.` });
@@ -154,11 +155,14 @@ export function HostReviewModal({
             </View>
 
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close review modal"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={onClose}
-              className="w-8 h-8 rounded-full bg-ink border border-hairline items-center justify-center"
+              className="w-11 h-11 rounded-full bg-ink border border-hairline items-center justify-center"
               activeOpacity={0.7}
             >
-              <X size={16} color="#A99BC2" />
+              <X size={18} color="#F5F0FF" />
             </TouchableOpacity>
           </View>
 
@@ -173,7 +177,7 @@ export function HostReviewModal({
               </Text>
               {localCount >= maxParticipants && (
                 <View className="ml-2 bg-ember/20 px-2 py-0.5 rounded-full border border-ember/60">
-                  <Text className="text-ember font-bold text-[10px]">FULL</Text>
+                  <Text className="text-ember font-bold text-2xs">FULL</Text>
                 </View>
               )}
             </View>
@@ -246,8 +250,8 @@ export function HostReviewModal({
                           </Text>
                           {req.user.isVerified && (
                             <View className="bg-signal-violet/20 border border-signal-violet/60 px-2 py-0.5 rounded-full flex-row items-center">
-                              <ShieldCheck size={10} color="#D2BBFF" />
-                              <Text className="text-signal-violet-light text-[10px] font-bold ml-1">
+                              <ShieldCheck size={11} color="#D2BBFF" />
+                              <Text className="text-signal-violet-light text-2xs font-bold ml-1">
                                 Verified
                               </Text>
                             </View>
@@ -279,21 +283,26 @@ export function HostReviewModal({
                     {/* Action Buttons */}
                     <View className="flex-row gap-2.5">
                       <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Decline request from ${req.user.name}`}
                         onPress={() => handleDecline(req.id, req.user.name)}
                         disabled={isProcessing}
-                        className="flex-1 py-3 rounded-full bg-void border border-hairline items-center justify-center flex-row active:bg-ink-raised"
+                        className="flex-1 h-12 rounded-full bg-void border border-hairline items-center justify-center flex-row active:bg-ink-raised"
                         activeOpacity={0.7}
                       >
-                        <UserX size={14} color="#A99BC2" style={{ marginRight: 6 }} />
+                        <UserX size={15} color="#A99BC2" style={{ marginRight: 6 }} />
                         <Text className="text-dusk font-body text-xs font-semibold">
                           Decline
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
+                        testID={`accept-join-${req.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Accept ${req.user.name} into squad`}
                         onPress={() => handleAccept(req.id, req.user.name)}
                         disabled={isProcessing || isSquadFull}
-                        className={`flex-1 py-3 rounded-full flex-row items-center justify-center border ${
+                        className={`flex-1 h-12 rounded-full flex-row items-center justify-center border ${
                           isSquadFull
                             ? 'bg-ink border-hairline opacity-50'
                             : 'bg-signal-violet border-signal-violet-light/30 active:scale-95'
@@ -304,7 +313,7 @@ export function HostReviewModal({
                           <ActivityIndicator size="small" color="#F5F0FF" />
                         ) : (
                           <>
-                            <Check size={14} color="#F5F0FF" style={{ marginRight: 6 }} />
+                            <Check size={15} color="#F5F0FF" style={{ marginRight: 6 }} />
                             <Text className="text-moonlight font-display text-xs font-bold">
                               Accept ({localCount}/{maxParticipants})
                             </Text>
@@ -321,8 +330,10 @@ export function HostReviewModal({
 
         {/* Close Button */}
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Done Reviewing"
           onPress={onClose}
-          className="w-full py-3.5 rounded-full bg-ink border border-hairline items-center active:bg-ink-raised"
+          className="w-full h-14 rounded-full bg-ink border border-hairline items-center justify-center active:bg-ink-raised"
           activeOpacity={0.7}
         >
           <Text className="text-moonlight font-body text-sm font-semibold">

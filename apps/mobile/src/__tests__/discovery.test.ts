@@ -10,25 +10,18 @@ import {
   filterActivities,
 } from '../features/discovery/useDiscoveryQuery';
 import { NearbyActivity } from '../features/discovery/types';
+import {
+  useDiscoveryFiltersStore,
+  DEFAULT_DISCOVERY_FILTERS,
+} from '../features/discovery/useDiscoveryFiltersStore';
 import { supabase } from '../services/supabase';
 
-vi.mock('../services/supabase', () => {
-  const mockSelect = vi.fn();
-  const mockIn = vi.fn();
+import { createContractMockSupabase, VALID_UUIDS } from './helpers/contractMocks';
 
-  const queryBuilder = {
-    select: mockSelect.mockReturnThis(),
-    in: mockIn,
-  };
-
-  const mockFrom = vi.fn(() => queryBuilder);
-  const mockRpc = vi.fn();
-
+vi.mock('../services/supabase', async () => {
+  const { createContractMockSupabase } = await import('./helpers/contractMocks');
   return {
-    supabase: {
-      from: mockFrom,
-      rpc: mockRpc,
-    },
+    supabase: createContractMockSupabase(),
   };
 });
 
@@ -291,15 +284,6 @@ describe('Discovery Utilities', () => {
 
     beforeEach(() => {
       vi.clearAllMocks();
-      (supabase.rpc as any).mockResolvedValue({
-        data: mockRpcActivities,
-        error: null,
-      });
-      const qb = (supabase.from as any)('profiles');
-      qb.in.mockResolvedValue({
-        data: mockProfiles,
-        error: null,
-      });
     });
 
     it('should call get_nearby_activities RPC and enrich with host profiles', async () => {
@@ -335,7 +319,7 @@ describe('Discovery Utilities', () => {
     });
 
     it('should return empty array when RPC errors or finds no squads', async () => {
-      (supabase.rpc as any).mockResolvedValue({
+      (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'Network error' },
       });
@@ -347,6 +331,70 @@ describe('Discovery Utilities', () => {
       });
 
       expect(activities).toEqual([]);
+    });
+
+    it('should reject coordinates that violate DiscoveryQuerySchema contract (out of bounds)', async () => {
+      // Out of bounds coordinates (lat 999) rejected by contract mock
+      const activities = await fetchNearbyActivities({
+        userLat: 999,
+        userLng: 77.5946,
+        radiusKm: 4.5,
+      });
+
+      expect(activities).toEqual([]);
+    });
+  });
+
+  describe('useDiscoveryFiltersStore', () => {
+    beforeEach(() => {
+      useDiscoveryFiltersStore.getState().resetFilters();
+    });
+
+    it('should initialize with default discovery filters', () => {
+      const state = useDiscoveryFiltersStore.getState().filters;
+      expect(state).toEqual(DEFAULT_DISCOVERY_FILTERS);
+      expect(state.radiusKm).toBe(4.5);
+      expect(state.gender).toBe('all');
+      expect(state.ageGroup).toBe('all');
+    });
+
+    it('should update radiusKm independently', () => {
+      useDiscoveryFiltersStore.getState().setRadiusKm(12.5);
+      expect(useDiscoveryFiltersStore.getState().filters.radiusKm).toBe(12.5);
+      expect(useDiscoveryFiltersStore.getState().filters.gender).toBe('all');
+    });
+
+    it('should update gender filter', () => {
+      useDiscoveryFiltersStore.getState().setGender('women_only');
+      expect(useDiscoveryFiltersStore.getState().filters.gender).toBe('women_only');
+    });
+
+    it('should update ageGroup filter', () => {
+      useDiscoveryFiltersStore.getState().setAgeGroup('25_34');
+      expect(useDiscoveryFiltersStore.getState().filters.ageGroup).toBe('25_34');
+    });
+
+    it('should batch-update filters via setFilters', () => {
+      useDiscoveryFiltersStore.getState().setFilters({
+        radiusKm: 25,
+        gender: 'coed',
+        ageGroup: '18_24',
+      });
+      expect(useDiscoveryFiltersStore.getState().filters).toEqual({
+        radiusKm: 25,
+        gender: 'coed',
+        ageGroup: '18_24',
+      });
+    });
+
+    it('should reset filters back to defaults via resetFilters', () => {
+      useDiscoveryFiltersStore.getState().setFilters({
+        radiusKm: 30,
+        gender: 'men_only',
+        ageGroup: '35_plus',
+      });
+      useDiscoveryFiltersStore.getState().resetFilters();
+      expect(useDiscoveryFiltersStore.getState().filters).toEqual(DEFAULT_DISCOVERY_FILTERS);
     });
   });
 });

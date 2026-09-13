@@ -7,7 +7,7 @@ import {
   Easing,
 } from 'react-native';
 import { NearbyActivity } from '../../features/discovery/types';
-import { getPinTheme } from '../../features/discovery/utils';
+import { useCountdown } from '../../hooks/useCountdown';
 
 interface PulsePinProps {
   activity: NearbyActivity;
@@ -19,13 +19,12 @@ export const PulsePin = React.memo(function PulsePin({
   activity,
   isSelected = false,
 }: PulsePinProps) {
-  const { ttlStatus } = activity;
-  const theme = getPinTheme(ttlStatus.urgency);
+  const { isExpired, formattedTtl, urgency, theme } = useCountdown(activity.expiresAt);
 
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (theme.pulseSpeedMs > 0) {
+    if (theme.pulseSpeedMs > 0 && !isExpired) {
       const loopAnimation = Animated.loop(
         Animated.timing(pulseAnim, {
           toValue: 1,
@@ -40,7 +39,7 @@ export const PulsePin = React.memo(function PulsePin({
     } else {
       pulseAnim.setValue(0);
     }
-  }, [theme.pulseSpeedMs, pulseAnim]);
+  }, [theme.pulseSpeedMs, isExpired, pulseAnim]);
 
   const pulseScale = pulseAnim.interpolate({
     inputRange: [0, 1],
@@ -102,11 +101,11 @@ export const PulsePin = React.memo(function PulsePin({
             styles.ttlText,
             {
               color: theme.badgeText,
-              fontWeight: ttlStatus.urgency === 'expiring' ? '700' : '600',
+              fontWeight: urgency === 'expiring' ? '700' : '600',
             },
           ]}
         >
-          {ttlStatus.formattedTtl}
+          {isExpired ? 'Expired' : formattedTtl}
         </Text>
       </View>
     </View>

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Shield, ArrowRight, Zap } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, DEV_PERSONAS } from '../../src/features/auth/useAuthStore';
 import { PhoneAuthSchema } from '@hobbie/shared';
 import { HobbieLogo } from '../../src/components/common/HobbieLogo';
@@ -21,7 +22,13 @@ export default function PhoneAuthScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode] = useState('+91');
   const [errorMsg, setErrorMsg] = useState('');
-  const { signInWithPhone, loginWithPersona, isLoading } = useAuthStore();
+  const { signInWithPhone, loginWithPersona, isLoading } = useAuthStore(
+    useShallow((s) => ({
+      signInWithPhone: s.signInWithPhone,
+      loginWithPersona: s.loginWithPersona,
+      isLoading: s.isLoading,
+    }))
+  );
 
   const handleSendOtp = async () => {
     setErrorMsg('');
@@ -51,8 +58,9 @@ export default function PhoneAuthScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
+        accessible={false}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1 justify-between px-6 py-6"
       >
@@ -106,6 +114,8 @@ export default function PhoneAuthScreen() {
 
           {/* Primary CTA */}
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Send Verification Code"
             className={`h-14 mt-5 rounded-full flex-row items-center justify-center ${
               phoneNumber.length >= 10 ? 'bg-signal-violet' : 'bg-ink-raised border border-hairline'
             }`}
@@ -148,8 +158,11 @@ export default function PhoneAuthScreen() {
               {DEV_PERSONAS.slice(0, 3).map((p) => (
                 <TouchableOpacity
                   key={p.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Dev persona ${p.name} as ${p.role}`}
                   onPress={() => handleQuickPersona(p.id)}
-                  className="px-3.5 py-2 rounded-xl bg-ink border border-hairline flex-row items-center"
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  className="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-ink border border-hairline flex-row items-center justify-center"
                   activeOpacity={0.7}
                 >
                   <View

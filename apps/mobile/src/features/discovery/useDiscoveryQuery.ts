@@ -1,5 +1,7 @@
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../services/supabase';
+import { queryKeys } from '../../services/queryKeys';
 import {
   AgeGroupOption,
   DiscoveryQueryParams,
@@ -9,19 +11,21 @@ import {
 } from './types';
 import { getTtlStatus } from './utils';
 
-export async function fetchNearbyActivities(
-  params: DiscoveryQueryParams
+/**
+ * Raw data fetcher: executes the PostGIS RPC and enriches with host profiles.
+ * Cached by TanStack Query using coordinates and radius.
+ */
+export async function fetchRawNearbyActivities(
+  userLat: number,
+  userLng: number,
+  radiusKm: number = 4.5
 ): Promise<NearbyActivity[]> {
-  const {
-    userLat,
-    userLng,
-    radiusKm = 4.5,
-    category,
-    gender = 'all',
-    ageGroup = 'all',
-  } = params;
-
   try {
+    // `getSession()` only reads the locally cached token. Validate the token
+    // with Auth so an expired/stale local store can never issue an anon RPC.
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) return [];
+
     const { data: rawActivities, error } = await supabase.rpc(
       'get_nearby_activities',
       {
@@ -86,16 +90,41 @@ export async function fetchNearbyActivities(
         distanceMeters: act.distance_meters,
         distanceKm: Math.round((act.distance_meters / 1000) * 10) / 10,
         ttlStatus,
+        filterGender: act.filter_gender,
+        filterAgeMin: act.filter_age_min,
+        filterAgeMax: act.filter_age_max,
       };
     });
 
-    return filterActivities(enriched, category, gender, ageGroup);
+    return enriched;
   } catch (err) {
     console.warn('fetchNearbyActivities catch error:', err);
     return [];
   }
 }
 
+/**
+ * Backward-compatible helper for callers/unit tests fetching and filtering directly.
+ */
+export async function fetchNearbyActivities(
+  params: DiscoveryQueryParams
+): Promise<NearbyActivity[]> {
+  const {
+    userLat,
+    userLng,
+    radiusKm = 4.5,
+    category,
+    gender = 'all',
+    ageGroup = 'all',
+  } = params;
+
+  const raw = await fetchRawNearbyActivities(userLat, userLng, radiusKm);
+  return filterActivities(raw, category, gender, ageGroup);
+}
+
+/**
+ * Pure, deterministic in-memory filter function for categories and demographics.
+ */
 export function filterActivities(
   activities: NearbyActivity[],
   category?: string,
@@ -110,7 +139,13 @@ export function filterActivities(
 
     // 2. Gender Target Filter
     if (gender && gender !== 'all') {
-      const actGender = act.filterGender ?? 'all';
+      const rawGender = act.filterGender ?? 'all';
+      const actGender =
+        rawGender === 'male-only'
+          ? 'men_only'
+          : rawGender === 'female-only'
+          ? 'women_only'
+          : rawGender;
       if (actGender !== 'all' && actGender !== gender) {
         return false;
       }
@@ -134,7 +169,14 @@ export function filterActivities(
   });
 }
 
+/**
+ * Type-safe discovery query hook adhering to TanStack Query best practices:
+ * - qk-factory-pattern: Uses `queryKeys.discovery.nearby(lat, lng, radius)`
+ * - perf-select-transform: In-memory demographic/category filtering via `select` option
+ *   prevents unnecessary RPC re-fetches when switching chips or filter sheets.
+ */
 export function useDiscoveryQuery(params: DiscoveryQueryParams) {
+  const queryEnabled = params.enabled !== false;
   const {
     userLat,
     userLng,
@@ -144,28 +186,22 @@ export function useDiscoveryQuery(params: DiscoveryQueryParams) {
     ageGroup = 'all',
   } = params;
 
-  return useQuery<NearbyActivity[]>({
-    queryKey: [
-      'discovery',
-      'nearby_activities',
-      userLat,
-      userLng,
-      radiusKm,
-      category,
-      gender,
-      ageGroup,
-    ],
-    queryFn: () =>
-      fetchNearbyActivities({
-        userLat,
-        userLng,
-        radiusKm,
-        category,
-        gender,
-        ageGroup,
-      }),
+  const selectFiltered = useCallback(
+    (activities: NearbyActivity[]) =>
+      filterActivities(activities, category, gender, ageGroup),
+    [category, gender, ageGroup]
+  );
+
+  return useQuery<NearbyActivity[], Error, NearbyActivity[]>({
+    queryKey: queryKeys.discovery.nearby(userLat, userLng, radiusKm),
+    queryFn: () => fetchRawNearbyActivities(userLat, userLng, radiusKm),
+    select: selectFiltered,
     staleTime: 1000 * 30, // 30 seconds
     refetchInterval: 1000 * 30, // Auto sync live pin feed every 30s
-    enabled: typeof userLat === 'number' && typeof userLng === 'number',
+    retry: false,
+    enabled:
+      queryEnabled &&
+      typeof userLat === 'number' &&
+      typeof userLng === 'number',
   });
 }

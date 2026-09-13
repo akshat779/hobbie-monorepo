@@ -64,4 +64,11 @@ describe('Activity Schemas', () => {
     };
     expect(CreateActivitySchema.safeParse(validActivity).success).toBe(true);
   });
+
+  it('rejects an inverted age range', () => {
+    expect(CreateActivitySchema.safeParse({
+      interestId: 'football', title: 'Evening match', location: { latitude: 12, longitude: 77 },
+      filterAgeMin: 35, filterAgeMax: 24,
+    }).success).toBe(false);
+  });
 });

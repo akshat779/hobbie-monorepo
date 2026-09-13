@@ -816,6 +816,9 @@ export type Database = {
           current_participants_count: number
           description: string
           distance_meters: number
+          filter_age_max: number | null
+          filter_age_min: number | null
+          filter_gender: Database["public"]["Enums"]["gender_filter"]
           expires_at: string
           host_id: string
           id: string

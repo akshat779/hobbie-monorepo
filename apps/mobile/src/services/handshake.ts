@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { Database } from '@hobbie/shared';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { subscribeToPostgresChanges } from './realtimePool';
 
 export type JoinRequestRow = Database['public']['Tables']['join_requests']['Row'];
 export type ActivityRow = Database['public']['Tables']['activities']['Row'];
@@ -24,7 +24,8 @@ export interface IncomingJoinRequest {
 
 /**
  * Creates a pending join request for an activity.
- * Uses atomic SECURITY DEFINER RPC with fallback to direct table insert.
+ * Uses the atomic SECURITY DEFINER RPC. Direct inserts are intentionally not
+ * used because they would bypass the activity-state and capacity invariants.
  */
 export async function requestToJoin(
   activityId: string,
@@ -45,36 +46,9 @@ export async function requestToJoin(
     if (!rpcError && rpcData) {
       return { data: rpcData as unknown as JoinRequestRow };
     }
-
-    // 2. Direct table insert fallback
-    const { data, error } = await supabase
-      .from('join_requests')
-      .insert({
-        activity_id: activityId,
-        user_id: userId,
-        message: message.trim(),
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        const { data: existing } = await supabase
-          .from('join_requests')
-          .select()
-          .eq('activity_id', activityId)
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (existing) {
-          return { data: existing };
-        }
-      }
-      return { error: error.message };
-    }
-
-    return { data };
+    return {
+      error: rpcError?.message || 'Atomic join-request operation is unavailable',
+    };
   } catch (err: any) {
     return { error: err?.message || 'Failed to submit join request' };
   }
@@ -230,25 +204,15 @@ export async function declineJoinRequest(
 export function subscribeToJoinRequestUpdates(
   requestId: string,
   onStatusChange: (status: 'accepted' | 'declined' | 'pending' | 'cancelled') => void
-): RealtimeChannel {
-  return supabase
-    .channel(`join_request_${requestId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'join_requests',
-        filter: `id=eq.${requestId}`,
-      },
-      (payload) => {
-        const newStatus = (payload.new as JoinRequestRow)?.status;
-        if (newStatus) {
-          onStatusChange(newStatus);
-        }
-      }
-    )
-    .subscribe();
+): () => void {
+  return subscribeToPostgresChanges(
+    `join_request_${requestId}`,
+    { event: 'UPDATE', schema: 'public', table: 'join_requests', filter: `id=eq.${requestId}` },
+    (payload) => {
+      if (isJoinRequestPayload(payload)) onStatusChange(payload.new.status);
+    },
+    (message) => console.warn('Join request Realtime error:', message),
+  );
 }
 
 /**
@@ -257,20 +221,17 @@ export function subscribeToJoinRequestUpdates(
 export function subscribeToHostQueue(
   activityId: string,
   onQueueChanged: () => void
-): RealtimeChannel {
-  return supabase
-    .channel(`host_queue_${activityId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'join_requests',
-        filter: `activity_id=eq.${activityId}`,
-      },
-      () => {
-        onQueueChanged();
-      }
-    )
-    .subscribe();
+): () => void {
+  return subscribeToPostgresChanges(
+    `host_queue_${activityId}`,
+    { event: '*', schema: 'public', table: 'join_requests', filter: `activity_id=eq.${activityId}` },
+    onQueueChanged,
+    (message) => console.warn('Host queue Realtime error:', message),
+  );
+}
+
+function isJoinRequestPayload(value: unknown): value is { new: JoinRequestRow } {
+  if (!value || typeof value !== 'object' || !('new' in value)) return false;
+  const row = value.new;
+  return !!row && typeof row === 'object' && 'id' in row && 'status' in row;
 }

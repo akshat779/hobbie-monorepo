@@ -11,6 +11,9 @@ export default defineConfig({
       '@components': path.resolve(__dirname, './src/components'),
     },
   },
+  define: {
+    __DEV__: true,
+  },
   test: {
     globals: true,
     environment: 'node',

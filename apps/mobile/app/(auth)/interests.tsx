@@ -25,6 +25,7 @@ import {
   UserCheck,
   ChevronLeft,
 } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../../src/features/auth/useAuthStore';
 import { INTEREST_CATEGORIES, InterestId } from '@hobbie/shared';
 
@@ -37,7 +38,12 @@ const GENDER_OPTIONS = [
 
 export default function ProfileAndInterestsScreen() {
   const router = useRouter();
-  const { upsertProfile, isLoading } = useAuthStore();
+  const { upsertProfile, isLoading } = useAuthStore(
+    useShallow((s) => ({
+      upsertProfile: s.upsertProfile,
+      isLoading: s.isLoading,
+    }))
+  );
 
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('2000-01-01');
@@ -119,10 +125,15 @@ export default function ProfileAndInterestsScreen() {
 
   return (
     <KeyboardAvoidingView
+      accessible={false}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 px-6 pt-2 pb-6"
     >
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1 pt-4">
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        className="flex-1 pt-4"
+      >
         {/* Header */}
         <View className="mb-6">
           <View className="flex-row items-center space-x-2 mb-2">
@@ -176,8 +187,11 @@ export default function ProfileAndInterestsScreen() {
             {GENDER_OPTIONS.map((g) => (
               <TouchableOpacity
                 key={g.id}
+                accessibilityRole="button"
+                accessibilityLabel={g.label}
+                accessibilityState={{ selected: gender === g.id }}
                 onPress={() => setGender(g.id)}
-                className={`px-4 py-2.5 rounded-full border ${
+                className={`min-h-[44px] px-4 py-2.5 rounded-full border justify-center items-center ${
                   gender === g.id
                     ? 'bg-signal-violet/20 border-signal-violet'
                     : 'bg-ink border-hairline'
@@ -215,8 +229,11 @@ export default function ProfileAndInterestsScreen() {
               return (
                 <TouchableOpacity
                   key={cat.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={cat.label}
+                  accessibilityState={{ selected: isSelected }}
                   onPress={() => toggleInterest(cat.id)}
-                  className={`px-4 py-3 rounded-2xl border flex-row items-center ${
+                  className={`min-h-[44px] px-4 py-2.5 rounded-2xl border flex-row items-center justify-center ${
                     isSelected
                       ? 'bg-signal-violet/20 border-signal-violet'
                       : 'bg-ink border-hairline'
@@ -248,6 +265,8 @@ export default function ProfileAndInterestsScreen() {
 
         {/* CTA Button */}
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Enter Hobbie"
           className={`h-14 mb-8 rounded-full flex-row items-center justify-center ${
             name.trim().length >= 2 && selectedInterests.length > 0
               ? 'bg-signal-violet'

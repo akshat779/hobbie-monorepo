@@ -18,8 +18,8 @@ Deno.serve(async (req: Request) => {
 
   try {
     // 1. Hard security guard: Disabled in production
-    const environment = Deno.env.get('ENVIRONMENT') || 'development';
-    if (environment === 'production') {
+    const environment = Deno.env.get('ENVIRONMENT');
+    if (!environment || environment === 'production') {
       return new Response(
         JSON.stringify({ error: 'Dev authentication endpoint is strictly disabled in production.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -38,6 +38,23 @@ Deno.serve(async (req: Request) => {
     const normalizedPhone = phone.trim().startsWith('+')
       ? phone.trim()
       : `+${phone.trim()}`;
+    if (!/^\+[1-9]\d{1,14}$/.test(normalizedPhone)) {
+      return new Response(
+        JSON.stringify({ error: 'Phone number must be a valid E.164 number.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const allowedPhones = (Deno.env.get('DEV_AUTH_ALLOWED_PHONES') || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (allowedPhones.length > 0 && !allowedPhones.includes(normalizedPhone)) {
+      return new Response(
+        JSON.stringify({ error: 'This development phone number is not allowlisted.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const phoneDigits = normalizedPhone.replace(/[^0-9]/g, '');
     const shadowEmail = `phone_${phoneDigits}@dev.hobbie.internal`;
     const devPassword = `HobbieDevPass_${phoneDigits}!`;
@@ -62,10 +79,18 @@ Deno.serve(async (req: Request) => {
 
     // 3. Ensure user exists in auth.users
     let userId: string | null = null;
-    const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = usersList?.users?.find(
-      (u) => u.email === shadowEmail || u.phone === normalizedPhone
-    );
+    let existingUser;
+    for (let page = 1; page <= 100 && !existingUser; page += 1) {
+      const { data: usersList, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 100,
+      });
+      if (usersError) throw usersError;
+      existingUser = usersList.users.find(
+        (u) => u.email === shadowEmail || u.phone === normalizedPhone
+      );
+      if (usersList.users.length < 100) break;
+    }
 
     if (existingUser) {
       userId = existingUser.id;
@@ -113,30 +138,34 @@ Deno.serve(async (req: Request) => {
       throw verifyError || new Error('Failed to verify token for session');
     }
 
-    // 5. Ensure profile exists in public.profiles
-    const { data: existingProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .maybeSingle();
+    // 5. If a name was explicitly provided (e.g. pre-configured Dev Persona), ensure profile exists.
+    // For brand-new users testing the sign-up flow, leave public.profiles empty so they
+    // are correctly routed to the onboarding screen (app/(auth)/interests.tsx).
+    if (name) {
+      const { data: existingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (!existingProfile) {
-      const { error: profileErr } = await supabaseAdmin.from('profiles').upsert(
-        {
-          id: userId,
-          phone: normalizedPhone,
-          name: name || 'Hobbie Player',
-          birth_date: '1998-01-01',
-          gender: 'prefer-not-to-say',
-          interests: ['football', 'badminton'],
-          is_verified: true,
-          trust_score: 5.0,
-          interaction_count: 5,
-        },
-        { onConflict: 'id' }
-      );
-      if (profileErr) {
-        console.error('Profile upsert error in dev-phone-login:', profileErr.message);
+      if (!existingProfile) {
+        const { error: profileErr } = await supabaseAdmin.from('profiles').upsert(
+          {
+            id: userId,
+            phone: normalizedPhone,
+            name: name,
+            birth_date: '1998-01-01',
+            gender: 'prefer-not-to-say',
+            interests: ['football', 'badminton'],
+            is_verified: true,
+            trust_score: 5.0,
+            interaction_count: 5,
+          },
+          { onConflict: 'id' }
+        );
+        if (profileErr) {
+          console.error('Profile upsert error in dev-phone-login:', profileErr.message);
+        }
       }
     }
 

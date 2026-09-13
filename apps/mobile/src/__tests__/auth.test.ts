@@ -2,41 +2,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore, DEV_PERSONAS } from '../features/auth/useAuthStore';
 import { supabase } from '../services/supabase';
 
-vi.mock('../services/supabase', () => {
-  const mockSelect = vi.fn();
-  const mockEq = vi.fn();
-  const mockMaybeSingle = vi.fn();
-  const mockInsert = vi.fn();
-  const mockSingle = vi.fn();
+import { createContractMockSupabase, VALID_UUIDS } from './helpers/contractMocks';
 
-  const queryBuilder = {
-    select: mockSelect.mockReturnThis(),
-    eq: mockEq.mockReturnThis(),
-    maybeSingle: mockMaybeSingle,
-    insert: mockInsert.mockReturnThis(),
-    single: mockSingle,
-  };
-
-  const mockFrom = vi.fn(() => queryBuilder);
-  const mockInvoke = vi.fn();
-  const mockSetSession = vi.fn();
-  const mockSignOut = vi.fn();
-  const mockSignInWithPassword = vi.fn();
-  const mockSignUp = vi.fn();
-
+vi.mock('../services/supabase', async () => {
+  const { createContractMockSupabase } = await import('./helpers/contractMocks');
   return {
-    supabase: {
-      from: mockFrom,
-      functions: {
-        invoke: mockInvoke,
-      },
-      auth: {
-        setSession: mockSetSession,
-        signOut: mockSignOut,
-        signInWithPassword: mockSignInWithPassword,
-        signUp: mockSignUp,
-      },
-    },
+    supabase: createContractMockSupabase(),
   };
 });
 
@@ -142,5 +113,101 @@ describe('useAuthStore', () => {
     await store.signOut();
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().profile).toBeNull();
+  });
+
+  describe('upsertProfile', () => {
+    it('should normalize un-prefixed phone number to E.164 and upsert successfully', async () => {
+      // Simulate Supabase GoTrue returning user.phone without '+'
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const qb = (supabase.from as any)('profiles');
+      qb.single.mockResolvedValue({
+        data: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          name: 'Akshat',
+          birth_date: '2000-01-01',
+          gender: 'male',
+          interests: ['football', 'badminton'],
+        },
+        error: null,
+      });
+
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football', 'badminton'],
+      });
+
+      expect(res.error).toBeUndefined();
+      expect(qb.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phone: '+919876543210',
+          name: 'Akshat',
+        })
+      );
+      expect(useAuthStore.getState().profile?.name).toBe('Akshat');
+    });
+
+    it('should reject upsertProfile if user has no authenticated session', async () => {
+      useAuthStore.setState({ user: null });
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football'],
+      });
+
+      expect(res.error).toBe('You must be signed in to create a profile');
+    });
+
+    it('should reject upsertProfile if input violates UserProfileSchema', async () => {
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const store = useAuthStore.getState();
+      // Underage birth date (<18 years old)
+      const res = await store.upsertProfile({
+        name: 'Kid',
+        birthDate: '2020-01-01',
+        gender: 'male',
+        interests: ['football'],
+      });
+
+      expect(res.error).toBeDefined();
+    });
+
+    it('should reject profile upsert at database contract level when phone violates check_e164_phone', async () => {
+      // Direct call to contract mock with invalid un-normalized phone
+      const query = (supabase.from('profiles') as any).upsert({
+        id: VALID_UUIDS.alex,
+        phone: '919876543210', // Missing leading '+'
+        name: 'Alex Rivera',
+      });
+      const res = await query.select().single();
+      expect(res.error).toBeDefined();
+      expect(res.error.code).toBe('23514');
+      expect(res.error.message).toContain('check_e164_phone');
+    });
   });
 });

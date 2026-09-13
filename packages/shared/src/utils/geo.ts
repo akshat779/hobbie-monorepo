@@ -33,8 +33,9 @@ export function fuzzCoordinates(
 ): Coordinates {
   // Random angle in radians
   const angle = Math.random() * 2 * Math.PI;
-  // Random distance up to fuzzRadiusMeters
-  const distance = Math.random() * fuzzRadiusMeters;
+  // Enforce a non-zero displacement floor (30m) so exact location is strictly never leaked
+  const minDistance = Math.min(30, fuzzRadiusMeters * 0.3);
+  const distance = minDistance + Math.random() * (fuzzRadiusMeters - minDistance);
 
   // 1 degree latitude ~= 111,320 meters
   const deltaLat = (distance * Math.cos(angle)) / 111320;

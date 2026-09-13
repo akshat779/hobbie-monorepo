@@ -12,18 +12,31 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, RotateCcw, ShieldCheck, Zap } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../../src/features/auth/useAuthStore';
 
 export default function OtpVerificationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ phone?: string }>();
-  const phone = params.phone || '+91 98765 43210';
+  const phone = params.phone;
 
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [timerSeconds, setTimerSeconds] = useState(60);
   const [errorMsg, setErrorMsg] = useState('');
   const inputRefs = useRef<Array<TextInput | null>>([]);
-  const { verifyOtp, signInWithPhone, isLoading } = useAuthStore();
+  const { verifyOtp, signInWithPhone, isLoading } = useAuthStore(
+    useShallow((s) => ({
+      verifyOtp: s.verifyOtp,
+      signInWithPhone: s.signInWithPhone,
+      isLoading: s.isLoading,
+    }))
+  );
+
+  useEffect(() => {
+    if (!phone) {
+      router.replace('/(auth)/phone');
+    }
+  }, [phone, router]);
 
   useEffect(() => {
     if (timerSeconds <= 0) return;
@@ -77,6 +90,7 @@ export default function OtpVerificationScreen() {
   };
 
   const submitOtp = async (code: string) => {
+    if (!phone) return;
     setErrorMsg('');
     const res = await verifyOtp(phone, code);
     if (res.error) {
@@ -92,7 +106,7 @@ export default function OtpVerificationScreen() {
   };
 
   const handleResendOtp = async () => {
-    if (timerSeconds > 0) return;
+    if (timerSeconds > 0 || !phone) return;
     setTimerSeconds(60);
     setErrorMsg('');
     await signInWithPhone(phone);
@@ -104,16 +118,19 @@ export default function OtpVerificationScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
+        accessible={false}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1 justify-between px-6 py-6"
       >
         {/* Top Bar */}
         <View className="pt-2">
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Back"
             onPress={() => router.back()}
-            className="w-10 h-10 rounded-full bg-ink border border-hairline items-center justify-center mb-6"
+            className="w-11 h-11 rounded-full bg-ink border border-hairline items-center justify-center mb-6"
             activeOpacity={0.7}
           >
             <ChevronLeft size={20} color="#F5F0FF" />
@@ -171,10 +188,13 @@ export default function OtpVerificationScreen() {
               </Text>
             ) : (
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Resend SMS code"
                 onPress={handleResendOtp}
-                className="flex-row items-center py-1.5 px-3 rounded-full bg-ink border border-hairline"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                className="flex-row items-center min-h-[44px] py-2.5 px-4 rounded-full bg-ink border border-hairline justify-center"
               >
-                <RotateCcw size={12} color="#C77DFF" />
+                <RotateCcw size={14} color="#C77DFF" />
                 <Text className="text-xs font-semibold text-pulse-lilac ml-1.5">Resend SMS</Text>
               </TouchableOpacity>
             )}
@@ -182,6 +202,8 @@ export default function OtpVerificationScreen() {
 
           {/* Submit Button */}
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Verify and Continue"
             className={`h-14 mt-8 rounded-full flex-row items-center justify-center ${
               otpDigits.every((d) => d !== '')
                 ? 'bg-signal-violet'
@@ -209,6 +231,8 @@ export default function OtpVerificationScreen() {
         {__DEV__ && (
           <View className="pt-4 border-t border-hairline/60">
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Dev fast bypass auto-fill OTP"
               onPress={handleDevBypass}
               className="h-11 rounded-xl bg-ink border border-hairline flex-row items-center justify-center"
               activeOpacity={0.7}
