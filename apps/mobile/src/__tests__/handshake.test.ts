@@ -5,6 +5,7 @@ import {
   fetchIncomingJoinRequests,
   acceptJoinRequestTx,
   declineJoinRequest,
+  leaveSquad,
   subscribeToJoinRequestUpdates,
   subscribeToHostQueue,
   getPendingRequestsCount,
@@ -286,6 +287,48 @@ describe('Handshake Service', () => {
 
       const count = await getPendingRequestsCount(VALID_UUIDS.activity1);
       expect(count).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('leaveSquad', () => {
+    it('should successfully execute leave_activity RPC with valid UUIDs', async () => {
+      const result = await leaveSquad(VALID_UUIDS.activity1, VALID_UUIDS.sam);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data.activity_id).toBe(VALID_UUIDS.activity1);
+      expect(result.data.user_id).toBe(VALID_UUIDS.sam);
+      expect(result.data.new_host_id).toBe(VALID_UUIDS.alex);
+      expect(supabase.rpc).toHaveBeenCalledWith('leave_activity', {
+        p_activity_id: VALID_UUIDS.activity1,
+        p_user_id: VALID_UUIDS.sam,
+      });
+    });
+
+    it('should reject when activityId is not a valid UUID', async () => {
+      const result = await leaveSquad('not-a-valid-uuid', VALID_UUIDS.sam);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('invalid input syntax for type uuid');
+    });
+
+    it('should reject when userId is not a valid UUID', async () => {
+      const result = await leaveSquad(VALID_UUIDS.activity1, 'invalid-user-id');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('invalid input syntax for type uuid');
+    });
+
+    it('should handle RPC errors gracefully when caller is not a member', async () => {
+      (supabase.rpc as any).mockResolvedValueOnce({
+        data: null,
+        error: { message: 'User is not an active member of activity' },
+      });
+
+      const result = await leaveSquad(VALID_UUIDS.activity1, VALID_UUIDS.sam);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('User is not an active member of activity');
     });
   });
 });

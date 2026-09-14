@@ -199,6 +199,30 @@ export async function declineJoinRequest(
 }
 
 /**
+ * Leaves an activity/squad.
+ * Uses atomic SECURITY DEFINER RPC with row-level locking.
+ */
+export async function leaveSquad(
+  activityId: string,
+  userId: string
+): Promise<{ success: boolean; error?: string; data?: any }> {
+  try {
+    const { data, error } = await supabase.rpc('leave_activity', {
+      p_activity_id: activityId,
+      p_user_id: userId,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to leave squad' };
+  }
+}
+
+/**
  * Realtime subscription for a Joiner waiting on their request status.
  */
 export function subscribeToJoinRequestUpdates(

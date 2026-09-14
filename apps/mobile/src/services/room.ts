@@ -42,15 +42,6 @@ async function assertMembership(activityId: string, userId: string): Promise<voi
   if (error || !data) {
     throw new Error('You must be an accepted squad member to access this room');
   }
-
-  const { data: activity, error: activityError } = await supabase
-    .from('activities')
-    .select('expires_at')
-    .eq('id', activityId)
-    .maybeSingle();
-  if (activityError || !activity || new Date(activity.expires_at).getTime() <= Date.now()) {
-    throw new Error('This squad has expired');
-  }
 }
 
 export async function fetchRoomMessages(activityId: string): Promise<RoomMessage[]> {

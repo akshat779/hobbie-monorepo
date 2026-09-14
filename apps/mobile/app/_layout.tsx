@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, AppStateStatus, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { useAppFonts } from '../src/hooks/useAppFonts';
+import { useAuthStore } from '../src/features/auth/useAuthStore';
 import '../global.css';
 
 // Wire TanStack Query focus management to React Native native AppState
@@ -31,6 +33,10 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const { fontsLoaded } = useAppFonts();
+
+  useEffect(() => {
+    void useAuthStore.getState().initialize();
+  }, []);
 
   if (!fontsLoaded) {
     return <View className="flex-1 bg-void" />;

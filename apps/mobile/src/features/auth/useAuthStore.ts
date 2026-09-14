@@ -212,29 +212,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           profile,
           isLoading: false,
         });
+      } else if (isDevAuthEnabled) {
+        // Cold start in development / demo mode:
+        // Automatically default to the primary dev persona (Alex Rivera)
+        // so cold starts have full profile context immediately (0ms).
+        await get().loginWithPersona(DEV_PERSONAS[0]!.id);
       } else {
         set({ session: null, user: null, profile: null, isLoading: false });
       }
 
-      // Listen to Auth state changes
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select(PROFILE_COLUMNS)
-            .eq('id', session.user.id)
-            .maybeSingle();
+      // Listen to Auth state changes if supported
+      if (typeof supabase?.auth?.onAuthStateChange === 'function') {
+        supabase.auth.onAuthStateChange(async (_event, session) => {
+          if (session?.user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select(PROFILE_COLUMNS)
+              .eq('id', session.user.id)
+              .maybeSingle();
 
-          set({
-            session,
-            user: session.user,
-            profile,
-            isLoading: false,
-          });
-        } else if (!get().activePersonaId) {
-          set({ session: null, user: null, profile: null, isLoading: false });
-        }
-      });
+            set({
+              session,
+              user: session.user,
+              profile,
+              isLoading: false,
+            });
+          } else if (!get().activePersonaId) {
+            set({ session: null, user: null, profile: null, isLoading: false });
+          }
+        });
+      }
     } catch (err) {
       console.warn('Auth initialization error:', err);
       set({ isLoading: false });
@@ -421,24 +428,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!isDevAuthEnabled) return; // Hard security lock: Persona switcher disabled in production
 
     const persona = DEV_PERSONAS.find((p) => p.id === personaId) || DEV_PERSONAS[0]!;
-    set({ isLoading: true });
 
+    // 1. Optimistic Local Hydration (0ms):
+    // Populate profile and active persona immediately from DEV_PERSONAS so the UI never stalls.
+    const optimisticProfile: ProfileState = {
+      id: persona.id,
+      name: persona.name,
+      phone: persona.phone,
+      birth_date: persona.birthDate,
+      gender: persona.gender,
+      interests: persona.interests,
+      is_verified: persona.isVerified,
+      trust_score: persona.trustScore,
+      interaction_count: 5,
+      avatar_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    set({
+      activePersonaId: persona.id,
+      profile: optimisticProfile,
+      isLoading: false,
+    });
+
+    // 2. Establish authenticated Supabase session in the background
     const { session, error } = await authenticateDevSession(persona.phone, persona.name);
     if (error || !session) {
-      console.warn('loginWithPersona error:', error);
-      set({ isLoading: false });
+      console.warn('loginWithPersona dev session error:', error);
       return;
     }
 
-    const { data: verifiedUser, error: verificationError } = await supabase.auth.getUser();
-    if (verificationError || verifiedUser.user?.id !== session.user.id) {
-      console.warn('loginWithPersona session verification failed:', verificationError?.message);
-      await supabase.auth.signOut();
-      set({ isLoading: false });
-      return;
-    }
-
-    // Now fetch or ensure profile exists in Supabase
+    // 3. Ensure profile exists in Supabase database
     let { data: profile } = await supabase
       .from('profiles')
       .select(PROFILE_COLUMNS)
@@ -467,7 +488,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       session,
       user: session.user,
-      profile,
+      profile: profile || optimisticProfile,
       activePersonaId: persona.id,
       isLoading: false,
     });

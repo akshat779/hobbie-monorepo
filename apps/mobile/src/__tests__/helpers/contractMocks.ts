@@ -204,6 +204,42 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
       };
     }
 
+    if (fn === 'leave_activity') {
+      const validActivityId = UuidSchema.safeParse(args?.p_activity_id);
+      if (!validActivityId.success) {
+        return {
+          data: null,
+          error: {
+            code: '22P02',
+            message: `invalid input syntax for type uuid: "${args?.p_activity_id}"`,
+          },
+        };
+      }
+
+      const validUserId = UuidSchema.safeParse(args?.p_user_id);
+      if (!validUserId.success) {
+        return {
+          data: null,
+          error: {
+            code: '22P02',
+            message: `invalid input syntax for type uuid: "${args?.p_user_id}"`,
+          },
+        };
+      }
+
+      return {
+        data: {
+          success: true,
+          activity_id: args.p_activity_id,
+          user_id: args.p_user_id,
+          new_host_id: VALID_UUIDS.alex,
+          current_participants_count: 5,
+          status: 'open',
+        },
+        error: null,
+      };
+    }
+
     return {
       data: null,
       error: { code: '42883', message: `function ${fn} does not exist` },
@@ -459,6 +495,13 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
       signOut: vi.fn(),
       signInWithPassword: vi.fn(),
       signUp: vi.fn(),
+      onAuthStateChange: vi.fn(() => ({
+        data: {
+          subscription: {
+            unsubscribe: vi.fn(),
+          },
+        },
+      })),
     },
     channel: vi.fn(() => ({
       on: vi.fn().mockReturnThis(),

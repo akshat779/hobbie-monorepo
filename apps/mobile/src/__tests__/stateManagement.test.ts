@@ -210,5 +210,25 @@ describe('State Management & TanStack Query Infrastructure', () => {
       expect(typeof locationState.cityName).toBe('string');
       expect(typeof locationState.refreshLocation).toBe('function');
     });
+
+    it('persists discovery filter preferences to AsyncStorage', async () => {
+      const store = useDiscoveryFiltersStore.getState();
+      store.setRadiusKm(8.0);
+      store.setGender('men_only');
+
+      expect(useDiscoveryFiltersStore.getState().filters.radiusKm).toBe(8.0);
+      expect(useDiscoveryFiltersStore.getState().filters.gender).toBe('men_only');
+
+      // Verify that persist options are configured correctly
+      const persistOptions = (useDiscoveryFiltersStore as any).persist;
+      expect(persistOptions).toBeDefined();
+      expect(persistOptions.getOptions().name).toBe('hobbie-discovery-filters');
+    });
+
+    it('persists last-known location coordinates to AsyncStorage', async () => {
+      const persistOptions = (useLocationStore as any).persist;
+      expect(persistOptions).toBeDefined();
+      expect(persistOptions.getOptions().name).toBe('hobbie-last-location');
+    });
   });
 });

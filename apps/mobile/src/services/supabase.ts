@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@hobbie/shared';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Safe polyfill for Node.js test environment without native WebSocket
 if (typeof globalThis.WebSocket === 'undefined') {
@@ -18,6 +19,7 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseAnonKey === 'placeholder-anon-ke
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
+    storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

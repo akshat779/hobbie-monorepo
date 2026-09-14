@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { supabase } from '../../services/supabase';
 
@@ -25,14 +27,16 @@ export const DEFAULT_CITY_NAME = 'Koramangala, BLR';
 
 /**
  * Shared Zustand 5 store for device GPS coordinates & reverse geocoded city name.
- * Prevents multiple screens from independently polling the device GPS hardware.
+ * Persists last-known coordinates to AsyncStorage so cold starts center on user's area instantly.
  */
-export const useLocationStore = create<LocationState>((set, get) => ({
-  coords: DEFAULT_USER_LOCATION,
-  cityName: DEFAULT_CITY_NAME,
-  isLiveGps: false,
-  isLoading: false,
-  error: null,
+export const useLocationStore = create<LocationState>()(
+  persist(
+    (set, get) => ({
+      coords: DEFAULT_USER_LOCATION,
+      cityName: DEFAULT_CITY_NAME,
+      isLiveGps: false,
+      isLoading: false,
+      error: null,
 
   refreshLocation: async (userId?: string) => {
     if (get().isLoading) return;
@@ -105,4 +109,14 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       });
     }
   },
-}));
+}),
+    {
+      name: 'hobbie-last-location',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        coords: state.coords,
+        cityName: state.cityName,
+      }),
+    }
+  )
+);

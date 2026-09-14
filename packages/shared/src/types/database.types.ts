@@ -809,6 +809,10 @@ export type Database = {
         Args: { p_activity_id: string; p_message?: string; p_user_id: string }
         Returns: Json
       }
+      leave_activity: {
+        Args: { p_activity_id: string; p_user_id: string }
+        Returns: Json
+      }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_nearby_activities: {
         Args: { radius_km: number; user_lat: number; user_lng: number }

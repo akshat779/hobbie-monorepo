@@ -85,14 +85,35 @@ describe('useAuthStore', () => {
     expect(state.isDevMode).toBe(true);
   });
 
-  it('should switch personas instantly in dev mode', async () => {
+  it('should switch personas instantly in dev mode with optimistic hydration', async () => {
     const store = useAuthStore.getState();
-    await store.loginWithPersona(DEV_PERSONAS[0]!.id);
+    const loginPromise = store.loginWithPersona(DEV_PERSONAS[0]!.id);
+
+    // Optimistic state is updated synchronously in local memory before promise resolves
+    const optimisticState = useAuthStore.getState();
+    expect(optimisticState.profile?.name).toBe('Alex Rivera');
+    expect(optimisticState.profile?.trust_score).toBe(4.95);
+    expect(optimisticState.isLoading).toBe(false);
+
+    await loginPromise;
+    const finalState = useAuthStore.getState();
+    expect(finalState.user?.id).toBe(DEV_PERSONAS[0]!.id);
+    expect(finalState.profile?.name).toBe('Alex Rivera');
+  });
+
+  it('should auto-hydrate default persona on cold-start initialize in dev mode', async () => {
+    (supabase.auth.getSession as any).mockResolvedValueOnce({
+      data: { session: null },
+      error: null,
+    });
+
+    const store = useAuthStore.getState();
+    await store.initialize();
 
     const state = useAuthStore.getState();
-    expect(state.user?.id).toBe(DEV_PERSONAS[0]!.id);
+    expect(state.profile).not.toBeNull();
     expect(state.profile?.name).toBe('Alex Rivera');
-    expect(state.profile?.trust_score).toBe(4.95);
+    expect(state.activePersonaId).toBe(DEV_PERSONAS[0]!.id);
   });
 
   it('should authenticate with 123456 dev bypass OTP', async () => {

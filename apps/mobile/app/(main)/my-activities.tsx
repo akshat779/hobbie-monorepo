@@ -37,9 +37,7 @@ function MySquadCard({
   return (
     <View
       key={squad.id}
-      className={`bg-ink border border-hairline p-5 rounded-3xl mb-4 ${
-        isExpired ? 'opacity-70' : ''
-      }`}
+      className="bg-ink border border-hairline p-5 rounded-3xl mb-4"
     >
       {/* Header */}
       <View className="flex-row justify-between items-start mb-2">
@@ -70,14 +68,14 @@ function MySquadCard({
         </View>
       </View>
 
-      {/* Live Self-Destruct Countdown Banner */}
+      {/* Live Status / Countdown Banner */}
       <View className="flex-row items-center mb-4">
-        <Clock size={12} color={isExpired ? '#5A536B' : theme.primary} />
+        <Clock size={12} color={isExpired ? '#C77DFF' : theme.primary} />
         <Text
-          style={{ color: isExpired ? '#A99BC2' : theme.badgeText }}
+          style={{ color: isExpired ? '#C77DFF' : theme.badgeText }}
           className="font-mono text-xs font-bold ml-1.5"
         >
-          {isExpired ? 'Squad Expired' : `Self-destructs in ${formattedTtl}`}
+          {isExpired ? 'Squad Formed • Chat Active' : `Joining closes in ${formattedTtl}`}
         </Text>
       </View>
 
@@ -109,15 +107,11 @@ function MySquadCard({
           accessibilityRole="button"
           accessibilityLabel={`Enter chat room for ${squad.title}`}
           onPress={() => onEnterRoom(squad.id)}
-          className={`flex-1 h-12 rounded-full flex-row items-center justify-center border ${
-            isExpired
-              ? 'bg-ink border-hairline opacity-60'
-              : 'bg-signal-violet border-signal-violet-light/30 active:scale-95'
-          }`}
+          className="flex-1 h-12 rounded-full flex-row items-center justify-center border bg-signal-violet border-signal-violet-light/30 active:scale-95"
           activeOpacity={0.8}
         >
           <Text className="text-moonlight font-display text-xs font-bold mr-1.5">
-            {isExpired ? 'View Closed Room' : 'Enter Chat Room'}
+            Enter Chat Room
           </Text>
           <ArrowRight size={14} color="#F5F0FF" />
         </TouchableOpacity>

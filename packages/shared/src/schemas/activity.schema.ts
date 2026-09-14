@@ -59,6 +59,10 @@ export const DiscoveryQuerySchema = z.object({
     .optional(),
 });
 
+export const LeaveActivitySchema = z.object({
+  activityId: z.string().uuid(),
+});
+
 export type Coordinates = z.infer<typeof CoordinatesSchema>;
 // Input keeps defaulted fields optional at call sites; parsing produces the
 // fully-defaulted output shape internally.
@@ -66,3 +70,4 @@ export type CreateActivityInput = z.input<typeof CreateActivitySchema>;
 export type CreateActivityOutput = z.infer<typeof CreateActivitySchema>;
 export type ActivityPublic = z.infer<typeof ActivityPublicSchema>;
 export type DiscoveryQuery = z.infer<typeof DiscoveryQuerySchema>;
+export type LeaveActivityInput = z.infer<typeof LeaveActivitySchema>;

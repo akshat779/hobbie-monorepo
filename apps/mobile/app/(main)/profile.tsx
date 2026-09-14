@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShieldCheck, LogOut, Sparkles, Zap } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
@@ -10,17 +11,27 @@ import { HobbieLogo } from '../../src/components/common/HobbieLogo';
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { profile, activePersonaId, loginWithPersona, signOut } = useAuthStore(
+  const queryClient = useQueryClient();
+  const { profile, activePersonaId, isDevMode, loginWithPersona, signOut } = useAuthStore(
     useShallow((s) => ({
       profile: s.profile,
       activePersonaId: s.activePersonaId,
+      isDevMode: s.isDevMode,
       loginWithPersona: s.loginWithPersona,
       signOut: s.signOut,
     }))
   );
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
 
+  // If cold-started without active profile in dev mode, immediately hydrate default persona
+  useEffect(() => {
+    if (!profile && isDevMode) {
+      void loginWithPersona(DEV_PERSONAS[0]!.id);
+    }
+  }, [profile, isDevMode, loginWithPersona]);
+
   const handleSignOut = async () => {
+    queryClient.clear();
     await signOut();
     router.replace('/');
   };
@@ -32,7 +43,20 @@ export default function ProfileScreen() {
         className="flex-1 bg-void px-5 justify-center items-center"
       >
         <ActivityIndicator size="large" color="#C77DFF" />
-        <Text className="text-dusk font-display text-sm mt-3">Loading profile...</Text>
+        <Text className="text-dusk font-display text-sm mt-3">Connecting to profile...</Text>
+        {isDevMode && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Load demo persona"
+            onPress={() => loginWithPersona(DEV_PERSONAS[0]!.id)}
+            className="mt-5 px-4 py-2.5 bg-ink border border-signal-violet/60 rounded-full"
+            activeOpacity={0.8}
+          >
+            <Text className="text-pulse-lilac text-xs font-mono font-bold">
+              Load Demo Persona (Alex Rivera)
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }

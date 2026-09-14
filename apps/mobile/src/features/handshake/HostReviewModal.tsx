@@ -83,48 +83,51 @@ export function HostReviewModal({
   }, [visible, activityId, loadRequests]);
 
   const handleAccept = async (requestId: string, joinerName: string) => {
-    try {
-      setProcessingId(requestId);
-      setStatusMessage(null);
+    // Snapshot current local state for immediate rollback if needed
+    const previousRequests = [...requests];
+    const previousCount = localCount;
 
+    // 1. Instant optimistic visual feedback (0ms latency)
+    setRequests((prev) => prev.filter((r) => r.id !== requestId));
+    setLocalCount((prev) => Math.min(prev + 1, maxParticipants));
+    setStatusMessage({ text: `Accepted ${joinerName} into squad! Room unlocked.` });
+    onSquadUpdated?.();
+
+    // 2. Fire mutation in background with rollback
+    try {
       await reviewMutation.mutateAsync({
         action: 'accept',
         requestId,
         hostId,
         activityId,
       });
-
-      // Optimistic removal from queue
-      setRequests((prev) => prev.filter((r) => r.id !== requestId));
-      setLocalCount((prev) => Math.min(prev + 1, maxParticipants));
-      setStatusMessage({ text: `Accepted ${joinerName} into squad! Room unlocked.` });
-      onSquadUpdated?.();
     } catch (err: any) {
+      // Rollback local state on failure
+      setRequests(previousRequests);
+      setLocalCount(previousCount);
       setStatusMessage({ text: err?.message || 'Error processing request', isError: true });
-    } finally {
-      setProcessingId(null);
     }
   };
 
   const handleDecline = async (requestId: string, joinerName: string) => {
-    try {
-      setProcessingId(requestId);
-      setStatusMessage(null);
+    const previousRequests = [...requests];
 
+    // 1. Instant optimistic visual feedback (0ms latency)
+    setRequests((prev) => prev.filter((r) => r.id !== requestId));
+    setStatusMessage({ text: `Declined request from ${joinerName}.` });
+    onSquadUpdated?.();
+
+    // 2. Fire mutation in background with rollback
+    try {
       await reviewMutation.mutateAsync({
         action: 'decline',
         requestId,
         hostId,
         activityId,
       });
-
-      setRequests((prev) => prev.filter((r) => r.id !== requestId));
-      setStatusMessage({ text: `Declined request from ${joinerName}.` });
-      onSquadUpdated?.();
     } catch (err: any) {
+      setRequests(previousRequests);
       setStatusMessage({ text: err?.message || 'Error declining request', isError: true });
-    } finally {
-      setProcessingId(null);
     }
   };
 
