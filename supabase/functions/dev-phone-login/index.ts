@@ -1,6 +1,14 @@
 // Supabase Edge Function: dev-phone-login
 // Enables zero-SMS, cost-free phone authentication during development
 // by creating real Supabase Auth identities and issuing authentic signed sessions.
+//
+// SECURITY MODEL
+//   1. Hard production kill-switch: ENVIRONMENT=production always returns 403.
+//   2. Strict phone allowlist: only the mock developer personas (and any phones
+//      explicitly added server-side via DEV_AUTH_ALLOWED_PHONES) can obtain a
+//      session. Arbitrary E.164 numbers are rejected with 403.
+//
+// This function is intentionally retained for local simulator / Maestro testing.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
@@ -10,6 +18,53 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
+const PRODUCTION_ENVIRONMENT = 'production';
+
+/**
+ * Strict baseline allowlist. Must stay in sync with DEV_PERSONAS in
+ * apps/mobile/src/features/auth/useAuthStore.ts.
+ */
+const DEV_PERSONA_PHONES: readonly string[] = [
+  '+919876543210', // Alex Rivera  (host)
+  '+919876543211', // Sam Chen     (joiner)
+  '+919876543212', // Priya Sharma (joiner)
+  '+919876543213', // Rohan Patel  (unverified)
+];
+
+/**
+ * Reads an environment variable in both Deno and Node-compatible runtimes.
+ */
+function readEnv(key: string): string | undefined {
+  try {
+    if (typeof Deno !== 'undefined' && Deno.env && typeof Deno.env.get === 'function') {
+      const value = Deno.env.get(key);
+      if (value !== undefined) return value;
+    }
+  } catch {
+    // Ignore Deno permission errors and fall through to process.env.
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+}
+
+/** Server-side configurable additions, never caller-controlled. */
+function readAdditionalAllowedPhones(): string[] {
+  return (readEnv('DEV_AUTH_ALLOWED_PHONES') || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function jsonResponse(payload: unknown, status: number): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -17,56 +72,51 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // 1. Hard security guard: Disabled in production
-    const environment = Deno.env.get('ENVIRONMENT');
-    if (!environment || environment === 'production') {
-      return new Response(
-        JSON.stringify({ error: 'Dev authentication endpoint is strictly disabled in production.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    // 1. Hard security guard: production is always terminated before any work.
+    const environment = (readEnv('ENVIRONMENT') || '').trim().toLowerCase();
+    if (environment === PRODUCTION_ENVIRONMENT) {
+      return jsonResponse(
+        { error: 'Dev authentication endpoint is strictly disabled in production.' },
+        403
       );
     }
 
     const { phone, name } = await req.json();
 
     if (!phone || typeof phone !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Valid phone number is required.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Valid phone number is required.' }, 400);
     }
 
     const normalizedPhone = phone.trim().startsWith('+')
       ? phone.trim()
       : `+${phone.trim()}`;
-    if (!/^\+[1-9]\d{1,14}$/.test(normalizedPhone)) {
-      return new Response(
-        JSON.stringify({ error: 'Phone number must be a valid E.164 number.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    if (!E164_PATTERN.test(normalizedPhone)) {
+      return jsonResponse({ error: 'Phone number must be a valid E.164 number.' }, 400);
+    }
+
+    // 2. Strict allowlist: developer personas plus server-side additions only.
+    const allowedPhones = Array.from(
+      new Set([...DEV_PERSONA_PHONES, ...readAdditionalAllowedPhones()])
+    );
+    if (!allowedPhones.includes(normalizedPhone)) {
+      return jsonResponse(
+        { error: 'This development phone number is not allowlisted.' },
+        403
       );
     }
 
-    const allowedPhones = (Deno.env.get('DEV_AUTH_ALLOWED_PHONES') || '')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
-    if (allowedPhones.length > 0 && !allowedPhones.includes(normalizedPhone)) {
-      return new Response(
-        JSON.stringify({ error: 'This development phone number is not allowlisted.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
     const phoneDigits = normalizedPhone.replace(/[^0-9]/g, '');
     const shadowEmail = `phone_${phoneDigits}@dev.hobbie.internal`;
     const devPassword = `HobbieDevPass_${phoneDigits}!`;
 
-    // 2. Initialize Supabase Admin Client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    // 3. Initialize Supabase Admin Client
+    const supabaseUrl = readEnv('SUPABASE_URL');
+    const serviceRoleKey = readEnv('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(
-        JSON.stringify({ error: 'Supabase service role credentials not configured in Edge Function.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return jsonResponse(
+        { error: 'Supabase service role credentials not configured in Edge Function.' },
+        500
       );
     }
 
@@ -77,7 +127,7 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    // 3. Ensure user exists in auth.users
+    // 4. Ensure user exists in auth.users
     let userId: string | null = null;
     let existingUser;
     for (let page = 1; page <= 100 && !existingUser; page += 1) {
@@ -119,7 +169,7 @@ Deno.serve(async (req: Request) => {
       userId = newUser.user.id;
     }
 
-    // 4. Generate an authentic Supabase session using generateLink & verifyOtp
+    // 5. Generate an authentic Supabase session using generateLink & verifyOtp
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: shadowEmail,
@@ -138,7 +188,7 @@ Deno.serve(async (req: Request) => {
       throw verifyError || new Error('Failed to verify token for session');
     }
 
-    // 5. If a name was explicitly provided (e.g. pre-configured Dev Persona), ensure profile exists.
+    // 6. If a name was explicitly provided (e.g. pre-configured Dev Persona), ensure profile exists.
     // For brand-new users testing the sign-up flow, leave public.profiles empty so they
     // are correctly routed to the onboarding screen (app/(auth)/interests.tsx).
     if (name) {
@@ -169,24 +219,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 6. Return genuine Supabase session containing real JWT
-    return new Response(
-      JSON.stringify({
+    // 7. Return genuine Supabase session containing real JWT
+    return jsonResponse(
+      {
         session: sessionData.session,
         user: sessionData.user,
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      },
+      200
     );
-  } catch (err: any) {
-    return new Response(
-      JSON.stringify({ error: err?.message || 'Dev phone auth failed' }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Dev phone auth failed';
+    return jsonResponse({ error: message }, 500);
   }
 });

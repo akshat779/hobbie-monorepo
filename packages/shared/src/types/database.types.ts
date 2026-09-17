@@ -847,12 +847,18 @@ export type Database = {
           avatar_url: string | null
           is_host: boolean
           trust_score: number
+          gender: Database["public"]["Enums"]["user_gender"]
+          is_verified: boolean
+          interaction_count: number
         }[]
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_nearby_activities: {
         Args: { radius_km: number; user_lat: number; user_lng: number }
         Returns: {
+          created_at: string
+          image_urls: string[] | null
+          status: Database["public"]["Enums"]["activity_status"]
           current_participants_count: number
           description: string
           distance_meters: number
@@ -869,6 +875,13 @@ export type Database = {
           tier: string
           title: string
           venue_name: string
+        }[]
+      }
+      get_pending_request_counts: {
+        Args: { p_activity_ids: string[] }
+        Returns: {
+          activity_id: string
+          pending_count: number
         }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
@@ -1516,7 +1529,7 @@ export type Database = {
       }
     }
     Enums: {
-      activity_status: "open" | "full" | "in_progress" | "concluded" | "expired"
+      activity_status: "open" | "full" | "in_progress" | "concluded" | "expired" | "cancelled"
       gender_filter: "any" | "male-only" | "female-only"
       join_request_status: "pending" | "accepted" | "declined" | "cancelled"
       notification_type:
@@ -1671,7 +1684,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      activity_status: ["open", "full", "in_progress", "concluded", "expired"],
+      activity_status: ["open", "full", "in_progress", "concluded", "expired", "cancelled"],
       gender_filter: ["any", "male-only", "female-only"],
       join_request_status: ["pending", "accepted", "declined", "cancelled"],
       notification_type: [

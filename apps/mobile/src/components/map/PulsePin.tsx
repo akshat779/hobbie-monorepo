@@ -6,11 +6,11 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { NearbyActivity } from '../../features/discovery/types';
+import { DiscoveryActivity } from '../../features/discovery/types';
 import { useCountdown } from '../../hooks/useCountdown';
 
 interface PulsePinProps {
-  activity: NearbyActivity;
+  activity: DiscoveryActivity;
   isSelected?: boolean;
   onPress?: () => void;
 }

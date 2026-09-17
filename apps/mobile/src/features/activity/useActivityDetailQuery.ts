@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchActivityDetails, ActivityDetails } from '../../services/activityDetail';
-import { getJoinRequestStatus, JoinRequestRow } from '../../services/handshake';
+import { ActivityPublic } from '@hobbie/shared';
+import { fetchActivityDetails } from '../../services/activityDetail';
+import { getJoinRequestStatus } from '../../services/handshake';
+import { RequestToJoinResult } from '@hobbie/shared';
 import { queryKeys } from '../../services/queryKeys';
 
 export function useActivityDetailQuery(activityId: string | undefined) {
-  return useQuery<ActivityDetails | null>({
+  return useQuery<ActivityPublic | null>({
     queryKey: queryKeys.activities.detail(activityId || ''),
     queryFn: () => fetchActivityDetails(activityId || ''),
     enabled: Boolean(activityId),
@@ -16,7 +18,7 @@ export function useJoinStatusQuery(
   activityId: string | undefined,
   userId: string | undefined
 ) {
-  return useQuery<JoinRequestRow | null>({
+  return useQuery<RequestToJoinResult | null>({
     queryKey: queryKeys.activities.joinStatus(activityId || '', userId || ''),
     queryFn: () => getJoinRequestStatus(activityId || '', userId || ''),
     enabled: Boolean(activityId && userId),

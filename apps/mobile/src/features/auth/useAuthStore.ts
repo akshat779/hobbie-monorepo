@@ -163,8 +163,8 @@ export async function authenticateDevSession(
     }
 
     return { session: null, error: 'Failed to establish Supabase session' };
-  } catch (err: any) {
-    return { session: null, error: err?.message || 'Dev authentication failed' };
+  } catch (err) {
+    return { session: null, error: err instanceof Error ? err.message : 'Dev authentication failed' };
   }
 }
 
@@ -275,9 +275,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return { error: error.message };
       }
       return {};
-    } catch (err: any) {
+    } catch (err) {
       set({ isLoading: false });
-      return { error: err?.message || 'Failed to send OTP' };
+      return { error: err instanceof Error ? err.message : 'Failed to send OTP' };
     }
   },
 
@@ -348,9 +348,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       return { hasProfile: !!profile };
-    } catch (err: any) {
+    } catch (err) {
       set({ isLoading: false });
-      return { hasProfile: false, error: err?.message || 'OTP verification failed' };
+      return { hasProfile: false, error: err instanceof Error ? err.message : 'OTP verification failed' };
     }
   },
 
@@ -363,7 +363,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // Resolve user's authenticated phone number
-      const rawPhone = (user.phone || (user.user_metadata?.phone as string) || '').trim();
+      const metadataPhone =
+        typeof user.user_metadata?.phone === 'string' ? user.user_metadata.phone : '';
+      const rawPhone = (user.phone || metadataPhone || '').trim();
       if (!rawPhone) {
         return { error: 'Authentication session is missing a verified phone number' };
       }
@@ -379,23 +381,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({ isLoading: true });
 
-      const profilePayload = {
-        id: user.id,
-        phone: normalizedPhone,
+      // Split editable profile details from database-owned trust/verification
+      // metrics. The latter are never part of this payload.
+      const profileDetails = {
         name: validated.name,
         birth_date: validated.birthDate,
         gender: validated.gender,
         interests: validated.interests,
-        is_verified: false,
-        trust_score: 5.0,
-        interaction_count: 0,
-        avatar_url: validated.avatarUrl || null,
+        avatar_url: validated.avatarUrl ?? null,
         updated_at: new Date().toISOString(),
       };
 
+      // Determine whether this is first-time onboarding or a detail edit.
+      const { data: existingProfile, error: lookupError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (lookupError) {
+        set({ isLoading: false });
+        return { error: lookupError.message };
+      }
+
+      if (existingProfile) {
+        // Existing profile: update editable details only. is_verified,
+        // trust_score, interaction_count and ratings_count are owned by the
+        // database and must survive a profile save untouched.
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({ ...profileDetails, phone: normalizedPhone })
+          .eq('id', user.id)
+          .select(PROFILE_COLUMNS)
+          .single();
+
+        set({ isLoading: false });
+
+        if (error) {
+          return { error: error.message };
+        }
+
+        set({ profile: data });
+        return {};
+      }
+
+      // First-time onboarding: insert and let the database column defaults
+      // apply (is_verified = false, trust_score = 5.00, interaction_count = 0).
       const { data, error } = await supabase
         .from('profiles')
-        .upsert(profilePayload)
+        .insert({
+          id: user.id,
+          phone: normalizedPhone,
+          ...profileDetails,
+        })
         .select(PROFILE_COLUMNS)
         .single();
 
@@ -407,9 +445,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({ profile: data });
       return {};
-    } catch (err: any) {
+    } catch (err: unknown) {
       set({ isLoading: false });
-      return { error: err?.message || 'Failed to save profile' };
+      return { error: err instanceof Error ? err.message : 'Failed to save profile' };
     }
   },
 

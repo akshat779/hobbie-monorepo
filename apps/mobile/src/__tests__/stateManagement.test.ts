@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { queryKeys } from '../services/queryKeys';
 import { filterActivities } from '../features/discovery/useDiscoveryQuery';
-import { NearbyActivity } from '../features/discovery/types';
+import { DiscoveryActivity } from '../features/discovery/types';
 import { useAuthStore } from '../features/auth/useAuthStore';
 import { useDiscoveryFiltersStore, DEFAULT_DISCOVERY_FILTERS } from '../features/discovery/useDiscoveryFiltersStore';
 import { useLocationStore } from '../features/location/useLocationStore';
@@ -27,7 +27,7 @@ vi.mock('../services/supabase', async () => {
   };
 });
 
-const mockActivities: NearbyActivity[] = [
+const mockActivities: DiscoveryActivity[] = [
   {
     id: 'act-1',
     hostId: 'host-1',
@@ -39,15 +39,16 @@ const mockActivities: NearbyActivity[] = [
     title: '5v5 Turf Football',
     description: 'Evening match',
     tier: 'physical',
-    lat: 12.9716,
-    lng: 77.5946,
+    fuzzedLocation: { latitude: 12.9716, longitude: 77.5946 },
     venueName: 'Koramangala Turf',
+    imageUrls: [],
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
     expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    status: 'open',
     maxParticipants: 10,
     currentParticipantsCount: 6,
     distanceMeters: 500,
     distanceKm: 0.5,
-    ttlStatus: { urgency: 'fresh', formattedTtl: '1h', minutesLeft: 60 },
     filterGender: 'any',
     filterAgeMin: 18,
     filterAgeMax: 35,
@@ -63,16 +64,17 @@ const mockActivities: NearbyActivity[] = [
     title: 'Morning Badminton Doubles',
     description: 'Intermediate players',
     tier: 'physical',
-    lat: 12.975,
-    lng: 77.6,
+    fuzzedLocation: { latitude: 12.975, longitude: 77.6 },
     venueName: 'Indiranagar Club',
+    imageUrls: [],
+    createdAt: new Date(Date.now() - 1800000).toISOString(),
     expiresAt: new Date(Date.now() + 1800000).toISOString(),
+    status: 'open',
     maxParticipants: 4,
     currentParticipantsCount: 2,
     distanceMeters: 1200,
     distanceKm: 1.2,
-    ttlStatus: { urgency: 'moderate', formattedTtl: '30m', minutesLeft: 30 },
-    filterGender: 'women_only',
+    filterGender: 'female-only',
     filterAgeMin: 25,
     filterAgeMax: 40,
   },
@@ -87,16 +89,17 @@ const mockActivities: NearbyActivity[] = [
     title: 'Hackathon Prep & Coworking',
     description: 'Coffee + Code',
     tier: 'physical',
-    lat: 12.98,
-    lng: 77.61,
+    fuzzedLocation: { latitude: 12.98, longitude: 77.61 },
     venueName: 'Third Wave Coffee',
+    imageUrls: [],
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
     expiresAt: new Date(Date.now() + 7200000).toISOString(),
+    status: 'open',
     maxParticipants: 6,
     currentParticipantsCount: 3,
     distanceMeters: 2500,
     distanceKm: 2.5,
-    ttlStatus: { urgency: 'fresh', formattedTtl: '2h', minutesLeft: 120 },
-    filterGender: 'men_only',
+    filterGender: 'male-only',
     filterAgeMin: 18,
     filterAgeMax: 24,
   },
@@ -138,38 +141,38 @@ describe('State Management & TanStack Query Infrastructure', () => {
 
   describe('Discovery select: filterActivities Transformation', () => {
     it('filters by category without refetching RPC data', () => {
-      const footballOnly = filterActivities(mockActivities, 'football', 'all', 'all');
+      const footballOnly = filterActivities(mockActivities, ['football'], 'all', 'all');
       expect(footballOnly).toHaveLength(1);
       expect(footballOnly[0]!.interestId).toBe('football');
 
-      const all = filterActivities(mockActivities, 'all', 'all', 'all');
+      const all = filterActivities(mockActivities, undefined, 'all', 'all');
       expect(all).toHaveLength(3);
     });
 
     it('filters by gender preference correctly', () => {
-      const womenOnly = filterActivities(mockActivities, 'all', 'women_only', 'all');
+      const womenOnly = filterActivities(mockActivities, undefined, 'women_only', 'all');
       expect(womenOnly).toHaveLength(1);
       expect(womenOnly[0]!.id).toBe('act-2');
 
-      const menOnly = filterActivities(mockActivities, 'all', 'men_only', 'all');
+      const menOnly = filterActivities(mockActivities, undefined, 'men_only', 'all');
       expect(menOnly).toHaveLength(1);
       expect(menOnly[0]!.id).toBe('act-3');
     });
 
     it('filters by age group criteria correctly', () => {
       // 18_24: min <= 24 && max >= 18
-      const youngGroup = filterActivities(mockActivities, 'all', 'all', '18_24');
+      const youngGroup = filterActivities(mockActivities, undefined, 'all', '18_24');
       // act-1: 18-35 (overlaps 18_24), act-3: 18-24 (matches), act-2: 25-40 (outside)
       expect(youngGroup.map((a) => a.id)).toEqual(['act-1', 'act-3']);
 
       // 25_34: min <= 34 && max >= 25
-      const midGroup = filterActivities(mockActivities, 'all', 'all', '25_34');
+      const midGroup = filterActivities(mockActivities, undefined, 'all', '25_34');
       // act-1: 18-35 (overlaps 25_34), act-2: 25-40 (overlaps 25_34), act-3: 18-24 (min 18, max 24 < 25 -> excluded)
       expect(midGroup.map((a) => a.id)).toEqual(['act-1', 'act-2']);
     });
 
     it('returns empty array when no activities match the combined criteria', () => {
-      const none = filterActivities(mockActivities, 'football', 'women_only', 'all');
+      const none = filterActivities(mockActivities, ['football'], 'women_only', 'all');
       expect(none).toHaveLength(0);
     });
   });

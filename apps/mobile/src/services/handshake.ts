@@ -1,70 +1,83 @@
 import { supabase } from './supabase';
-import { Database } from '@hobbie/shared';
+import {
+  AcceptJoinRequestResult,
+  AcceptJoinRequestResultSchema,
+  Database,
+  DeclineJoinRequestResult,
+  DeclineJoinRequestResultSchema,
+  JoinRequestPublic,
+  JoinRequestPublicSchema,
+  JoinRequestRealtimeRowSchema,
+  LeaveActivityResult,
+  LeaveActivityResultSchema,
+  PendingRequestCountRowsSchema,
+  RequestToJoinResult,
+  RequestToJoinResultSchema,
+} from '@hobbie/shared';
 import { subscribeToPostgresChanges } from './realtimePool';
 
 export type JoinRequestRow = Database['public']['Tables']['join_requests']['Row'];
 export type ActivityRow = Database['public']['Tables']['activities']['Row'];
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
-export interface IncomingJoinRequest {
-  id: string;
-  activityId: string;
-  userId: string;
-  message: string;
-  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
-  createdAt: string;
-  user: {
-    id: string;
-    name: string;
-    trustScore: number;
-    isVerified: boolean;
-    avatarUrl: string | null;
-  };
-}
+const joinRequestSelect = 'id, activity_id, user_id, message, status, created_at';
 
 /**
  * Creates a pending join request for an activity.
  * Uses the atomic SECURITY DEFINER RPC. Direct inserts are intentionally not
  * used because they would bypass the activity-state and capacity invariants.
+ *
+ * The JSONB payload is validated against the shared contract before it is
+ * returned, so a backend shape change can never leak a malformed object into
+ * the React Query cache.
+ *
+ * Throws on failure so TanStack Query mutation `onError` rollback handlers fire.
+ * Callers must wrap this in try/catch (or rely on `mutateAsync` rejection).
  */
 export async function requestToJoin(
   activityId: string,
   userId: string,
   message: string = ''
-): Promise<{ data?: JoinRequestRow; error?: string }> {
-  try {
-    // 1. Try atomic SECURITY DEFINER RPC first (production standard)
-    const { data: rpcData, error: rpcError } = await supabase.rpc(
-      'request_to_join_activity',
-      {
-        p_activity_id: activityId,
-        p_user_id: userId,
-        p_message: message.trim(),
-      }
-    );
-
-    if (!rpcError && rpcData) {
-      return { data: rpcData as unknown as JoinRequestRow };
+): Promise<RequestToJoinResult> {
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    'request_to_join_activity',
+    {
+      p_activity_id: activityId,
+      p_user_id: userId,
+      p_message: message.trim(),
     }
-    return {
-      error: rpcError?.message || 'Atomic join-request operation is unavailable',
-    };
-  } catch (err: any) {
-    return { error: err?.message || 'Failed to submit join request' };
+  );
+
+  if (rpcError) {
+    throw new Error(rpcError.message || 'Failed to submit join request');
   }
+
+  if (!rpcData) {
+    throw new Error('Atomic join-request operation is unavailable');
+  }
+
+  const parsed = RequestToJoinResultSchema.safeParse(rpcData);
+  if (!parsed.success) {
+    throw new Error('Atomic join-request operation returned an unexpected payload');
+  }
+
+  return parsed.data;
 }
 
 /**
- * Fetches user's join request status for a given activity.
+ * Fetches the current user's join request status for a given activity.
+ *
+ * Returns the same normalized projection as `requestToJoin` so both writers of
+ * the `joinStatus` query cache agree on a single contract.
  */
 export async function getJoinRequestStatus(
   activityId: string,
   userId: string
-): Promise<JoinRequestRow | null> {
+): Promise<RequestToJoinResult | null> {
   try {
     const { data, error } = await supabase
       .from('join_requests')
-      .select('*')
+      .select(joinRequestSelect)
       .eq('activity_id', activityId)
       .eq('user_id', userId)
       .maybeSingle();
@@ -72,14 +85,16 @@ export async function getJoinRequestStatus(
     if (error || !data) {
       return null;
     }
-    return data;
+
+    const parsed = RequestToJoinResultSchema.safeParse(data);
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Counts pending join requests for an activity.
+ * Counts pending join requests for a single activity.
  */
 export async function getPendingRequestsCount(activityId: string): Promise<number> {
   try {
@@ -99,11 +114,54 @@ export async function getPendingRequestsCount(activityId: string): Promise<numbe
 }
 
 /**
+ * Batch-fetches pending join-request counts for many activities in a single RPC
+ * round trip, eliminating the per-squad N+1 query fan-out.
+ *
+ * The RPC only returns rows for activities hosted by the authenticated caller.
+ * Missing activities simply have no entry in the returned Map.
+ */
+export async function getPendingRequestCounts(
+  activityIds: string[]
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+
+  if (activityIds.length === 0) {
+    return counts;
+  }
+
+  const { data, error } = await supabase.rpc('get_pending_request_counts', {
+    p_activity_ids: activityIds,
+  });
+
+  if (error) {
+    console.warn('get_pending_request_counts RPC error:', error.message);
+    return counts;
+  }
+
+  const parsed = PendingRequestCountRowsSchema.safeParse(data ?? []);
+  if (!parsed.success) {
+    console.warn(
+      'get_pending_request_counts payload failed contract validation:',
+      parsed.error.flatten()
+    );
+    return counts;
+  }
+
+  for (const row of parsed.data) {
+    counts.set(row.activity_id, row.pending_count);
+  }
+
+  return counts;
+}
+
+/**
  * Fetches incoming join requests for an activity hosted by the current user.
+ * Every item is validated through `JoinRequestPublicSchema`; malformed rows are
+ * skipped with a warning rather than rendered with fabricated defaults.
  */
 export async function fetchIncomingJoinRequests(
   activityId: string
-): Promise<IncomingJoinRequest[]> {
+): Promise<JoinRequestPublic[]> {
   try {
     const { data, error } = await supabase
       .from('join_requests')
@@ -119,7 +177,9 @@ export async function fetchIncomingJoinRequests(
           name,
           trust_score,
           is_verified,
-          avatar_url
+          avatar_url,
+          gender,
+          interaction_count
         )
       `)
       .eq('activity_id', activityId)
@@ -130,21 +190,46 @@ export async function fetchIncomingJoinRequests(
       return [];
     }
 
-    return data.map((item: any) => ({
-      id: item.id,
-      activityId: item.activity_id,
-      userId: item.user_id,
-      message: item.message || '',
-      status: item.status,
-      createdAt: item.created_at,
-      user: {
-        id: item.profiles?.id || item.user_id,
-        name: item.profiles?.name || 'Fellow Hobbie Player',
-        trustScore: item.profiles?.trust_score ?? 5.0,
-        isVerified: item.profiles?.is_verified ?? false,
-        avatarUrl: item.profiles?.avatar_url ?? null,
-      },
-    }));
+    const requests: JoinRequestPublic[] = [];
+
+    for (const item of data) {
+      const profile = item.profiles;
+      if (!profile) {
+        console.warn(
+          `fetchIncomingJoinRequests skipped request ${item.id}: joined profile unavailable`
+        );
+        continue;
+      }
+
+      const parsed = JoinRequestPublicSchema.safeParse({
+        id: item.id,
+        activityId: item.activity_id,
+        user: {
+          id: profile.id,
+          name: profile.name,
+          gender: profile.gender,
+          avatarUrl: profile.avatar_url,
+          isVerified: profile.is_verified,
+          trustScore: profile.trust_score,
+          interactionCount: profile.interaction_count,
+        },
+        message: item.message ?? '',
+        status: item.status,
+        createdAt: item.created_at,
+      });
+
+      if (!parsed.success) {
+        console.warn(
+          `fetchIncomingJoinRequests skipped request ${item.id}: payload failed contract validation:`,
+          parsed.error.flatten()
+        );
+        continue;
+      }
+
+      requests.push(parsed.data);
+    }
+
+    return requests;
   } catch (err) {
     console.warn('fetchIncomingJoinRequests query error:', err);
     return [];
@@ -158,7 +243,7 @@ export async function fetchIncomingJoinRequests(
 export async function acceptJoinRequestTx(
   requestId: string,
   hostId: string
-): Promise<{ success: boolean; error?: string; data?: any }> {
+): Promise<{ success: boolean; error?: string; data?: AcceptJoinRequestResult }> {
   try {
     const { data, error } = await supabase.rpc('accept_join_request_tx', {
       p_request_id: requestId,
@@ -169,9 +254,17 @@ export async function acceptJoinRequestTx(
       return { success: false, error: error.message };
     }
 
-    return { success: true, data };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to accept join request' };
+    const parsed = AcceptJoinRequestResultSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: 'Accept operation returned an unexpected payload' };
+    }
+
+    return { success: true, data: parsed.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to accept join request',
+    };
   }
 }
 
@@ -181,9 +274,9 @@ export async function acceptJoinRequestTx(
 export async function declineJoinRequest(
   requestId: string,
   hostId: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; data?: DeclineJoinRequestResult }> {
   try {
-    const { error } = await supabase.rpc('decline_join_request', {
+    const { data, error } = await supabase.rpc('decline_join_request', {
       p_request_id: requestId,
       p_host_id: hostId,
     });
@@ -192,9 +285,17 @@ export async function declineJoinRequest(
       return { success: false, error: error.message };
     }
 
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to decline request' };
+    const parsed = DeclineJoinRequestResultSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: 'Decline operation returned an unexpected payload' };
+    }
+
+    return { success: true, data: parsed.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to decline request',
+    };
   }
 }
 
@@ -205,7 +306,7 @@ export async function declineJoinRequest(
 export async function leaveSquad(
   activityId: string,
   userId: string
-): Promise<{ success: boolean; error?: string; data?: any }> {
+): Promise<{ success: boolean; error?: string; data?: LeaveActivityResult }> {
   try {
     const { data, error } = await supabase.rpc('leave_activity', {
       p_activity_id: activityId,
@@ -216,9 +317,17 @@ export async function leaveSquad(
       return { success: false, error: error.message };
     }
 
-    return { success: true, data };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to leave squad' };
+    const parsed = LeaveActivityResultSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: 'Leave operation returned an unexpected payload' };
+    }
+
+    return { success: true, data: parsed.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to leave squad',
+    };
   }
 }
 
@@ -233,7 +342,8 @@ export function subscribeToJoinRequestUpdates(
     `join_request_${requestId}`,
     { event: 'UPDATE', schema: 'public', table: 'join_requests', filter: `id=eq.${requestId}` },
     (payload) => {
-      if (isJoinRequestPayload(payload)) onStatusChange(payload.new.status);
+      const parsed = parseJoinRequestPayload(payload);
+      if (parsed) onStatusChange(parsed.status);
     },
     (message) => console.warn('Join request Realtime error:', message),
   );
@@ -254,8 +364,10 @@ export function subscribeToHostQueue(
   );
 }
 
-function isJoinRequestPayload(value: unknown): value is { new: JoinRequestRow } {
-  if (!value || typeof value !== 'object' || !('new' in value)) return false;
-  const row = value.new;
-  return !!row && typeof row === 'object' && 'id' in row && 'status' in row;
+function parseJoinRequestPayload(
+  value: unknown
+): { id: string; status: 'accepted' | 'declined' | 'pending' | 'cancelled' } | null {
+  if (!value || typeof value !== 'object' || !('new' in value)) return null;
+  const parsed = JoinRequestRealtimeRowSchema.safeParse((value as { new: unknown }).new);
+  return parsed.success ? parsed.data : null;
 }

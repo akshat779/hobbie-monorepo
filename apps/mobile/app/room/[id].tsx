@@ -349,7 +349,7 @@ export default function ActiveEphemeralRoomScreen() {
         </View>
 
         {messages.map((m) => {
-          const isMe = m.sender_id === currentUserId || m.senderName === 'You';
+          const isMe = m.senderId === currentUserId || m.senderName === 'You';
           return (
             <View
               key={m.id}
@@ -360,7 +360,7 @@ export default function ActiveEphemeralRoomScreen() {
                   {m.senderName}
                 </Text>
                 <Text className="text-dusk/60 text-2xs font-mono">
-                  {new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  {new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                 </Text>
               </View>
               <View

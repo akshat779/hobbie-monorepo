@@ -17,6 +17,10 @@ export const VerifyOtpSchema = z.object({
     .regex(/^\d+$/, 'OTP must be digits only'),
 });
 
+/** Canonical user gender values, mirrored from the `user_gender` Postgres enum. */
+export const USER_GENDERS = ['male', 'female', 'non-binary', 'prefer-not-to-say'] as const;
+export const UserGenderSchema = z.enum(USER_GENDERS);
+
 export const UserProfileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(50),
   birthDate: z
@@ -29,7 +33,7 @@ export const UserProfileSchema = z.object({
       const age = Math.abs(ageDate.getUTCFullYear() - 1970);
       return age >= 18;
     }, 'Must be at least 18 years old'),
-  gender: z.enum(['male', 'female', 'non-binary', 'prefer-not-to-say']),
+  gender: UserGenderSchema,
   interests: z
     .array(z.enum(INTEREST_IDS))
     .min(1, 'Select at least one interest')
@@ -40,8 +44,8 @@ export const UserProfileSchema = z.object({
 export const UserSummarySchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  gender: z.enum(['male', 'female', 'non-binary', 'prefer-not-to-say']),
-  avatarUrl: z.string().url().optional(),
+  gender: UserGenderSchema,
+  avatarUrl: z.string().url().nullable().optional(),
   isVerified: z.boolean(),
   trustScore: z.number().min(1).max(5),
   interactionCount: z.number().int().nonnegative(),

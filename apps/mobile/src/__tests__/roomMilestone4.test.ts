@@ -79,21 +79,30 @@ describe('Milestone 4: Room, Location & Conclusion Services', () => {
   });
 
   describe('fetchRoomMembers', () => {
+    const memberOneId = '11111111-1111-1111-1111-111111111111';
+    const memberTwoId = '22222222-2222-2222-2222-222222222222';
+
     it('calls get_activity_members RPC and returns enriched member list', async () => {
       const mockRpcMembers = [
         {
-          user_id: 'user-1',
+          user_id: memberOneId,
           name: 'Alex Host',
           avatar_url: 'https://avatar1.jpg',
           is_host: true,
           trust_score: 4.8,
+          gender: 'male',
+          is_verified: true,
+          interaction_count: 18,
         },
         {
-          user_id: 'user-2',
+          user_id: memberTwoId,
           name: 'Sam Joiner',
           avatar_url: null,
           is_host: false,
           trust_score: 4.9,
+          gender: 'non-binary',
+          is_verified: true,
+          interaction_count: 12,
         },
       ];
 
@@ -109,18 +118,24 @@ describe('Milestone 4: Room, Location & Conclusion Services', () => {
 
       expect(members).toHaveLength(2);
       expect(members[0]).toEqual({
-        userId: 'user-1',
+        id: memberOneId,
         name: 'Alex Host',
+        gender: 'male',
         avatarUrl: 'https://avatar1.jpg',
-        isHost: true,
+        isVerified: true,
         trustScore: 4.8,
+        interactionCount: 18,
+        isHost: true,
       });
       expect(members[1]).toEqual({
-        userId: 'user-2',
+        id: memberTwoId,
         name: 'Sam Joiner',
+        gender: 'non-binary',
         avatarUrl: null,
-        isHost: false,
+        isVerified: true,
         trustScore: 4.9,
+        interactionCount: 12,
+        isHost: false,
       });
     });
 

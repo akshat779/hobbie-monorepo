@@ -9,7 +9,7 @@ import {
   fetchNearbyActivities,
   filterActivities,
 } from '../features/discovery/useDiscoveryQuery';
-import { NearbyActivity } from '../features/discovery/types';
+import { DiscoveryActivity } from '../features/discovery/types';
 import {
   useDiscoveryFiltersStore,
   DEFAULT_DISCOVERY_FILTERS,
@@ -130,7 +130,7 @@ describe('Discovery Utilities', () => {
   });
 
   describe('Multi-Facet Filtering (Category, Gender, Age Group)', () => {
-    const mockActivities: NearbyActivity[] = [
+    const mockActivities: DiscoveryActivity[] = [
       {
         id: '1',
         hostId: 'h1',
@@ -141,15 +141,16 @@ describe('Discovery Utilities', () => {
         title: 'Men Football',
         description: '',
         tier: 'physical',
-        lat: 12.97,
-        lng: 77.59,
+        fuzzedLocation: { latitude: 12.97, longitude: 77.59 },
+        imageUrls: [],
+        createdAt: new Date().toISOString(),
         expiresAt: new Date().toISOString(),
+        status: 'open',
         maxParticipants: 10,
         currentParticipantsCount: 4,
         distanceMeters: 500,
         distanceKm: 0.5,
-        ttlStatus: { minutesLeft: 90, formattedTtl: '1h 30m', urgency: 'fresh' },
-        filterGender: 'men_only',
+        filterGender: 'male-only',
         filterAgeMin: 18,
         filterAgeMax: 24,
       },
@@ -163,15 +164,16 @@ describe('Discovery Utilities', () => {
         title: 'Women Badminton',
         description: '',
         tier: 'physical',
-        lat: 12.98,
-        lng: 77.60,
+        fuzzedLocation: { latitude: 12.98, longitude: 77.6 },
+        imageUrls: [],
+        createdAt: new Date().toISOString(),
         expiresAt: new Date().toISOString(),
+        status: 'open',
         maxParticipants: 4,
         currentParticipantsCount: 2,
         distanceMeters: 1200,
         distanceKm: 1.2,
-        ttlStatus: { minutesLeft: 20, formattedTtl: '20m', urgency: 'expiring' },
-        filterGender: 'women_only',
+        filterGender: 'female-only',
         filterAgeMin: 22,
         filterAgeMax: 30,
       },
@@ -185,35 +187,36 @@ describe('Discovery Utilities', () => {
         title: 'Chess Meet',
         description: '',
         tier: 'physical',
-        lat: 12.96,
-        lng: 77.61,
+        fuzzedLocation: { latitude: 12.96, longitude: 77.61 },
+        imageUrls: [],
+        createdAt: new Date().toISOString(),
         expiresAt: new Date().toISOString(),
+        status: 'open',
         maxParticipants: 6,
         currentParticipantsCount: 2,
         distanceMeters: 2000,
         distanceKm: 2.0,
-        ttlStatus: { minutesLeft: 40, formattedTtl: '40m', urgency: 'moderate' },
-        filterGender: 'coed',
+        filterGender: 'any',
         filterAgeMin: 35,
         filterAgeMax: 60,
       },
     ];
 
     it('should filter activities by gender preference', () => {
-      const womenOnly = filterActivities(mockActivities, 'all', 'women_only', 'all');
+      const womenOnly = filterActivities(mockActivities, undefined, 'women_only', 'all');
       expect(womenOnly.length).toBe(1);
       expect(womenOnly[0]?.id).toBe('2');
 
-      const allGenders = filterActivities(mockActivities, 'all', 'all', 'all');
+      const allGenders = filterActivities(mockActivities, undefined, 'all', 'all');
       expect(allGenders.length).toBe(3);
     });
 
     it('should filter activities by demographic age group', () => {
-      const collegeAge = filterActivities(mockActivities, 'all', 'all', '18_24');
+      const collegeAge = filterActivities(mockActivities, undefined, 'all', '18_24');
       // Matches football (18-24) and badminton (22-30)
       expect(collegeAge.length).toBe(2);
 
-      const matureGroup = filterActivities(mockActivities, 'all', 'all', '35_plus');
+      const matureGroup = filterActivities(mockActivities, undefined, 'all', '35_plus');
       // Matches chess meet (35-60)
       expect(matureGroup.length).toBe(1);
       expect(matureGroup[0]?.id).toBe('3');
@@ -222,7 +225,7 @@ describe('Discovery Utilities', () => {
     it('should combine category, gender, and age filters seamlessly', () => {
       const combined = filterActivities(
         mockActivities,
-        'badminton',
+        ['badminton'],
         'women_only',
         '25_34'
       );
@@ -288,10 +291,9 @@ describe('Discovery Utilities', () => {
 
     it('should call get_nearby_activities RPC and enrich with host profiles', async () => {
       const allActivities = await fetchNearbyActivities({
-        userLat: 12.9716,
-        userLng: 77.5946,
+        latitude: 12.9716,
+        longitude: 77.5946,
         radiusKm: 4.5,
-        category: 'all',
       });
 
       expect(supabase.rpc).toHaveBeenCalledWith('get_nearby_activities', {
@@ -302,15 +304,16 @@ describe('Discovery Utilities', () => {
       expect(allActivities.length).toBe(2);
       expect(allActivities[0]?.hostName).toBe('Alex Rivera');
       expect(allActivities[0]?.hostTrustScore).toBe(4.95);
-      expect(allActivities[0]?.ttlStatus.urgency).toBe('fresh');
+      expect(allActivities[0]?.fuzzedLocation.latitude).toBe(12.9716);
+      expect(allActivities[0]?.distanceMeters).toBe(650);
     });
 
-    it('should filter RPC activities by category', async () => {
+    it('should filter RPC activities by interest taxonomy', async () => {
       const footballOnly = await fetchNearbyActivities({
-        userLat: 12.9716,
-        userLng: 77.5946,
+        latitude: 12.9716,
+        longitude: 77.5946,
         radiusKm: 4.5,
-        category: 'football',
+        interestIds: ['football'],
       });
 
       expect(footballOnly.length).toBe(1);
@@ -325,8 +328,8 @@ describe('Discovery Utilities', () => {
       });
 
       const activities = await fetchNearbyActivities({
-        userLat: 12.9716,
-        userLng: 77.5946,
+        latitude: 12.9716,
+        longitude: 77.5946,
         radiusKm: 4.5,
       });
 
@@ -334,10 +337,10 @@ describe('Discovery Utilities', () => {
     });
 
     it('should reject coordinates that violate DiscoveryQuerySchema contract (out of bounds)', async () => {
-      // Out of bounds coordinates (lat 999) rejected by contract mock
+      // Out of bounds coordinates (latitude 999) rejected by contract mock
       const activities = await fetchNearbyActivities({
-        userLat: 999,
-        userLng: 77.5946,
+        latitude: 999,
+        longitude: 77.5946,
         radiusKm: 4.5,
       });
 

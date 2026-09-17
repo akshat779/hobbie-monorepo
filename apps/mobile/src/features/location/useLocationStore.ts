@@ -42,7 +42,10 @@ export const useLocationStore = create<LocationState>()(
 
   refreshLocation: async (userId?: string, force = false) => {
     if (get().isLoading) return;
-    if (get().hasAttemptedInit && !force && get().isLiveGps) return;
+    // Latch after the first attempt so a denied permission (or a transient GPS
+    // failure) cannot re-trigger the OS permission prompt on every component
+    // mount. Explicit user-initiated refreshes pass force=true to bypass it.
+    if (get().hasAttemptedInit && !force) return;
 
     try {
       set({ isLoading: true, hasAttemptedInit: true, error: null });

@@ -6,9 +6,8 @@ import {
   getJoinRequestMutationOptions,
 } from '../features/activity/useActivityMutations';
 import * as handshakeService from '../services/handshake';
-import { ActivityDetails } from '../services/activityDetail';
+import { ActivityPublic, RequestToJoinResult } from '@hobbie/shared';
 import { MySquadItem } from '../features/activity/useMyActivitiesQuery';
-import { IncomingJoinRequest } from '../services/handshake';
 
 let testQueryClient: QueryClient;
 
@@ -35,7 +34,6 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
   const userId = '33333333-3333-3333-3333-333333333333';
   const requestId = '44444444-4444-4444-4444-444444444444';
 
-  const hostRequestsKey = queryKeys.activities.hostRequests(activityId);
   const detailKey = queryKeys.activities.detail(activityId);
   const mySquadsKey = queryKeys.activities.mySquads(hostId);
   const joinStatusKey = queryKeys.activities.joinStatus(activityId, userId);
@@ -51,48 +49,19 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
   });
 
   describe('useReviewRequestMutation (Host Review Queue)', () => {
-    const initialRequests: IncomingJoinRequest[] = [
-      {
-        id: requestId,
-        activityId,
-        userId,
-        message: 'Can I join?',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        user: {
-          id: userId,
-          name: 'Alex Player',
-          trustScore: 4.9,
-          isVerified: true,
-          avatarUrl: null,
-        },
-      },
-      {
-        id: 'other-request-id',
-        activityId,
-        userId: 'other-user',
-        message: 'Second player',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        user: {
-          id: 'other-user',
-          name: 'Sam Player',
-          trustScore: 4.8,
-          isVerified: false,
-          avatarUrl: null,
-        },
-      },
-    ];
-
-    const initialDetail: ActivityDetails = {
+    const initialDetail: ActivityPublic = {
       id: activityId,
       hostId,
       hostName: 'Host User',
       hostTrustScore: 5.0,
       hostIsVerified: true,
+      interestId: 'badminton',
       title: 'Saturday Badminton',
       description: 'Casual games',
+      tier: 'physical',
       venueName: 'Arena 1',
+      imageUrls: [],
+      createdAt: new Date(Date.now() - 3600000).toISOString(),
       expiresAt: new Date(Date.now() + 3600000).toISOString(),
       maxParticipants: 4,
       currentParticipantsCount: 3,
@@ -116,7 +85,6 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
     ];
 
     it('optimistically removes request, increments participants, and sets status to full when capacity reached', async () => {
-      testQueryClient.setQueryData(hostRequestsKey, initialRequests);
       testQueryClient.setQueryData(detailKey, initialDetail);
       testQueryClient.setQueryData(mySquadsKey, initialSquads);
 
@@ -135,13 +103,8 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
         activityId,
       });
 
-      // Request was optimistically removed from hostRequests
-      const updatedRequests = testQueryClient.getQueryData<IncomingJoinRequest[]>(hostRequestsKey);
-      expect(updatedRequests).toHaveLength(1);
-      expect(updatedRequests![0].id).toBe('other-request-id');
-
       // Activity detail participant count was incremented and status updated to 'full'
-      const updatedDetail = testQueryClient.getQueryData<ActivityDetails>(detailKey);
+      const updatedDetail = testQueryClient.getQueryData<ActivityPublic>(detailKey);
       expect(updatedDetail?.currentParticipantsCount).toBe(4);
       expect(updatedDetail?.status).toBe('full');
 
@@ -153,7 +116,6 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
     });
 
     it('rolls back all caches to snapshot if acceptJoinRequestTx fails', async () => {
-      testQueryClient.setQueryData(hostRequestsKey, initialRequests);
       testQueryClient.setQueryData(detailKey, initialDetail);
       testQueryClient.setQueryData(mySquadsKey, initialSquads);
 
@@ -175,11 +137,7 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
       ).rejects.toThrow('Activity capacity reached concurrently');
 
       // Check that caches rolled back to initial state
-      const rolledBackRequests = testQueryClient.getQueryData<IncomingJoinRequest[]>(hostRequestsKey);
-      expect(rolledBackRequests).toHaveLength(2);
-      expect(rolledBackRequests![0].id).toBe(requestId);
-
-      const rolledBackDetail = testQueryClient.getQueryData<ActivityDetails>(detailKey);
+      const rolledBackDetail = testQueryClient.getQueryData<ActivityPublic>(detailKey);
       expect(rolledBackDetail?.currentParticipantsCount).toBe(3);
       expect(rolledBackDetail?.status).toBe('open');
 
@@ -188,8 +146,33 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
       expect(rolledBackSquads![0].pendingRequestsCount).toBe(2);
     });
 
+    it('restores a legitimate null detail snapshot on rollback (falsy snapshot bug)', async () => {
+      testQueryClient.setQueryData(detailKey, null);
+      testQueryClient.setQueryData(mySquadsKey, initialSquads);
+
+      (handshakeService.acceptJoinRequestTx as any).mockResolvedValue({
+        success: false,
+        error: 'Activity capacity reached concurrently',
+      });
+
+      const options = getReviewRequestMutationOptions(testQueryClient);
+      const mutation = testQueryClient.getMutationCache().build(testQueryClient, options);
+
+      await expect(
+        mutation.execute({
+          action: 'accept',
+          requestId,
+          hostId,
+          activityId,
+        })
+      ).rejects.toThrow('Activity capacity reached concurrently');
+
+      // A `null` snapshot must be restored, not skipped.
+      const rolledBackDetail = testQueryClient.getQueryData<ActivityPublic | null>(detailKey);
+      expect(rolledBackDetail).toBeNull();
+    });
+
     it('optimistically decrements pendingRequestsCount on decline and rolls back on error', async () => {
-      testQueryClient.setQueryData(hostRequestsKey, initialRequests);
       testQueryClient.setQueryData(detailKey, initialDetail);
       testQueryClient.setQueryData(mySquadsKey, initialSquads);
 
@@ -207,10 +190,6 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
         activityId,
       });
 
-      // Request removed from host queue
-      const updatedRequests = testQueryClient.getQueryData<IncomingJoinRequest[]>(hostRequestsKey);
-      expect(updatedRequests).toHaveLength(1);
-
       // Pending requests count decremented, participants count unchanged
       const updatedSquads = testQueryClient.getQueryData<MySquadItem[]>(mySquadsKey);
       expect(updatedSquads![0].currentParticipantsCount).toBe(3);
@@ -223,14 +202,12 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
       testQueryClient.setQueryData(joinStatusKey, null);
 
       (handshakeService.requestToJoin as any).mockResolvedValue({
-        data: {
-          id: 'server-confirmed-request-id',
-          activity_id: activityId,
-          user_id: userId,
-          message: 'Can I join?',
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        },
+        id: 'server-confirmed-request-id',
+        activity_id: activityId,
+        user_id: userId,
+        message: 'Can I join?',
+        status: 'pending',
+        created_at: new Date().toISOString(),
       });
 
       const options = getJoinRequestMutationOptions(testQueryClient);
@@ -242,10 +219,10 @@ describe('Optimistic UI Mutations & Rollback Contracts', () => {
         message: 'Can I join?',
       });
 
-      const cachedStatus = testQueryClient.getQueryData<any>(joinStatusKey);
+      const cachedStatus = testQueryClient.getQueryData<RequestToJoinResult | null>(joinStatusKey);
       expect(cachedStatus).toBeDefined();
-      expect(cachedStatus.status).toBe('pending');
-      expect(cachedStatus.activity_id).toBe(activityId);
+      expect(cachedStatus?.status).toBe('pending');
+      expect(cachedStatus?.activity_id).toBe(activityId);
     });
 
     it('rolls back joinStatus if requestToJoin rejects', async () => {

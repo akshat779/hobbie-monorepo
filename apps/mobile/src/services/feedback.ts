@@ -1,4 +1,4 @@
-import { SubmitFeedbackInput, SubmitFeedbackSchema } from '@hobbie/shared';
+import { SubmitFeedbackInput, SubmitFeedbackResultSchema, SubmitFeedbackSchema } from '@hobbie/shared';
 import { supabase } from './supabase';
 
 export interface SubmitFeedbackResult {
@@ -47,14 +47,12 @@ export async function submitActivityFeedback(
     throw new Error(error?.message || 'Failed to submit feedback');
   }
 
-  const res = data as unknown as {
-    success: boolean;
-    activity_id: string;
-    reviewer_id: string;
-    target_user_id: string;
-    score: number;
-    mutual_connection: boolean;
-  };
+  const parsed = SubmitFeedbackResultSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error('Feedback submission returned an unexpected payload');
+  }
+
+  const res = parsed.data;
 
   return {
     success: res.success,

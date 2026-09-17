@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,13 +12,16 @@ import { DevPersonaSwitcher } from '../../src/components/dev/DevPersonaSwitcher'
 import { useUserLocation } from '../../src/hooks/useUserLocation';
 import { useRefreshByUser } from '../../src/hooks/useRefreshByUser';
 import { useCountdown } from '../../src/hooks/useCountdown';
-import { NearbyActivity } from '../../src/features/discovery/types';
+import {
+  DiscoveryActivity,
+  selectedCategoryToInterestIds,
+} from '../../src/features/discovery/types';
 
 function SquadFeedCard({
   item,
   onPress,
 }: {
-  item: NearbyActivity;
+  item: DiscoveryActivity;
   onPress: () => void;
 }) {
   const { isExpired, formattedTtl, theme } = useCountdown(item.expiresAt);
@@ -111,18 +114,24 @@ export default function DiscoveryListScreen() {
 
   const filters = useDiscoveryFiltersStore(useShallow((s) => s.filters));
 
+  const interestIds = useMemo(
+    () => selectedCategoryToInterestIds(selectedCategory),
+    [selectedCategory]
+  );
+
   const {
     data: activities = [],
     isLoading,
     refetch,
-  } = useDiscoveryQuery({
-    userLat: userLocation.latitude,
-    userLng: userLocation.longitude,
-    radiusKm: filters.radiusKm,
-    category: selectedCategory,
-    gender: filters.gender,
-    ageGroup: filters.ageGroup,
-  });
+  } = useDiscoveryQuery(
+    {
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      radiusKm: filters.radiusKm,
+      interestIds,
+    },
+    { gender: filters.gender, ageGroup: filters.ageGroup }
+  );
 
   const { isRefetchingByUser, refetchByUser } = useRefreshByUser(
     useCallback(async () => {

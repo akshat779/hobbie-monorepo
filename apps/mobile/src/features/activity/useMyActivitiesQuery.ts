@@ -1,22 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
+import { ActivityPublic } from '@hobbie/shared';
 import { supabase } from '../../services/supabase';
 import { queryKeys } from '../../services/queryKeys';
-import { getPendingRequestsCount } from '../../services/handshake';
+import { getPendingRequestCounts } from '../../services/handshake';
 
-export interface MySquadItem {
-  id: string;
-  title: string;
+const MY_SQUAD_COLUMNS =
+  'id, host_id, interest_id, title, description, tier, fuzzed_location, venue_name, expires_at, max_participants, current_participants_count, filter_gender, filter_age_min, filter_age_max, status, created_at, image_urls, ttl_hours';
+
+/**
+ * My-squads projection derived from the shared `ActivityPublic` contract plus
+ * the host-specific view flags. This is a narrowing of the domain DTO, not a
+ * re-declaration of it; `interestId` stays the raw taxonomy key for display.
+ */
+export type MySquadItem = Pick<
+  ActivityPublic,
+  | 'id'
+  | 'hostId'
+  | 'title'
+  | 'venueName'
+  | 'expiresAt'
+  | 'currentParticipantsCount'
+  | 'maxParticipants'
+  | 'status'
+> & {
   interestId: string;
-  hostId: string;
-  venueName: string | null;
-  expiresAt: string;
-  currentParticipantsCount: number;
-  maxParticipants: number;
-  status: string;
   isHost: boolean;
   pendingRequestsCount?: number;
   hasReviewed?: boolean;
-}
+};
 
 export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
   if (!userId) return [];
@@ -24,7 +35,7 @@ export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
   // 1. Fetch activities hosted by user
   const { data: hosted, error: hostedError } = await supabase
     .from('activities')
-    .select('id, host_id, interest_id, title, description, tier, fuzzed_location, venue_name, expires_at, max_participants, current_participants_count, filter_gender, filter_age_min, filter_age_max, status, created_at, image_urls, ttl_hours')
+    .select(MY_SQUAD_COLUMNS)
     .eq('host_id', userId)
     .order('created_at', { ascending: false });
 
@@ -49,7 +60,7 @@ export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
   if (memberActivityIds.length > 0) {
     const { data: acts, error: actsError } = await supabase
       .from('activities')
-      .select('id, host_id, interest_id, title, description, tier, fuzzed_location, venue_name, expires_at, max_participants, current_participants_count, filter_gender, filter_age_min, filter_age_max, status, created_at, image_urls, ttl_hours')
+      .select(MY_SQUAD_COLUMNS)
       .in('id', memberActivityIds);
     if (actsError) {
       console.warn('fetchMySquads member activities error:', actsError.message);
@@ -71,29 +82,31 @@ export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
     }
   }
 
-  // 4. Construct squad items
+  // 4. Batch-fetch pending join-request counts for every hosted squad in a single
+  //    RPC round trip (replaces one COUNT query per hosted activity).
+  const hostedIds = (hosted || []).map((a) => a.id);
+  const pendingCounts = hostedIds.length > 0
+    ? await getPendingRequestCounts(hostedIds)
+    : new Map<string, number>();
+
+  // 5. Construct squad items
   const squadList: MySquadItem[] = [];
 
   if (hosted && hosted.length > 0) {
-    const hostedSquads = await Promise.all(
-      hosted.map(async (act) => {
-        const pendingCount = await getPendingRequestsCount(act.id);
-        return {
-          id: act.id,
-          title: act.title,
-          interestId: act.interest_id,
-          hostId: act.host_id,
-          venueName: act.venue_name,
-          expiresAt: act.expires_at,
-          currentParticipantsCount: act.current_participants_count,
-          maxParticipants: act.max_participants,
-          status: act.status,
-          isHost: true,
-          pendingRequestsCount: pendingCount,
-          hasReviewed: reviewedSet.has(act.id),
-        };
-      })
-    );
+    const hostedSquads: MySquadItem[] = hosted.map((act) => ({
+      id: act.id,
+      title: act.title,
+      interestId: act.interest_id,
+      hostId: act.host_id,
+      venueName: act.venue_name,
+      expiresAt: act.expires_at,
+      currentParticipantsCount: act.current_participants_count,
+      maxParticipants: act.max_participants,
+      status: act.status,
+      isHost: true,
+      pendingRequestsCount: pendingCounts.get(act.id) ?? 0,
+      hasReviewed: reviewedSet.has(act.id),
+    }));
     squadList.push(...hostedSquads);
   }
 

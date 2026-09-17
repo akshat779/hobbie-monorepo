@@ -137,7 +137,7 @@ describe('useAuthStore', () => {
   });
 
   describe('upsertProfile', () => {
-    it('should normalize un-prefixed phone number to E.164 and upsert successfully', async () => {
+    it('should normalize un-prefixed phone number to E.164 and save successfully', async () => {
       // Simulate Supabase GoTrue returning user.phone without '+'
       useAuthStore.setState({
         user: {
@@ -172,13 +172,78 @@ describe('useAuthStore', () => {
       });
 
       expect(res.error).toBeUndefined();
-      expect(qb.upsert).toHaveBeenCalledWith(
+      expect(qb.update).toHaveBeenCalledWith(
         expect.objectContaining({
           phone: '+919876543210',
           name: 'Akshat',
         })
       );
       expect(useAuthStore.getState().profile?.name).toBe('Akshat');
+    });
+
+    it('should not overwrite database-owned trust metrics when updating an existing profile', async () => {
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const qb = (supabase.from as any)('profiles');
+      qb.maybeSingle.mockResolvedValue({
+        data: { id: '00000000-0000-0000-0000-000000000001' },
+        error: null,
+      });
+
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football', 'badminton'],
+      });
+
+      expect(res.error).toBeUndefined();
+      const updatePayload = qb.update.mock.calls[0][0];
+      expect(updatePayload).not.toHaveProperty('is_verified');
+      expect(updatePayload).not.toHaveProperty('trust_score');
+      expect(updatePayload).not.toHaveProperty('interaction_count');
+      expect(updatePayload).not.toHaveProperty('ratings_count');
+    });
+
+    it('should insert a new profile with database-owned metrics omitted (first-time onboarding)', async () => {
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const qb = (supabase.from as any)('profiles');
+      qb.maybeSingle.mockResolvedValue({ data: null, error: null });
+
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football'],
+      });
+
+      expect(res.error).toBeUndefined();
+      const insertPayload = qb.insert.mock.calls[0][0];
+      expect(insertPayload.phone).toBe('+919876543210');
+      expect(insertPayload).not.toHaveProperty('is_verified');
+      expect(insertPayload).not.toHaveProperty('trust_score');
+      expect(insertPayload).not.toHaveProperty('interaction_count');
     });
 
     it('should reject upsertProfile if user has no authenticated session', async () => {

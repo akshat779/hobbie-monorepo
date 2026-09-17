@@ -10,13 +10,13 @@ import {
   Users,
   ChevronRight,
 } from 'lucide-react-native';
-import { NearbyActivity } from './types';
+import { DiscoveryActivity } from './types';
 import { formatDistance, getPinTheme } from './utils';
 import { useAuthStore } from '../auth/useAuthStore';
 import { useCountdown } from '../../hooks/useCountdown';
 
 interface ActivityBottomSheetProps {
-  activity: NearbyActivity | null;
+  activity: DiscoveryActivity | null;
   onClose: () => void;
   onRecenter?: () => void;
 }

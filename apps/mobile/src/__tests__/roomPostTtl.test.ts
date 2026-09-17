@@ -17,6 +17,9 @@ vi.mock('../services/supabase', () => {
 describe('Room Chat Post-TTL Behavior', () => {
   const activityId = VALID_UUIDS.activity1;
   const currentUserId = VALID_UUIDS.alex;
+  const msgOneId = '55555555-5555-5555-5555-555555555555';
+  const msgTwoId = '66666666-6666-6666-6666-666666666666';
+  const insertedMsgId = '77777777-7777-7777-7777-777777777777';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,14 +53,14 @@ describe('Room Chat Post-TTL Behavior', () => {
               order: vi.fn().mockResolvedValue({
                 data: [
                   {
-                    id: 'msg-1',
+                    id: msgOneId,
                     activity_id: activityId,
                     sender_id: currentUserId,
                     content: 'Still meeting up at the turf?',
                     created_at: new Date(Date.now() - 3600000).toISOString(),
                   },
                   {
-                    id: 'msg-2',
+                    id: msgTwoId,
                     activity_id: activityId,
                     sender_id: VALID_UUIDS.sam,
                     content: 'Yes! See you in 15 mins.',
@@ -84,6 +87,19 @@ describe('Room Chat Post-TTL Behavior', () => {
         };
       }
 
+      if (table === 'activities') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { host_id: currentUserId },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+
       return {};
     });
 
@@ -102,7 +118,7 @@ describe('Room Chat Post-TTL Behavior', () => {
     });
 
     const insertedMsg = {
-      id: 'msg-new',
+      id: insertedMsgId,
       activity_id: activityId,
       sender_id: currentUserId,
       content: 'I arrived at the venue',
@@ -150,12 +166,25 @@ describe('Room Chat Post-TTL Behavior', () => {
         };
       }
 
+      if (table === 'activities') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { host_id: currentUserId },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+
       return {};
     });
 
     const result = await sendRoomMessage(activityId, 'I arrived at the venue');
 
-    expect(result.id).toBe('msg-new');
+    expect(result.id).toBe(insertedMsgId);
     expect(result.content).toBe('I arrived at the venue');
     expect(result.senderName).toBe('Alex Rivera');
   });

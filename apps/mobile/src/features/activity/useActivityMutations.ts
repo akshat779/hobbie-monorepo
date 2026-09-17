@@ -1,16 +1,42 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { CreateActivityInput } from '@hobbie/shared';
+import { ActivityPublic, CreateActivityInput, RequestToJoinResult } from '@hobbie/shared';
 import { createActivity } from '../../services/activityCreation';
 import {
   requestToJoin,
   acceptJoinRequestTx,
   declineJoinRequest,
-  JoinRequestRow,
-  IncomingJoinRequest,
 } from '../../services/handshake';
-import { ActivityDetails } from '../../services/activityDetail';
 import { MySquadItem } from './useMyActivitiesQuery';
 import { queryKeys } from '../../services/queryKeys';
+
+interface JoinRequestVariables {
+  activityId: string;
+  userId: string;
+  message?: string;
+}
+
+interface JoinRequestContext {
+  previousStatus: RequestToJoinResult | null | undefined;
+  hadStatusSnapshot: boolean;
+  activityId: string;
+  userId: string;
+}
+
+interface ReviewRequestVariables {
+  action: 'accept' | 'decline';
+  requestId: string;
+  hostId: string;
+  activityId: string;
+}
+
+interface ReviewRequestContext {
+  previousDetail: ActivityPublic | null | undefined;
+  hadDetailSnapshot: boolean;
+  previousMySquads: MySquadItem[] | undefined;
+  hadMySquadsSnapshot: boolean;
+  activityId: string;
+  hostId: string;
+}
 
 /**
  * Mutation hook for creating a new live squad.
@@ -44,7 +70,9 @@ export function useCreateActivityMutation() {
 
 /**
  * Mutation options for sending a request to join a squad with optimistic UI updates.
- * Updates join status cache immediately and rolls back if rejected.
+ *
+ * `requestToJoin` throws on failure, so TanStack Query routes the failure through
+ * `onError` and the captured snapshot is restored.
  */
 export function getJoinRequestMutationOptions(queryClient: QueryClient) {
   return {
@@ -52,32 +80,26 @@ export function getJoinRequestMutationOptions(queryClient: QueryClient) {
       activityId,
       userId,
       message,
-    }: {
-      activityId: string;
-      userId: string;
-      message?: string;
-    }): Promise<{ data?: JoinRequestRow; error?: string }> => {
+    }: JoinRequestVariables): Promise<RequestToJoinResult> => {
       return requestToJoin(activityId, userId, message);
     },
     onMutate: async ({
       activityId,
       userId,
       message,
-    }: {
-      activityId: string;
-      userId: string;
-      message?: string;
-    }) => {
+    }: JoinRequestVariables): Promise<JoinRequestContext> => {
       const joinStatusKey = queryKeys.activities.joinStatus(activityId, userId);
 
       // 1. Cancel outgoing queries
       await queryClient.cancelQueries({ queryKey: joinStatusKey });
 
-      // 2. Snapshot previous value
-      const previousStatus = queryClient.getQueryData<JoinRequestRow | null>(joinStatusKey);
+      // 2. Snapshot previous value. `null` is a legitimate cached value and must
+      //    be restorable, so track presence separately from the value itself.
+      const previousStatus = queryClient.getQueryData<RequestToJoinResult | null>(joinStatusKey);
+      const hadStatusSnapshot = previousStatus !== undefined;
 
       // 3. Optimistically set to pending
-      const optimisticRequest: JoinRequestRow = {
+      const optimisticRequest: RequestToJoinResult = {
         id: `temp-${Date.now()}`,
         activity_id: activityId,
         user_id: userId,
@@ -86,36 +108,32 @@ export function getJoinRequestMutationOptions(queryClient: QueryClient) {
         created_at: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<JoinRequestRow | null>(joinStatusKey, optimisticRequest);
+      queryClient.setQueryData<RequestToJoinResult | null>(joinStatusKey, optimisticRequest);
 
-      return { previousStatus, activityId, userId };
+      return { previousStatus, hadStatusSnapshot, activityId, userId };
     },
     onError: (
       _err: unknown,
-      _vars: unknown,
-      context: { previousStatus?: JoinRequestRow | null; activityId: string; userId: string } | undefined
+      _vars: JoinRequestVariables,
+      context: JoinRequestContext | undefined
     ) => {
       if (!context) return;
+      if (!context.hadStatusSnapshot) return;
       queryClient.setQueryData(
         queryKeys.activities.joinStatus(context.activityId, context.userId),
         context.previousStatus
       );
     },
-    onSuccess: (
-      result: { data?: JoinRequestRow; error?: string },
-      { activityId, userId }: { activityId: string; userId: string }
-    ) => {
-      if (result.data) {
-        queryClient.setQueryData(
-          queryKeys.activities.joinStatus(activityId, userId),
-          result.data
-        );
-      }
+    onSuccess: (data: RequestToJoinResult, { activityId, userId }: JoinRequestVariables) => {
+      queryClient.setQueryData(
+        queryKeys.activities.joinStatus(activityId, userId),
+        data
+      );
     },
     onSettled: (
       _data: unknown,
       _err: unknown,
-      { activityId, userId }: { activityId: string; userId: string }
+      { activityId, userId }: JoinRequestVariables
     ) => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.activities.joinStatus(activityId, userId),
@@ -133,8 +151,12 @@ export function useJoinRequestMutation() {
 }
 
 /**
- * Mutation options for accepting or declining join requests as host with optimistic UI updates.
- * Adheres strictly to mut-optimistic-updates and mut-rollback-context rules.
+ * Mutation options for accepting or declining join requests as host with
+ * optimistic UI updates.
+ *
+ * Note: the host review queue is owned by `HostReviewModal`'s local state and is
+ * re-read from the server on settle. There is no `hostRequests` TanStack cache
+ * key in play, so no optimistic write is attempted against a key nobody reads.
  */
 export function getReviewRequestMutationOptions(queryClient: QueryClient) {
   return {
@@ -143,60 +165,44 @@ export function getReviewRequestMutationOptions(queryClient: QueryClient) {
       requestId,
       hostId,
       activityId,
-    }: {
-      action: 'accept' | 'decline';
-      requestId: string;
-      hostId: string;
-      activityId: string;
-    }) => {
+    }: ReviewRequestVariables) => {
       if (action === 'accept') {
         const res = await acceptJoinRequestTx(requestId, hostId);
         if (!res.success) throw new Error(res.error || 'Failed to accept request');
         return res;
-      } else {
-        const res = await declineJoinRequest(requestId, hostId);
-        if (!res.success) throw new Error(res.error || 'Failed to decline request');
-        return res;
       }
+
+      const res = await declineJoinRequest(requestId, hostId);
+      if (!res.success) throw new Error(res.error || 'Failed to decline request');
+      return res;
     },
     onMutate: async ({
       action,
       requestId,
       hostId,
       activityId,
-    }: {
-      action: 'accept' | 'decline';
-      requestId: string;
-      hostId: string;
-      activityId: string;
-    }) => {
-      const hostRequestsKey = queryKeys.activities.hostRequests(activityId);
+    }: ReviewRequestVariables): Promise<ReviewRequestContext> => {
       const detailKey = queryKeys.activities.detail(activityId);
       const mySquadsKey = queryKeys.activities.mySquads(hostId);
 
       // 1. Cancel outgoing queries
       await Promise.all([
-        queryClient.cancelQueries({ queryKey: hostRequestsKey }),
         queryClient.cancelQueries({ queryKey: detailKey }),
         queryClient.cancelQueries({ queryKey: mySquadsKey }),
       ]);
 
-      // 2. Snapshot previous states for rollback context
-      const previousRequests = queryClient.getQueryData<IncomingJoinRequest[]>(hostRequestsKey);
-      const previousDetail = queryClient.getQueryData<ActivityDetails | null>(detailKey);
+      // 2. Snapshot previous states for rollback context. Presence is tracked
+      //    separately so a legitimate `null` detail snapshot can be restored.
+      const previousDetail = queryClient.getQueryData<ActivityPublic | null>(detailKey);
+      const hadDetailSnapshot = previousDetail !== undefined;
       const previousMySquads = queryClient.getQueryData<MySquadItem[]>(mySquadsKey);
+      const hadMySquadsSnapshot = previousMySquads !== undefined;
 
-      // 3. Optimistically remove the request from the host review list
-      queryClient.setQueryData(
-        hostRequestsKey,
-        (old: IncomingJoinRequest[] | undefined) => (old ?? []).filter((r) => r.id !== requestId)
-      );
-
-      // 4. If accepted, optimistically increment participant count
+      // 3. If accepted, optimistically increment participant count
       if (action === 'accept') {
         queryClient.setQueryData(
           detailKey,
-          (old: ActivityDetails | null | undefined) => {
+          (old: ActivityPublic | null | undefined) => {
             if (!old) return old;
             const newCount = old.currentParticipantsCount + 1;
             return {
@@ -236,44 +242,39 @@ export function getReviewRequestMutationOptions(queryClient: QueryClient) {
         );
       }
 
-      return { previousRequests, previousDetail, previousMySquads, activityId, hostId };
+      return {
+        previousDetail,
+        hadDetailSnapshot,
+        previousMySquads,
+        hadMySquadsSnapshot,
+        activityId,
+        hostId,
+      };
     },
     onError: (
       _err: unknown,
-      _vars: unknown,
-      context:
-        | {
-            previousRequests?: IncomingJoinRequest[];
-            previousDetail?: ActivityDetails | null;
-            previousMySquads?: MySquadItem[];
-            activityId: string;
-            hostId: string;
-          }
-        | undefined
+      _vars: ReviewRequestVariables,
+      context: ReviewRequestContext | undefined
     ) => {
       if (!context) return;
-      const hostRequestsKey = queryKeys.activities.hostRequests(context.activityId);
+
       const detailKey = queryKeys.activities.detail(context.activityId);
       const mySquadsKey = queryKeys.activities.mySquads(context.hostId);
 
-      if (context.previousRequests) {
-        queryClient.setQueryData(hostRequestsKey, context.previousRequests);
-      }
-      if (context.previousDetail) {
+      // Restore every captured snapshot, including legitimate `null` values, so a
+      // corrupted optimistic value can never survive a failed mutation.
+      if (context.hadDetailSnapshot) {
         queryClient.setQueryData(detailKey, context.previousDetail);
       }
-      if (context.previousMySquads) {
+      if (context.hadMySquadsSnapshot) {
         queryClient.setQueryData(mySquadsKey, context.previousMySquads);
       }
     },
     onSettled: (
       _data: unknown,
       _error: unknown,
-      { activityId, hostId }: { activityId: string; hostId: string }
+      { activityId, hostId }: ReviewRequestVariables
     ) => {
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.activities.hostRequests(activityId),
-      });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.activities.detail(activityId),
       });
@@ -291,5 +292,3 @@ export function useReviewRequestMutation() {
   const queryClient = useQueryClient();
   return useMutation(getReviewRequestMutationOptions(queryClient));
 }
-
-

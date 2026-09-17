@@ -4,7 +4,7 @@ import {
   VerifyOtpSchema,
   UserProfileSchema,
 } from '../schemas/user.schema.js';
-import { CreateActivitySchema } from '../schemas/activity.schema.js';
+import { CreateActivitySchema, ActivityPublicSchema } from '../schemas/activity.schema.js';
 
 describe('User Schemas', () => {
   it('validates E.164 phone numbers correctly', () => {
@@ -70,5 +70,29 @@ describe('Activity Schemas', () => {
       interestId: 'football', title: 'Evening match', location: { latitude: 12, longitude: 77 },
       filterAgeMin: 35, filterAgeMax: 24,
     }).success).toBe(false);
+  });
+
+  it('validates ActivityPublicSchema including cancelled status', () => {
+    const validCancelled = {
+      id: '11111111-1111-1111-1111-111111111111',
+      hostId: '22222222-2222-2222-2222-222222222222',
+      hostName: 'Host User',
+      hostIsVerified: true,
+      hostTrustScore: 4.8,
+      interestId: 'football' as const,
+      title: 'Disbanded game',
+      description: 'Host left',
+      tier: 'physical' as const,
+      fuzzedLocation: { latitude: 12.9716, longitude: 77.5946 },
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      maxParticipants: 5,
+      currentParticipantsCount: 0,
+      status: 'cancelled' as const,
+    };
+    expect(ActivityPublicSchema.safeParse(validCancelled).success).toBe(true);
+
+    const invalidStatus = { ...validCancelled, status: 'unknown_status' };
+    expect(ActivityPublicSchema.safeParse(invalidStatus).success).toBe(false);
   });
 });

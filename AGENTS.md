@@ -4,11 +4,40 @@ This repository follows the architecture, design system, and development guideli
 
 ## Key Directives for Agent Turns:
 
-1. **Independent Deployability:** Never couple `apps/mobile` dependencies into `apps/server` or vice versa. Shared contracts must strictly live in `packages/shared`.
-2. **Design Tokens & Styling:** Always use Tailwind/NativeWind classes adhering to the **Nocturnal Pulse** palette (`bg-void`, `bg-ink`, `bg-ink-raised`, `signal-violet`, `pulse-lilac`, `ember`, `text-moonlight`, `text-dusk`, `border-hairline`).
-3. **No Untyped Code:** Maintain strict TypeScript everywhere (`noImplicitAny`, exact DTO validation with Zod).
-4. **Testing First:** Every business logic function in `apps/server` or `packages/shared` must have a corresponding `.test.ts` with Vitest. Mobile UI flows should be accompanied by Maestro YAML specs.
-5. **Multi-User Dev Personas:** Ensure mock authentication and `__DEV__` persona switcher utilities remain intact to facilitate multi-user simulator testing.
+1. **Zero Assumptions — Ground Truth Code Verification (STRICT):** Never assume, recall from memory, or infer database enums, column names, schema models, API contracts, third-party library signatures, or file paths. ALWAYS inspect the concrete code in the repository (`grep_search`, `view_file`) before planning or coding.
+2. **Independent Deployability:** Never couple `apps/mobile` dependencies into `apps/server` or vice versa. Shared contracts must strictly live in `packages/shared`.
+3. **Design Tokens & Styling:** Always use Tailwind/NativeWind classes adhering to the **Nocturnal Pulse** palette (`bg-void`, `bg-ink`, `bg-ink-raised`, `signal-violet`, `pulse-lilac`, `ember`, `text-moonlight`, `text-dusk`, `border-hairline`).
+4. **No Untyped Code:** Maintain strict TypeScript everywhere (`noImplicitAny`, exact DTO validation with Zod).
+5. **Testing First:** Every business logic function in `apps/server` or `packages/shared` must have a corresponding `.test.ts` with Vitest. Mobile UI flows should be accompanied by Maestro YAML specs.
+6. **Multi-User Dev Personas:** Ensure mock authentication and `__DEV__` persona switcher utilities remain intact to facilitate multi-user simulator testing.
+
+---
+
+## 🔍 Zero-Assumption Directive — Ground Truth & Concrete Verification (STRICT):
+
+1. **Zero Guesswork, Zero Semantic Intuition:**
+   * This is a concrete codebase, not a conceptual discussion. **NEVER make assumptions about database schemas, enum values, table columns, constraints, foreign keys, route parameters, types, or third-party APIs.**
+   * Do not rely on what "feels semantically natural" (e.g. assuming an activity has a `'cancelled'` status because join requests have one). If you have not seen the exact line of code in the repository with your own tools, **it does not exist**.
+   * Every reference to an entity, type, column, or enum MUST be preceded by verifying the actual source of truth via `grep_search` or `view_file`.
+
+2. **Mandatory Tri-Layer Schema Parity (PostgreSQL DDL $\iff$ Shared Zod $\iff$ TypeScript Types):**
+   * Any database enum, column, table, or constraint change MUST be implemented across all three layers atomically in the exact same turn:
+     1. **PostgreSQL Migration (`supabase/migrations/`)**: Discrete, forward-only timestamped SQL file (`ALTER TYPE ... ADD VALUE`, `CREATE TABLE`, etc.).
+     2. **Shared Zod Schemas (`packages/shared/src/schemas/`)**: Runtime validation schemas (`z.enum([...])`) that govern both mobile client and server API inputs/outputs.
+     3. **Database Types (`packages/shared/src/types/database.types.ts`)**: Inferred Supabase client type definitions (`Database["public"]["Enums"]` and `Constants.public.Enums`).
+   * Divergence across any of these three layers is a critical breaking bug.
+
+3. **PL/pgSQL Deferred Validation Trap:**
+   * Be aware: PostgreSQL's `CREATE OR REPLACE FUNCTION` parses syntax but does **NOT** validate enum literal casts (e.g., `'cancelled'::activity_status`) at migration push time. Evaluation is deferred to runtime.
+   * Never rely on `supabase db push` succeeding as proof that SQL functions are valid. Every enum literal, column cast, and foreign key reference inside a PL/pgSQL function MUST be explicitly verified against the source DDL before writing the migration.
+
+4. **Concrete Evidence in Planning Mode:**
+   * In Planning Mode, never provide high-level conceptual plans without grounding them in the code.
+   * Every implementation plan touching data or APIs **MUST include a "Verified Codebase Ground Truth" checklist** citing the exact file paths, line numbers, and existing definitions verified before proposing changes.
+
+5. **Anti-Assumption Testing Directive:**
+   * Never write hollow mocks (e.g., `mockResolvedValue({ data: { success: true } })`) that bypass schema validation and hide broken database contracts.
+   * Unit tests must execute real Zod validation or integration assertions to prove that data structures conform to the database schema.
 
 ---
 

@@ -62,10 +62,16 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
             lat: 12.9716,
             lng: 77.5946,
             venue_name: 'Turf Arena',
+            filter_gender: 'any',
+            filter_age_min: null,
+            filter_age_max: null,
             expires_at: new Date(Date.now() + 7200000).toISOString(),
             max_participants: 10,
             current_participants_count: 6,
             distance_meters: 650,
+            created_at: new Date().toISOString(),
+            status: 'open',
+            image_urls: null,
           },
           {
             id: VALID_UUIDS.activity2,
@@ -77,10 +83,16 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
             lat: 12.978,
             lng: 77.599,
             venue_name: 'Smash Zone',
+            filter_gender: 'any',
+            filter_age_min: null,
+            filter_age_max: null,
             expires_at: new Date(Date.now() + 3600000).toISOString(),
             max_participants: 4,
             current_participants_count: 2,
             distance_meters: 1200,
+            created_at: new Date().toISOString(),
+            status: 'open',
+            image_urls: null,
           },
         ],
         error: null,
@@ -379,6 +391,53 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
             }),
           }),
         };
+      }),
+      update: vi.fn((payload: any) => {
+        let validationError: { code: string; message: string } | null = null;
+
+        if (tableName === 'profiles') {
+          if (payload?.phone !== undefined) {
+            const phoneValidation = PhoneAuthSchema.safeParse({ phone: payload.phone });
+            if (!phoneValidation.success) {
+              validationError = {
+                code: '23514',
+                message: 'new row for relation "profiles" violates check constraint "check_e164_phone"',
+              };
+            }
+          }
+
+          if (!validationError && payload?.birth_date) {
+            const birth = new Date(payload.birth_date);
+            const ageDate = new Date(Date.now() - birth.getTime());
+            const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+            if (age < 18) {
+              validationError = {
+                code: '23514',
+                message: 'new row for relation "profiles" violates check constraint "check_age_minimum"',
+              };
+            }
+          }
+        }
+
+        const chain = {
+          eq: vi.fn(() => chain),
+          select: vi.fn(() => ({
+            single: async () => {
+              if (validationError) {
+                return { data: null, error: validationError };
+              }
+              return {
+                data: {
+                  id: eqFilters['id'] ?? VALID_UUIDS.alex,
+                  ...payload,
+                  updated_at: new Date().toISOString(),
+                },
+                error: null,
+              };
+            },
+          })),
+        };
+        return chain;
       }),
       upsert: vi.fn((payload: any) => {
         if (tableName === 'profiles') {

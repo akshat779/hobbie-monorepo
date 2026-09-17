@@ -17,8 +17,8 @@ import {
   Sparkles,
   Inbox,
 } from 'lucide-react-native';
+import { JoinRequestPublic } from '@hobbie/shared';
 import {
-  IncomingJoinRequest,
   fetchIncomingJoinRequests,
   acceptJoinRequestTx,
   declineJoinRequest,
@@ -49,7 +49,7 @@ export function HostReviewModal({
   const hostId = useAuthStore((s) => s.user?.id || '');
   const reviewMutation = useReviewRequestMutation();
 
-  const [requests, setRequests] = useState<IncomingJoinRequest[]>([]);
+  const [requests, setRequests] = useState<JoinRequestPublic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
@@ -83,6 +83,12 @@ export function HostReviewModal({
   }, [visible, activityId, loadRequests]);
 
   const handleAccept = async (requestId: string, joinerName: string) => {
+    // Global in-flight lock: latches synchronously on the first tap so rapid
+    // screen taps cannot fire concurrent accept_join_request_tx calls against
+    // the same room capacity slot.
+    if (processingId !== null) return;
+    setProcessingId(requestId);
+
     // Snapshot current local state for immediate rollback if needed
     const previousRequests = [...requests];
     const previousCount = localCount;
@@ -101,15 +107,24 @@ export function HostReviewModal({
         hostId,
         activityId,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Rollback local state on failure
       setRequests(previousRequests);
       setLocalCount(previousCount);
-      setStatusMessage({ text: err?.message || 'Error processing request', isError: true });
+      setStatusMessage({
+        text: err instanceof Error ? err.message : 'Error processing request',
+        isError: true,
+      });
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleDecline = async (requestId: string, joinerName: string) => {
+    // Global in-flight lock, same guarantee as handleAccept.
+    if (processingId !== null) return;
+    setProcessingId(requestId);
+
     const previousRequests = [...requests];
 
     // 1. Instant optimistic visual feedback (0ms latency)
@@ -125,9 +140,14 @@ export function HostReviewModal({
         hostId,
         activityId,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setRequests(previousRequests);
-      setStatusMessage({ text: err?.message || 'Error declining request', isError: true });
+      setStatusMessage({
+        text: err instanceof Error ? err.message : 'Error declining request',
+        isError: true,
+      });
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -289,7 +309,7 @@ export function HostReviewModal({
                         accessibilityRole="button"
                         accessibilityLabel={`Decline request from ${req.user.name}`}
                         onPress={() => handleDecline(req.id, req.user.name)}
-                        disabled={isProcessing}
+                        disabled={processingId !== null}
                         className="flex-1 h-12 rounded-full bg-void border border-hairline items-center justify-center flex-row active:bg-ink-raised"
                         activeOpacity={0.7}
                       >
@@ -304,7 +324,7 @@ export function HostReviewModal({
                         accessibilityRole="button"
                         accessibilityLabel={`Accept ${req.user.name} into squad`}
                         onPress={() => handleAccept(req.id, req.user.name)}
-                        disabled={isProcessing || isSquadFull}
+                        disabled={processingId !== null || isSquadFull}
                         className={`flex-1 h-12 rounded-full flex-row items-center justify-center border ${
                           isSquadFull
                             ? 'bg-ink border-hairline opacity-50'

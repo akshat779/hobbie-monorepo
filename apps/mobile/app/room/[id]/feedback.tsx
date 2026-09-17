@@ -50,7 +50,7 @@ export default function PostActivityFeedbackScreen() {
 
   // Peers to review (excluding current user)
   const peersToReview = useMemo(
-    () => allMembers.filter((m) => m.userId !== currentUserId),
+    () => allMembers.filter((m) => m.id !== currentUserId),
     [allMembers, currentUserId]
   );
 
@@ -95,7 +95,7 @@ export default function PostActivityFeedbackScreen() {
     try {
       const res = await submitMutation.mutateAsync({
         activityId: id,
-        targetUserId: currentPeer.userId,
+        targetUserId: currentPeer.id,
         score,
         tags: selectedTags,
         keepInTouch,

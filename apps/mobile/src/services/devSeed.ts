@@ -1,25 +1,45 @@
 import { supabase } from './supabase';
 import { toEwktPoint, fuzzCoordinates } from '@hobbie/shared';
-import { DEV_PERSONAS } from '../features/auth/useAuthStore';
+
+interface SeedSquadSpec {
+  title: string;
+  interestId: string;
+  lat: number;
+  lng: number;
+  venueName: string;
+  description: string;
+  maxParticipants: number;
+  expiresAt: string;
+}
 
 /**
  * Spawns 3 realistic test squads within 1-2 km of the caller's actual GPS location.
  * Uses real PostGIS geometries and fresh 2-3 hour TTLs so they render accurately on the radar.
+ *
+ * RLS note: the `activities` insert policy strictly enforces
+ * `WITH CHECK (auth.uid() = host_id)`. The previous implementation hardcoded
+ * `DEV_PERSONAS[*].id` as the host, which can never match the authenticated
+ * session (dev login provisions auth users with generated UUIDs), so every
+ * insert was rejected. Every generated squad is therefore attributed to the
+ * active authenticated session instead of a detached mock identity.
  */
 export async function seedNearbySquads(
   userLat: number,
   userLng: number
 ): Promise<{ count: number; error?: string }> {
   try {
-    const host1 = DEV_PERSONAS[0]!; // Alex
-    const host2 = DEV_PERSONAS[2]!; // Priya
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return { count: 0, error: 'You must be signed in to seed demo squads' };
+    }
+    const seedingHostId = authData.user.id;
 
     const now = new Date();
     const expires1 = new Date(now.getTime() + 2.5 * 60 * 60 * 1000).toISOString();
     const expires2 = new Date(now.getTime() + 1.5 * 60 * 60 * 1000).toISOString();
     const expires3 = new Date(now.getTime() + 45 * 60 * 1000).toISOString();
 
-    const sampleLocations = [
+    const sampleLocations: SeedSquadSpec[] = [
       {
         title: '5-a-side Turf Football Match',
         interestId: 'football',
@@ -28,7 +48,6 @@ export async function seedNearbySquads(
         venueName: 'Local Sports Arena Pitch 1',
         description: 'Need 2 more players for casual match. Bibs and balls provided.',
         maxParticipants: 10,
-        hostId: host1.id,
         expiresAt: expires1,
       },
       {
@@ -39,7 +58,6 @@ export async function seedNearbySquads(
         venueName: 'Indoor Smash Arena',
         description: 'Court booked for 1 hour. Need 1 intermediate doubles partner.',
         maxParticipants: 4,
-        hostId: host2.id,
         expiresAt: expires2,
       },
       {
@@ -50,7 +68,6 @@ export async function seedNearbySquads(
         venueName: 'Artisan Coffee Roasters',
         description: 'Casual morning coffee & discussing startup ideas.',
         maxParticipants: 4,
-        hostId: host1.id,
         expiresAt: expires3,
       },
     ];
@@ -59,7 +76,7 @@ export async function seedNearbySquads(
       const exact = { latitude: loc.lat, longitude: loc.lng };
       const fuzzed = fuzzCoordinates(exact);
       return {
-        host_id: loc.hostId,
+        host_id: seedingHostId,
         interest_id: loc.interestId,
         title: loc.title,
         description: loc.description,
@@ -70,7 +87,7 @@ export async function seedNearbySquads(
         ttl_hours: 3.0,
         expires_at: loc.expiresAt,
         max_participants: loc.maxParticipants,
-        current_participants_count: 2,
+        current_participants_count: 1,
         status: 'open' as const,
       };
     });
@@ -86,7 +103,10 @@ export async function seedNearbySquads(
     }
 
     return { count: data?.length || 0 };
-  } catch (err: any) {
-    return { count: 0, error: err?.message || 'Failed to seed squads' };
+  } catch (err) {
+    return {
+      count: 0,
+      error: err instanceof Error ? err.message : 'Failed to seed squads',
+    };
   }
 }

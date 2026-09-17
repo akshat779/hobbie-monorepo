@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ChatMessage } from '@hobbie/shared';
 import {
   fetchRoomMessages,
   fetchRoomMetadata,
@@ -7,7 +8,6 @@ import {
   concludeActivity,
   fetchActivityExactLocation,
   fetchRoomMembers,
-  RoomMessage,
   RoomMetadata,
   RoomMember,
   ActivityLocation,
@@ -72,7 +72,7 @@ export function useConcludeActivityMutation(roomId: string) {
  * Query hook for ephemeral room chat messages.
  */
 export function useRoomMessagesQuery(roomId: string | undefined) {
-  return useQuery<RoomMessage[]>({
+  return useQuery<ChatMessage[]>({
     queryKey: queryKeys.room.messages(roomId || ''),
     queryFn: () => fetchRoomMessages(roomId || ''),
     enabled: Boolean(roomId),
@@ -98,19 +98,20 @@ export function useSendRoomMessageMutation(roomId: string) {
 
       // 2. Snapshot the previous messages for rollback context
       const previousMessages =
-        queryClient.getQueryData<RoomMessage[]>(messagesKey) ?? [];
+        queryClient.getQueryData<ChatMessage[]>(messagesKey) ?? [];
 
       // 3. Optimistically append new message
-      const optimisticMessage: RoomMessage = {
+      const optimisticMessage: ChatMessage = {
         id: `temp-${Date.now()}`,
-        activity_id: roomId,
-        sender_id: 'current-user',
-        content,
-        created_at: new Date().toISOString(),
+        activityId: roomId,
+        senderId: 'current-user',
         senderName: 'You',
+        content,
+        createdAt: new Date().toISOString(),
+        isHost: false,
       };
 
-      queryClient.setQueryData<RoomMessage[]>(messagesKey, (old) => [
+      queryClient.setQueryData<ChatMessage[]>(messagesKey, (old) => [
         ...(old ?? []),
         optimisticMessage,
       ]);
@@ -144,7 +145,7 @@ export function setupRealtimeRoomSync(
   return subscribeToRoomMessages(
     roomId,
     (incoming) => {
-      queryClient.setQueryData<RoomMessage[]>(messagesKey, (old = []) => {
+      queryClient.setQueryData<ChatMessage[]>(messagesKey, (old = []) => {
         // If message already exists (or matched by ID), skip duplicate
         if (old.some((m) => m.id === incoming.id)) {
           return old;
@@ -159,8 +160,13 @@ export function setupRealtimeRoomSync(
         return [
           ...filtered,
           {
-            ...incoming,
+            id: incoming.id,
+            activityId: incoming.activity_id,
+            senderId: incoming.sender_id,
             senderName: isFromMe ? 'You' : 'Hobbie Player',
+            content: incoming.content,
+            createdAt: incoming.created_at,
+            isHost: false,
           },
         ];
       });

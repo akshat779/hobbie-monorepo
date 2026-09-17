@@ -138,17 +138,15 @@ export default function ActivityDetailScreen() {
 
     setErrorMessage(null);
     try {
-      const result = await joinMutation.mutateAsync({
+      await joinMutation.mutateAsync({
         activityId: id,
         userId: currentUserId,
         message,
       });
-
-      if (result.error) {
-        setErrorMessage(result.error);
-      }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to submit join request');
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Failed to submit join request'
+      );
     }
   };
 

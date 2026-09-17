@@ -9,6 +9,7 @@ import {
   subscribeToJoinRequestUpdates,
   subscribeToHostQueue,
   getPendingRequestsCount,
+  getPendingRequestCounts,
 } from '../services/handshake';
 import { supabase } from '../services/supabase';
 import { createContractMockSupabase, VALID_UUIDS } from './helpers/contractMocks';
@@ -26,16 +27,16 @@ describe('Handshake Service', () => {
   });
 
   describe('requestToJoin', () => {
-    it('should successfully call request_to_join_activity RPC when available with valid UUIDs', async () => {
+    it('should call request_to_join_activity RPC and resolve the created request', async () => {
       const result = await requestToJoin(
         VALID_UUIDS.activity1,
         VALID_UUIDS.sam,
         'Ready to play!'
       );
 
-      expect(result.data).toBeDefined();
-      expect(result.data?.id).toBe(VALID_UUIDS.request1);
-      expect(result.data?.activity_id).toBe(VALID_UUIDS.activity1);
+      expect(result.id).toBe(VALID_UUIDS.request1);
+      expect(result.activity_id).toBe(VALID_UUIDS.activity1);
+      expect(result.status).toBe('pending');
       expect(supabase.rpc).toHaveBeenCalledWith('request_to_join_activity', {
         p_activity_id: VALID_UUIDS.activity1,
         p_user_id: VALID_UUIDS.sam,
@@ -43,66 +44,63 @@ describe('Handshake Service', () => {
       });
     });
 
-    it('should reject requestToJoin when activityId is not a valid UUID (Postgres 22P02 parity)', async () => {
-      const result = await requestToJoin('not-a-valid-uuid', VALID_UUIDS.sam, 'Ready!');
-
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('invalid input syntax for type uuid');
+    it('should throw when activityId is not a valid UUID (Postgres 22P02 parity)', async () => {
+      await expect(
+        requestToJoin('not-a-valid-uuid', VALID_UUIDS.sam, 'Ready!')
+      ).rejects.toThrow('invalid input syntax for type uuid');
     });
 
-    it('should reject requestToJoin when userId is not a valid UUID', async () => {
-      const result = await requestToJoin(VALID_UUIDS.activity1, 'not-a-user-uuid');
-
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('invalid input syntax for type uuid');
+    it('should throw when userId is not a valid UUID', async () => {
+      await expect(
+        requestToJoin(VALID_UUIDS.activity1, 'not-a-user-uuid')
+      ).rejects.toThrow('invalid input syntax for type uuid');
     });
 
-    it('should fail clearly when the atomic RPC is unavailable', async () => {
+    it('should throw when the atomic RPC is unavailable', async () => {
       (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'function request_to_join_activity does not exist' },
       });
 
-      const result = await requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam, 'Fallback message');
-
-      expect(result.data).toBeUndefined();
-      expect(result.error).toContain('does not exist');
+      await expect(
+        requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam, 'Fallback message')
+      ).rejects.toThrow('does not exist');
     });
 
-    it('should gracefully return existing request on unique violation (code 23505)', async () => {
+    it('should throw on unique violation when the request already exists (code 23505)', async () => {
+      (supabase.rpc as any).mockResolvedValueOnce({
+        data: null,
+        error: {
+          code: '23505',
+          message: 'duplicate key value violates unique constraint "join_requests_activity_id_user_id_key"',
+        },
+      });
+
+      await expect(
+        requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam)
+      ).rejects.toThrow('duplicate key value violates unique constraint');
+    });
+
+    it('should throw the atomic RPC error when the database rejects the operation', async () => {
       (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
         error: { message: 'RPC unavailable' },
       });
 
-      const result = await requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam);
-
-      expect(result.data).toBeUndefined();
-      expect(result.error).toContain('RPC unavailable');
+      await expect(
+        requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam)
+      ).rejects.toThrow('RPC unavailable');
     });
 
-    it('should return the atomic RPC error when the database rejects the operation', async () => {
+    it('should throw when the RPC resolves without a payload', async () => {
       (supabase.rpc as any).mockResolvedValueOnce({
         data: null,
-        error: { message: 'RPC unavailable' },
+        error: null,
       });
 
-      const result = await requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam);
-
-      expect(result.error).toBe('RPC unavailable');
-      expect(result.data).toBeUndefined();
-    });
-
-    it('should handle general atomic RPC errors', async () => {
-      (supabase.rpc as any).mockResolvedValueOnce({
-        data: null,
-        error: { message: 'RPC unavailable' },
-      });
-
-      const result = await requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam);
-
-      expect(result.error).toBe('RPC unavailable');
-      expect(result.data).toBeUndefined();
+      await expect(
+        requestToJoin(VALID_UUIDS.activity1, VALID_UUIDS.sam)
+      ).rejects.toThrow('Atomic join-request operation is unavailable');
     });
   });
 
@@ -117,7 +115,9 @@ describe('Handshake Service', () => {
                   id: VALID_UUIDS.request1,
                   activity_id: VALID_UUIDS.activity1,
                   user_id: VALID_UUIDS.alex,
+                  message: 'Ready to play!',
                   status: 'accepted',
+                  created_at: '2026-09-05T10:00:00Z',
                 },
                 error: null,
               }),
@@ -170,6 +170,8 @@ describe('Handshake Service', () => {
                       trust_score: 4.88,
                       is_verified: true,
                       avatar_url: null,
+                      gender: 'non-binary',
+                      interaction_count: 12,
                     },
                   },
                 ],
@@ -290,15 +292,58 @@ describe('Handshake Service', () => {
     });
   });
 
+  describe('getPendingRequestCounts', () => {
+    it('should batch-map activity ids to pending counts in a single RPC call', async () => {
+      (supabase.rpc as any).mockResolvedValueOnce({
+        data: [
+          { activity_id: VALID_UUIDS.activity1, pending_count: 3 },
+          { activity_id: VALID_UUIDS.activity2, pending_count: 0 },
+        ],
+        error: null,
+      });
+
+      const counts = await getPendingRequestCounts([
+        VALID_UUIDS.activity1,
+        VALID_UUIDS.activity2,
+      ]);
+
+      expect(supabase.rpc).toHaveBeenCalledTimes(1);
+      expect(supabase.rpc).toHaveBeenCalledWith('get_pending_request_counts', {
+        p_activity_ids: [VALID_UUIDS.activity1, VALID_UUIDS.activity2],
+      });
+      expect(counts.get(VALID_UUIDS.activity1)).toBe(3);
+      expect(counts.get(VALID_UUIDS.activity2)).toBe(0);
+    });
+
+    it('should short-circuit without an RPC call when given no ids', async () => {
+      const counts = await getPendingRequestCounts([]);
+
+      expect(counts.size).toBe(0);
+      expect(supabase.rpc).not.toHaveBeenCalled();
+    });
+
+    it('should return an empty map when the RPC errors', async () => {
+      (supabase.rpc as any).mockResolvedValueOnce({
+        data: null,
+        error: { message: 'function get_pending_request_counts does not exist' },
+      });
+
+      const counts = await getPendingRequestCounts([VALID_UUIDS.activity1]);
+
+      expect(counts.size).toBe(0);
+    });
+  });
+
   describe('leaveSquad', () => {
     it('should successfully execute leave_activity RPC with valid UUIDs', async () => {
       const result = await leaveSquad(VALID_UUIDS.activity1, VALID_UUIDS.sam);
 
       expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      expect(result.data.activity_id).toBe(VALID_UUIDS.activity1);
-      expect(result.data.user_id).toBe(VALID_UUIDS.sam);
-      expect(result.data.new_host_id).toBe(VALID_UUIDS.alex);
+      const data = result.data;
+      if (!data) throw new Error('Expected leave_activity to return data');
+      expect(data.activity_id).toBe(VALID_UUIDS.activity1);
+      expect(data.user_id).toBe(VALID_UUIDS.sam);
+      expect(data.new_host_id).toBe(VALID_UUIDS.alex);
       expect(supabase.rpc).toHaveBeenCalledWith('leave_activity', {
         p_activity_id: VALID_UUIDS.activity1,
         p_user_id: VALID_UUIDS.sam,

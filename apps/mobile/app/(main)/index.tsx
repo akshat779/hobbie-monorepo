@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,7 +14,10 @@ import {
 } from 'lucide-react-native';
 import darkMapStyle from '../../src/theme/dark-map-style.json';
 import { useDiscoveryQuery } from '../../src/features/discovery/useDiscoveryQuery';
-import { NearbyActivity } from '../../src/features/discovery/types';
+import {
+  DiscoveryActivity,
+  selectedCategoryToInterestIds,
+} from '../../src/features/discovery/types';
 import { PulsePin } from '../../src/components/map/PulsePin';
 import { UserLocationPin } from '../../src/components/map/UserLocationPin';
 import { useShallow } from 'zustand/react/shallow';
@@ -39,7 +42,7 @@ export default function DiscoveryMapScreen() {
   const isAuthLoading = useAuthStore((s) => s.isLoading);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] =
-    useState<NearbyActivity | null>(null);
+    useState<DiscoveryActivity | null>(null);
 
   // One-time marker rasterization lock to prevent continuous 60fps bitmap allocation
   const [userPinTracking, setUserPinTracking] = useState(true);
@@ -73,20 +76,26 @@ export default function DiscoveryMapScreen() {
     return unsubscribe;
   }, [queryClient]);
 
+  const interestIds = useMemo(
+    () => selectedCategoryToInterestIds(selectedCategory),
+    [selectedCategory]
+  );
+
   const {
     data: activities = [],
     isLoading,
     isRefetching,
     refetch,
-  } = useDiscoveryQuery({
-    userLat: userLocation.latitude,
-    userLng: userLocation.longitude,
-    radiusKm: filters.radiusKm,
-    category: selectedCategory,
-    gender: filters.gender,
-    ageGroup: filters.ageGroup,
-    enabled: Boolean(authUser) && !isAuthLoading,
-  });
+  } = useDiscoveryQuery(
+    {
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      radiusKm: filters.radiusKm,
+      interestIds,
+      enabled: Boolean(authUser) && !isAuthLoading,
+    },
+    { gender: filters.gender, ageGroup: filters.ageGroup }
+  );
 
   const mapRegion = {
     latitude: userLocation.latitude,
@@ -100,7 +109,7 @@ export default function DiscoveryMapScreen() {
     filters.gender !== 'all' ||
     filters.ageGroup !== 'all';
 
-  const handleSelectActivity = useCallback((activity: NearbyActivity) => {
+  const handleSelectActivity = useCallback((activity: DiscoveryActivity) => {
     setSelectedActivity(activity);
   }, []);
 
@@ -152,8 +161,8 @@ export default function DiscoveryMapScreen() {
             <Marker
               key={activity.id}
               coordinate={{
-                latitude: activity.lat,
-                longitude: activity.lng,
+                latitude: activity.fuzzedLocation.latitude,
+                longitude: activity.fuzzedLocation.longitude,
               }}
               anchor={{ x: 0.5, y: 0.5 }}
               tracksViewChanges={false}
