@@ -30,6 +30,14 @@ export const queryKeys = {
     all: () => [...queryKeys.all, 'room'] as const,
     messages: (roomId: string) => [...queryKeys.room.all(), 'messages', roomId] as const,
     meta: (roomId: string) => [...queryKeys.room.all(), 'meta', roomId] as const,
+    members: (roomId: string) => [...queryKeys.room.all(), 'members', roomId] as const,
+    exactLocation: (roomId: string) => [...queryKeys.room.all(), 'exactLocation', roomId] as const,
+  },
+
+  feedback: {
+    all: () => [...queryKeys.all, 'feedback'] as const,
+    hasReviewed: (activityId: string, userId: string) =>
+      [...queryKeys.feedback.all(), 'hasReviewed', activityId, userId] as const,
   },
 
   profile: {

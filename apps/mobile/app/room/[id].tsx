@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Animated,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Send, MapPin, Clock, ShieldAlert, LogOut } from 'lucide-react-native';
+import {
+  ChevronLeft,
+  Send,
+  MapPin,
+  Clock,
+  ShieldAlert,
+  LogOut,
+  CheckCircle2,
+  Sparkles,
+  ExternalLink,
+} from 'lucide-react-native';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../src/features/auth/useAuthStore';
@@ -19,8 +30,11 @@ import {
   useRoomMetadataQuery,
   useRoomMessagesQuery,
   useSendRoomMessageMutation,
+  useActivityExactLocationQuery,
+  useConcludeActivityMutation,
   setupRealtimeRoomSync,
 } from '../../src/features/room/useRoomQuery';
+import { VenueLocationModal } from '../../src/features/room/VenueLocationModal';
 import { leaveSquad } from '../../src/services/handshake';
 import { queryKeys } from '../../src/services/queryKeys';
 import { MySquadItem } from '../../src/features/activity/useMyActivitiesQuery';
@@ -37,16 +51,46 @@ export default function ActiveEphemeralRoomScreen() {
   const [input, setInput] = useState('');
   const [roomError, setRoomError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [showVenueModal, setShowVenueModal] = useState(false);
 
   const { data: roomMeta } = useRoomMetadataQuery(id);
   const { data: messages = [], error: messagesQueryError } = useRoomMessagesQuery(id);
+  const { data: exactLocation, isLoading: isLocationLoading } = useActivityExactLocationQuery(id);
   const sendMutation = useSendRoomMessageMutation(id || '');
+  const concludeMutation = useConcludeActivityMutation(id || '');
 
   const title = roomMeta?.title || 'Squad Chat';
   const venueName = roomMeta?.venueName;
   const expiresAt = roomMeta?.expiresAt || null;
+  const isHost = currentUserId === roomMeta?.hostId;
+  const isConcluded = roomMeta?.status === 'concluded';
 
-  const { isExpired, formattedTtl, theme } = useCountdown(expiresAt, 5000);
+  const { isExpired, formattedTtl, urgency, theme } = useCountdown(expiresAt, 5000);
+
+  // Burning ember pulse animation when expiring (Native Driver Safe)
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (urgency === 'expiring' && !isExpired && !isConcluded) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.4,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [urgency, isExpired, isConcluded, pulseAnim]);
 
   // Realtime subscription directly syncing with TanStack Query cache
   useEffect(() => {
@@ -76,6 +120,29 @@ export default function ActiveEphemeralRoomScreen() {
       setRoomError(error instanceof Error ? error.message : 'Failed to send message');
     }
   }, [id, input, sendMutation]);
+
+  const handleHostConclude = useCallback(() => {
+    if (!id || !currentUserId) return;
+    Alert.alert(
+      'Conclude Activity',
+      'Are you sure you want to conclude this meetup? This will end the meetup for all participants and open feedback.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Conclude',
+          style: 'default',
+          onPress: async () => {
+            try {
+              await concludeMutation.mutateAsync({ hostId: currentUserId });
+              router.push(`/room/${id}/feedback`);
+            } catch (err) {
+              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to conclude activity');
+            }
+          },
+        },
+      ]
+    );
+  }, [id, currentUserId, concludeMutation, router]);
 
   const handleLeaveSquad = useCallback(() => {
     if (!id || !currentUserId || isLeaving) return;
@@ -117,9 +184,12 @@ export default function ActiveEphemeralRoomScreen() {
               void queryClient.invalidateQueries({ queryKey: queryKeys.room.meta(id) });
               void queryClient.invalidateQueries({ queryKey: queryKeys.room.messages(id) });
               void queryClient.invalidateQueries({ queryKey: queryKeys.discovery.all() });
-            } catch (err: any) {
+            } catch (err) {
               queryClient.setQueryData(mySquadsKey, previousSquads);
-              Alert.alert('Unable to leave squad', err?.message || 'Please check your connection.');
+              Alert.alert(
+                'Unable to leave squad',
+                err instanceof Error ? err.message : 'Please check your connection.'
+              );
             } finally {
               setIsLeaving(false);
             }
@@ -151,21 +221,67 @@ export default function ActiveEphemeralRoomScreen() {
           </TouchableOpacity>
 
           <View className="flex-row items-center gap-2">
-            <View
-              style={{
-                borderColor: isExpired ? '#7B2FF7' : theme.badgeBorder,
-                backgroundColor: isExpired ? '#17131F' : theme.bg,
-              }}
-              className="flex-row items-center px-3 py-1.5 rounded-full border"
-            >
-              <Clock size={12} color={isExpired ? '#C77DFF' : theme.primary} />
-              <Text
-                style={{ color: isExpired ? '#C77DFF' : theme.badgeText }}
-                className="font-mono text-2xs font-bold ml-1.5"
+            {isConcluded ? (
+              <View className="flex-row items-center px-3 py-1.5 rounded-full border border-signal-violet/40 bg-signal-violet/10">
+                <CheckCircle2 size={12} color="#C77DFF" />
+                <Text className="text-pulse-lilac font-mono text-2xs font-bold ml-1.5">
+                  Meetup Concluded
+                </Text>
+              </View>
+            ) : (
+              <Animated.View
+                style={[
+                  {
+                    borderColor: isExpired
+                      ? '#7B2FF7'
+                      : urgency === 'expiring'
+                      ? '#FF6B5E'
+                      : theme.badgeBorder,
+                    backgroundColor: isExpired
+                      ? '#17131F'
+                      : urgency === 'expiring'
+                      ? '#2A1115'
+                      : theme.bg,
+                    opacity: pulseAnim,
+                  },
+                ]}
+                className="flex-row items-center px-3 py-1.5 rounded-full border"
               >
-                {isExpired ? 'Squad Room Active' : `Joining closes in ${formattedTtl}`}
-              </Text>
-            </View>
+                <Clock
+                  size={12}
+                  color={
+                    isExpired ? '#C77DFF' : urgency === 'expiring' ? '#FF6B5E' : theme.primary
+                  }
+                />
+                <Text
+                  style={{
+                    color: isExpired
+                      ? '#C77DFF'
+                      : urgency === 'expiring'
+                      ? '#FFB4AB'
+                      : theme.badgeText,
+                  }}
+                  className="font-mono text-2xs font-bold ml-1.5"
+                >
+                  {isExpired ? 'Squad Room Active' : `Joining closes in ${formattedTtl}`}
+                </Text>
+              </Animated.View>
+            )}
+
+            {isHost && !isConcluded && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Conclude activity"
+                disabled={concludeMutation.isPending}
+                onPress={handleHostConclude}
+                className="px-2.5 py-1.5 rounded-full bg-signal-violet/20 border border-signal-violet flex-row items-center active:bg-signal-violet/30"
+              >
+                <CheckCircle2 size={13} color="#C77DFF" style={{ marginRight: 4 }} />
+                <Text className="text-pulse-lilac font-display font-bold text-2xs">
+                  Conclude
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               accessibilityRole="button"
@@ -184,14 +300,40 @@ export default function ActiveEphemeralRoomScreen() {
           {title}
         </Text>
         {venueName ? (
-          <View className="flex-row items-center mt-0.5">
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="View venue location"
+            onPress={() => setShowVenueModal(true)}
+            className="flex-row items-center mt-1 self-start bg-ink-raised px-2.5 py-1 rounded-full border border-hairline active:bg-signal-violet/20"
+          >
             <MapPin size={12} color="#D2BBFF" />
-            <Text className="text-signal-violet-light font-body text-xs ml-1">
-              Unlocked Venue: {venueName}
+            <Text className="text-signal-violet-light font-body text-xs ml-1 font-medium">
+              Venue: {venueName}
             </Text>
-          </View>
+            <ExternalLink size={10} color="#A99BC2" style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
         ) : null}
       </View>
+
+      {/* Post-Concluded Feedback Banner */}
+      {isConcluded && (
+        <View className="bg-signal-violet/15 border-b border-signal-violet/30 px-5 py-2.5 flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1 mr-2">
+            <Sparkles size={14} color="#C77DFF" style={{ marginRight: 6 }} />
+            <Text className="text-moonlight text-xs font-medium">
+              Meetup concluded! Share feedback with squad.
+            </Text>
+          </View>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Rate squad members"
+            onPress={() => router.push(`/room/${id}/feedback`)}
+            className="px-3 py-1 bg-signal-violet rounded-full active:scale-95"
+          >
+            <Text className="text-void font-bold text-2xs">Rate Squad</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Messages Feed */}
       <ScrollView testID="room-messages"
@@ -267,6 +409,15 @@ export default function ActiveEphemeralRoomScreen() {
           <Send size={16} color="#F5F0FF" />
         </TouchableOpacity>
       </View>
+
+      {/* Venue Location Modal */}
+      <VenueLocationModal
+        visible={showVenueModal}
+        onClose={() => setShowVenueModal(false)}
+        venueName={venueName}
+        coordinates={exactLocation}
+        isLoading={isLocationLoading}
+      />
     </KeyboardAvoidingView>
   );
 }

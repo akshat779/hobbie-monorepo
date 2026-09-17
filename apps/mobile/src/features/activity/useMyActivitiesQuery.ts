@@ -15,6 +15,7 @@ export interface MySquadItem {
   status: string;
   isHost: boolean;
   pendingRequestsCount?: number;
+  hasReviewed?: boolean;
 }
 
 export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
@@ -42,8 +43,9 @@ export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
     console.warn('fetchMySquads memberships error:', memberError.message);
   }
 
+  type ActivityRow = NonNullable<typeof hosted>[number];
   const memberActivityIds = memberships?.map((m) => m.activity_id) || [];
-  let memberActivities: any[] = [];
+  let memberActivities: ActivityRow[] = [];
   if (memberActivityIds.length > 0) {
     const { data: acts, error: actsError } = await supabase
       .from('activities')
@@ -55,7 +57,21 @@ export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
     memberActivities = acts || [];
   }
 
-  // 3. For hosted activities, count pending requests
+  // 3. Batch check user ratings to avoid N+1 queries
+  const allIds = [...(hosted || []).map((a) => a.id), ...memberActivities.map((a) => a.id)];
+  let reviewedSet = new Set<string>();
+  if (allIds.length > 0) {
+    const { data: userRatings } = await supabase
+      .from('ratings')
+      .select('activity_id')
+      .eq('reviewer_id', userId)
+      .in('activity_id', allIds);
+    if (userRatings) {
+      reviewedSet = new Set(userRatings.map((r) => r.activity_id));
+    }
+  }
+
+  // 4. Construct squad items
   const squadList: MySquadItem[] = [];
 
   if (hosted && hosted.length > 0) {
@@ -74,6 +90,7 @@ export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
           status: act.status,
           isHost: true,
           pendingRequestsCount: pendingCount,
+          hasReviewed: reviewedSet.has(act.id),
         };
       })
     );
@@ -92,6 +109,7 @@ export async function fetchMySquads(userId: string): Promise<MySquadItem[]> {
       maxParticipants: act.max_participants,
       status: act.status,
       isHost: false,
+      hasReviewed: reviewedSet.has(act.id),
     });
   }
 

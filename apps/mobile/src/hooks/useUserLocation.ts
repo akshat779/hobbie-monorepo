@@ -27,28 +27,29 @@ export interface UserLocationState {
 export function useUserLocation(): UserLocationState {
   const userId = useAuthStore((s) => s.user?.id);
 
-  const { coords, cityName, isLiveGps, isLoading, error, refreshLocation } =
+  const { coords, cityName, isLiveGps, isLoading, hasAttemptedInit, error, refreshLocation } =
     useLocationStore(
       useShallow((s) => ({
         coords: s.coords,
         cityName: s.cityName,
         isLiveGps: s.isLiveGps,
         isLoading: s.isLoading,
+        hasAttemptedInit: s.hasAttemptedInit,
         error: s.error,
         refreshLocation: s.refreshLocation,
       }))
     );
 
   const handleRefresh = useCallback(async () => {
-    await refreshLocation(userId);
+    await refreshLocation(userId, true);
   }, [refreshLocation, userId]);
 
   useEffect(() => {
-    // Acquire location once if not already live
-    if (!isLiveGps && !isLoading) {
-      handleRefresh();
+    // Acquire location once on mount if not yet attempted
+    if (!hasAttemptedInit && !isLoading) {
+      void refreshLocation(userId, false);
     }
-  }, [isLiveGps, isLoading, handleRefresh]);
+  }, [hasAttemptedInit, isLoading, refreshLocation, userId]);
 
   return {
     coords,

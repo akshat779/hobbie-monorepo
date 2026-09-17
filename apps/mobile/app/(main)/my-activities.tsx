@@ -6,9 +6,11 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Users,
   Clock,
@@ -16,23 +18,36 @@ import {
   ShieldCheck,
   Inbox,
   UserCheck,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/features/auth/useAuthStore';
 import { HostReviewModal } from '../../src/features/handshake/HostReviewModal';
 import { useMyActivitiesQuery, MySquadItem } from '../../src/features/activity/useMyActivitiesQuery';
 import { useRefreshByUser } from '../../src/hooks/useRefreshByUser';
 import { useCountdown } from '../../src/hooks/useCountdown';
+import { concludeActivity } from '../../src/services/room';
+import { queryKeys } from '../../src/services/queryKeys';
 
 function MySquadCard({
   squad,
   onReview,
   onEnterRoom,
+  onConclude,
+  onRateSquad,
 }: {
   squad: MySquadItem;
   onReview?: (squad: MySquadItem) => void;
   onEnterRoom: (squadId: string) => void;
+  onConclude?: (squad: MySquadItem) => void;
+  onRateSquad?: (squadId: string) => void;
 }) {
   const { isExpired, formattedTtl, theme } = useCountdown(squad.expiresAt);
+
+  const isConcluded = squad.status === 'concluded';
+  const showRequestsButton = squad.isHost && !isExpired && !isConcluded;
+  const showConcludeButton = squad.isHost && isExpired && !isConcluded;
+  const showRateButton = isConcluded && !squad.hasReviewed;
 
   return (
     <View
@@ -45,17 +60,17 @@ function MySquadCard({
           <Text className="text-moonlight font-bold font-display text-base mb-0.5">
             {squad.title}
           </Text>
-          <Text className="text-dusk font-mono text-2xs">
-            {squad.venueName || 'Geofenced Location'} • {squad.currentParticipantsCount}/
-            {squad.maxParticipants} players
+          <Text className="text-dusk text-xs mb-1">
+            {squad.venueName || 'Designated Venue'}
           </Text>
         </View>
 
+        {/* Host / Member Badge */}
         <View
-          className={`px-2.5 py-0.5 rounded-full border ${
+          className={`px-2.5 py-1 rounded-full border ${
             squad.isHost
-              ? 'bg-signal-violet/20 border-signal-violet'
-              : 'bg-ink-raised border-hairline'
+              ? 'bg-signal-violet/20 border-signal-violet/40'
+              : 'bg-void border-hairline'
           }`}
         >
           <Text
@@ -70,18 +85,29 @@ function MySquadCard({
 
       {/* Live Status / Countdown Banner */}
       <View className="flex-row items-center mb-4">
-        <Clock size={12} color={isExpired ? '#C77DFF' : theme.primary} />
-        <Text
-          style={{ color: isExpired ? '#C77DFF' : theme.badgeText }}
-          className="font-mono text-xs font-bold ml-1.5"
-        >
-          {isExpired ? 'Squad Formed • Chat Active' : `Joining closes in ${formattedTtl}`}
-        </Text>
+        {isConcluded ? (
+          <>
+            <CheckCircle2 size={13} color="#C77DFF" />
+            <Text className="text-pulse-lilac font-mono text-xs font-bold ml-1.5">
+              Meetup Concluded • Chat Active
+            </Text>
+          </>
+        ) : (
+          <>
+            <Clock size={12} color={isExpired ? '#C77DFF' : theme.primary} />
+            <Text
+              style={{ color: isExpired ? '#C77DFF' : theme.badgeText }}
+              className="font-mono text-xs font-bold ml-1.5"
+            >
+              {isExpired ? 'Squad Formed • Chat Active' : `Joining closes in ${formattedTtl}`}
+            </Text>
+          </>
+        )}
       </View>
 
       {/* Actions */}
       <View className="flex-row gap-2.5">
-        {squad.isHost && (
+        {showRequestsButton && (
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel={`Review ${squad.pendingRequestsCount || 0} requests for ${squad.title}`}
@@ -103,6 +129,36 @@ function MySquadCard({
           </TouchableOpacity>
         )}
 
+        {showConcludeButton && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Conclude ${squad.title}`}
+            onPress={() => onConclude?.(squad)}
+            className="flex-1 h-12 bg-ink border border-signal-violet/50 rounded-full flex-row items-center justify-center active:bg-ink-raised"
+            activeOpacity={0.8}
+          >
+            <CheckCircle2 size={15} color="#C77DFF" style={{ marginRight: 6 }} />
+            <Text className="text-pulse-lilac font-display text-xs font-bold">
+              Conclude
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {showRateButton && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Rate squad members for ${squad.title}`}
+            onPress={() => onRateSquad?.(squad.id)}
+            className="flex-1 h-12 bg-signal-violet/20 border border-signal-violet rounded-full flex-row items-center justify-center active:bg-signal-violet/30"
+            activeOpacity={0.8}
+          >
+            <Sparkles size={14} color="#C77DFF" style={{ marginRight: 6 }} />
+            <Text className="text-pulse-lilac font-display text-xs font-bold">
+              Rate Squad
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel={`Enter chat room for ${squad.title}`}
@@ -121,6 +177,7 @@ function MySquadCard({
 }
 
 export default function MyActivitiesScreen() {
+  const queryClient = useQueryClient();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -135,6 +192,48 @@ export default function MyActivitiesScreen() {
 
   // Selected squad for host review modal
   const [activeHostReview, setActiveHostReview] = useState<MySquadItem | null>(null);
+
+  const handleConclude = useCallback(
+    (squad: MySquadItem) => {
+      if (!currentUserId) return;
+      Alert.alert(
+        'Conclude Activity',
+        `Conclude "${squad.title}"? This will end the meetup and open feedback for all participants.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Conclude',
+            style: 'default',
+            onPress: async () => {
+              try {
+                await concludeActivity(squad.id, currentUserId);
+                void queryClient.invalidateQueries({
+                  queryKey: queryKeys.activities.mySquads(currentUserId),
+                });
+                void queryClient.invalidateQueries({
+                  queryKey: queryKeys.room.meta(squad.id),
+                });
+                router.push(`/room/${squad.id}/feedback`);
+              } catch (err) {
+                Alert.alert(
+                  'Error',
+                  err instanceof Error ? err.message : 'Failed to conclude activity'
+                );
+              }
+            },
+          },
+        ]
+      );
+    },
+    [currentUserId, queryClient, router]
+  );
+
+  const handleRateSquad = useCallback(
+    (squadId: string) => {
+      router.push(`/room/${squadId}/feedback`);
+    },
+    [router]
+  );
 
   return (
     <View
@@ -204,6 +303,8 @@ export default function MyActivitiesScreen() {
                 squad={squad}
                 onReview={setActiveHostReview}
                 onEnterRoom={(squadId) => router.push(`/room/${squadId}`)}
+                onConclude={handleConclude}
+                onRateSquad={handleRateSquad}
               />
             ))
           )}

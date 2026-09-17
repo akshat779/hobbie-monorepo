@@ -27,7 +27,7 @@ export default function MainTabLayout() {
       tabBar={(props) => <FloatingGlassTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        lazy: false,
+        lazy: true,
       }}
     >
       <Tabs.Screen

@@ -14,8 +14,9 @@ export interface LocationState {
   cityName: string;
   isLiveGps: boolean;
   isLoading: boolean;
+  hasAttemptedInit: boolean;
   error: string | null;
-  refreshLocation: (userId?: string) => Promise<void>;
+  refreshLocation: (userId?: string, force?: boolean) => Promise<void>;
 }
 
 export const DEFAULT_USER_LOCATION: UserCoordinates = {
@@ -36,19 +37,22 @@ export const useLocationStore = create<LocationState>()(
       cityName: DEFAULT_CITY_NAME,
       isLiveGps: false,
       isLoading: false,
+      hasAttemptedInit: false,
       error: null,
 
-  refreshLocation: async (userId?: string) => {
+  refreshLocation: async (userId?: string, force = false) => {
     if (get().isLoading) return;
+    if (get().hasAttemptedInit && !force && get().isLiveGps) return;
 
     try {
-      set({ isLoading: true, error: null });
+      set({ isLoading: true, hasAttemptedInit: true, error: null });
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         set({
           error: 'Location permission not granted. Using default zone.',
           isLoading: false,
+          hasAttemptedInit: true,
         });
         return;
       }
@@ -101,11 +105,13 @@ export const useLocationStore = create<LocationState>()(
           // Silent ignore background sync failure
         }
       }
-    } catch (err: any) {
-      console.warn('Location resolution warning:', err?.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to acquire device GPS';
+      console.warn('Location resolution warning:', message);
       set({
-        error: err?.message || 'Failed to acquire device GPS',
+        error: message,
         isLoading: false,
+        hasAttemptedInit: true,
       });
     }
   },

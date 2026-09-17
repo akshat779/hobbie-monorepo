@@ -105,6 +105,8 @@ export default function ActivityDetailScreen() {
     refetchJoinStatus();
   }, [refetchActivity, refetchJoinStatus]);
 
+  const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Realtime subscription for pending request status changes
   useEffect(() => {
     if (!existingRequest || existingRequest.status !== 'pending') return;
@@ -112,19 +114,21 @@ export default function ActivityDetailScreen() {
     const unsubscribe = subscribeToJoinRequestUpdates(existingRequest.id, (newStatus) => {
       if (newStatus === 'accepted') {
         // Automatically transition into the ephemeral room upon acceptance!
-        setTimeout(() => {
+        navigationTimerRef.current = setTimeout(() => {
           router.replace(`/room/${id}`);
         }, 600);
       } else {
-        refetchJoinStatus();
-        refetchActivity();
+        loadActivityData();
       }
     });
 
     return () => {
+      if (navigationTimerRef.current) {
+        clearTimeout(navigationTimerRef.current);
+      }
       unsubscribe();
     };
-  }, [existingRequest?.id, existingRequest?.status, id, router, refetchJoinStatus, refetchActivity]);
+  }, [existingRequest?.id, existingRequest?.status, id, router, loadActivityData]);
 
   const handleJoin = async () => {
     if (!currentUserId) {

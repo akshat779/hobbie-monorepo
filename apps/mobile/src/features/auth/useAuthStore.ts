@@ -185,6 +185,8 @@ interface AuthState {
   loginWithPersona: (personaId: string) => Promise<void>;
 }
 
+let isAuthListenerRegistered = false;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   user: null,
@@ -221,8 +223,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ session: null, user: null, profile: null, isLoading: false });
       }
 
-      // Listen to Auth state changes if supported
-      if (typeof supabase?.auth?.onAuthStateChange === 'function') {
+      // Listen to Auth state changes if supported (ensure single global listener)
+      if (!isAuthListenerRegistered && typeof supabase?.auth?.onAuthStateChange === 'function') {
+        isAuthListenerRegistered = true;
         supabase.auth.onAuthStateChange(async (_event, session) => {
           if (session?.user) {
             const { data: profile } = await supabase

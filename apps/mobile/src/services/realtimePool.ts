@@ -9,8 +9,6 @@ export interface PostgresChangeConfig {
   filter?: string;
 }
 
-let subscriptionSequence = 0;
-
 /** Owns channel naming, stale-channel replacement, and teardown in one place. */
 export function subscribeToPostgresChanges(
   key: string,
@@ -18,13 +16,13 @@ export function subscribeToPostgresChanges(
   onPayload: (payload: unknown) => void,
   onError?: (message: string) => void,
 ): () => void {
-  const prefix = `realtime:${key}`;
-  supabase.getChannels()
-    .filter((channel) => channel.topic.startsWith(prefix))
-    .forEach((channel) => void supabase.removeChannel(channel));
+  const existing = supabase.getChannels().find((c) => c.topic === `realtime:${key}`);
+  if (existing) {
+    void supabase.removeChannel(existing);
+  }
 
   const channel = supabase
-    .channel(`${key}_${subscriptionSequence++}`)
+    .channel(key)
     .on('postgres_changes', config, (payload) => onPayload(payload))
     .subscribe((status, error) => {
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {

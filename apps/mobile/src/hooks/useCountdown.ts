@@ -88,10 +88,17 @@ export function useCountdown(
 
     const timer = setInterval(() => {
       const currentNow = Date.now();
-      setNow(currentNow);
       if (initialExpiryMs <= currentNow) {
+        setNow(currentNow);
         clearInterval(timer);
+        return;
       }
+
+      setNow((prev) => {
+        const prevMinutes = Math.max(0, Math.floor((initialExpiryMs - prev) / 60000));
+        const nextMinutes = Math.max(0, Math.floor((initialExpiryMs - currentNow) / 60000));
+        return prevMinutes !== nextMinutes ? currentNow : prev;
+      });
     }, intervalMs);
 
     return () => clearInterval(timer);

@@ -4,20 +4,67 @@ import {
   fetchRoomMetadata,
   sendRoomMessage,
   subscribeToRoomMessages,
+  concludeActivity,
+  fetchActivityExactLocation,
+  fetchRoomMembers,
   RoomMessage,
   RoomMetadata,
+  RoomMember,
+  ActivityLocation,
 } from '../../services/room';
 import { queryKeys } from '../../services/queryKeys';
 
 /**
- * Query hook for ephemeral room metadata (title, venue, expiry).
+ * Query hook for ephemeral room metadata (title, venue, expiry, status).
  */
 export function useRoomMetadataQuery(roomId: string | undefined) {
   return useQuery<RoomMetadata | null>({
     queryKey: queryKeys.room.meta(roomId || ''),
     queryFn: () => fetchRoomMetadata(roomId || ''),
     enabled: Boolean(roomId),
-    staleTime: 1000 * 60, // 1 minute
+    staleTime: 1000 * 30,
+  });
+}
+
+/**
+ * Query hook for exact venue GPS coordinates (visible to accepted members).
+ */
+export function useActivityExactLocationQuery(roomId: string | undefined) {
+  return useQuery<ActivityLocation | null>({
+    queryKey: queryKeys.room.exactLocation(roomId || ''),
+    queryFn: () => fetchActivityExactLocation(roomId || ''),
+    enabled: Boolean(roomId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Query hook for squad members in the room.
+ */
+export function useRoomMembersQuery(roomId: string | undefined) {
+  return useQuery<RoomMember[]>({
+    queryKey: queryKeys.room.members(roomId || ''),
+    queryFn: () => fetchRoomMembers(roomId || ''),
+    enabled: Boolean(roomId),
+    staleTime: 1000 * 60,
+  });
+}
+
+/**
+ * Mutation hook for host to conclude an activity.
+ */
+export function useConcludeActivityMutation(roomId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ hostId }: { hostId: string }) => {
+      return concludeActivity(roomId, hostId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.room.meta(roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.room.messages(roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.activities.all() });
+    },
   });
 }
 

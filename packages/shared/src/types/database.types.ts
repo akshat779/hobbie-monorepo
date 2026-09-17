@@ -323,6 +323,7 @@ export type Database = {
           activity_id: string
           created_at: string
           id: string
+          keep_in_touch: boolean
           reviewer_id: string
           score: number
           tags: string[] | null
@@ -332,6 +333,7 @@ export type Database = {
           activity_id: string
           created_at?: string
           id?: string
+          keep_in_touch?: boolean
           reviewer_id: string
           score: number
           tags?: string[] | null
@@ -341,6 +343,7 @@ export type Database = {
           activity_id?: string
           created_at?: string
           id?: string
+          keep_in_touch?: boolean
           reviewer_id?: string
           score?: number
           tags?: string[] | null
@@ -812,6 +815,39 @@ export type Database = {
       leave_activity: {
         Args: { p_activity_id: string; p_user_id: string }
         Returns: Json
+      }
+      conclude_activity_tx: {
+        Args: { p_activity_id: string; p_host_id: string }
+        Returns: Json
+      }
+      has_reviewed_activity: {
+        Args: { p_activity_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      submit_activity_feedback_tx: {
+        Args: {
+          p_activity_id: string
+          p_reviewer_id: string
+          p_target_user_id: string
+          p_score: number
+          p_tags?: string[]
+          p_keep_in_touch?: boolean
+        }
+        Returns: Json
+      }
+      get_activity_exact_location: {
+        Args: { p_activity_id: string }
+        Returns: Json
+      }
+      get_activity_members: {
+        Args: { p_activity_id: string }
+        Returns: {
+          user_id: string
+          name: string
+          avatar_url: string | null
+          is_host: boolean
+          trust_score: number
+        }[]
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_nearby_activities: {

@@ -186,6 +186,10 @@ export function useDiscoveryQuery(params: DiscoveryQueryParams) {
     ageGroup = 'all',
   } = params;
 
+  // Round coordinates to ~100m grid for query cache key to prevent GPS jitter thrashing
+  const cacheLat = typeof userLat === 'number' ? Math.round(userLat * 1000) / 1000 : userLat;
+  const cacheLng = typeof userLng === 'number' ? Math.round(userLng * 1000) / 1000 : userLng;
+
   const selectFiltered = useCallback(
     (activities: NearbyActivity[]) =>
       filterActivities(activities, category, gender, ageGroup),
@@ -193,11 +197,10 @@ export function useDiscoveryQuery(params: DiscoveryQueryParams) {
   );
 
   return useQuery<NearbyActivity[], Error, NearbyActivity[]>({
-    queryKey: queryKeys.discovery.nearby(userLat, userLng, radiusKm),
+    queryKey: queryKeys.discovery.nearby(cacheLat, cacheLng, radiusKm),
     queryFn: () => fetchRawNearbyActivities(userLat, userLng, radiusKm),
     select: selectFiltered,
-    staleTime: 1000 * 30, // 30 seconds
-    refetchInterval: 1000 * 30, // Auto sync live pin feed every 30s
+    staleTime: 1000 * 60, // 1 minute (Realtime pushes immediate mutations)
     retry: false,
     enabled:
       queryEnabled &&

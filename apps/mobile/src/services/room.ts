@@ -9,24 +9,87 @@ export interface RoomMessage extends RoomMessageRow {
 }
 
 export interface RoomMetadata {
+  id: string;
   title: string;
   venueName: string | null;
   expiresAt: string;
+  status: Database['public']['Enums']['activity_status'];
+  hostId: string;
+  interestId: string;
+}
+
+export interface ActivityLocation {
+  latitude: number;
+  longitude: number;
+}
+
+export interface RoomMember {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  isHost: boolean;
+  trustScore: number;
 }
 
 export async function fetchRoomMetadata(activityId: string): Promise<RoomMetadata | null> {
   const { data, error } = await supabase
     .from('activities')
-    .select('title, venue_name, expires_at')
+    .select('id, title, venue_name, expires_at, status, host_id, interest_id')
     .eq('id', activityId)
     .maybeSingle();
 
   if (error || !data) return null;
   return {
+    id: data.id,
     title: data.title,
     venueName: data.venue_name,
     expiresAt: data.expires_at,
+    status: data.status,
+    hostId: data.host_id,
+    interestId: data.interest_id,
   };
+}
+
+export async function concludeActivity(activityId: string, hostId: string): Promise<void> {
+  const { error } = await supabase.rpc('conclude_activity_tx', {
+    p_activity_id: activityId,
+    p_host_id: hostId,
+  });
+  if (error) {
+    throw new Error(error.message || 'Failed to conclude activity');
+  }
+}
+
+export async function fetchActivityExactLocation(activityId: string): Promise<ActivityLocation | null> {
+  const { data, error } = await supabase.rpc('get_activity_exact_location', {
+    p_activity_id: activityId,
+  });
+  if (error || !data) {
+    throw new Error(error?.message || 'Failed to fetch venue location');
+  }
+  const loc = data as unknown as { latitude: number; longitude: number };
+  return {
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+  };
+}
+
+export async function fetchRoomMembers(activityId: string): Promise<RoomMember[]> {
+  const { data, error } = await supabase.rpc('get_activity_members', {
+    p_activity_id: activityId,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to fetch squad members');
+  }
+
+  return (data || []).map((m) => ({
+    userId: m.user_id,
+    name: m.name,
+    avatarUrl: m.avatar_url,
+    isHost: m.is_host,
+    trustScore: m.trust_score,
+  }));
 }
 
 const messageSelect = 'id, activity_id, sender_id, content, created_at';
