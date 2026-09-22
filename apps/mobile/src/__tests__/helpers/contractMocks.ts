@@ -3,6 +3,9 @@ import { z } from 'zod';
 import {
   PhoneAuthSchema,
   DiscoveryQuerySchema,
+  BIO_MAX_LENGTH,
+  LANGUAGE_CODES,
+  MAX_PREFERRED_LANGUAGES,
 } from '@hobbie/shared';
 
 export const VALID_UUIDS = {
@@ -15,6 +18,43 @@ export const VALID_UUIDS = {
 };
 
 const UuidSchema = z.string().uuid();
+
+/**
+ * Mirrors the checklist-level Postgres CHECK constraints on public.profiles for
+ * the bio/languages columns added in 20260922000001.
+ */
+function validateProfileColumnConstraints(
+  payload: any
+): { code: string; message: string } | null {
+  if (payload?.bio !== undefined && payload.bio !== null) {
+    if (typeof payload.bio !== 'string' || payload.bio.length > BIO_MAX_LENGTH) {
+      return {
+        code: '23514',
+        message:
+          'new row for relation "profiles" violates check constraint "check_bio_length"',
+      };
+    }
+  }
+
+  if (payload?.preferred_languages !== undefined) {
+    const languages = payload.preferred_languages;
+    const isValid =
+      Array.isArray(languages) &&
+      languages.length <= MAX_PREFERRED_LANGUAGES &&
+      languages.every((code: unknown) =>
+        (LANGUAGE_CODES as readonly string[]).includes(code as string)
+      );
+    if (!isValid) {
+      return {
+        code: '23514',
+        message:
+          'new row for relation "profiles" violates check constraint "check_preferred_languages"',
+      };
+    }
+  }
+
+  return null;
+}
 
 export interface ContractMockOptions {
   rpcOverrides?: Record<string, (args: any) => any>;
@@ -357,6 +397,15 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
               };
             }
           }
+
+          const columnError = validateProfileColumnConstraints(payload);
+          if (columnError) {
+            return {
+              select: () => ({
+                single: async () => ({ data: null, error: columnError }),
+              }),
+            };
+          }
         }
 
         if (tableName === 'join_requests') {
@@ -417,6 +466,10 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
               };
             }
           }
+
+          if (!validationError) {
+            validationError = validateProfileColumnConstraints(payload);
+          }
         }
 
         const chain = {
@@ -474,6 +527,15 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
               };
             }
           }
+
+          const columnError = validateProfileColumnConstraints(payload);
+          if (columnError) {
+            return {
+              select: () => ({
+                single: async () => ({ data: null, error: columnError }),
+              }),
+            };
+          }
         }
 
         const returnedData = {
@@ -505,6 +567,8 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
               is_verified: true,
               interaction_count: 5,
               avatar_url: null,
+              bio: null,
+              preferred_languages: [],
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             },
@@ -527,6 +591,8 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
               is_verified: true,
               interaction_count: 5,
               avatar_url: null,
+              bio: null,
+              preferred_languages: [],
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             },
@@ -570,5 +636,37 @@ export function createContractMockSupabase(options: ContractMockOptions = {}) {
     })),
     getChannels: vi.fn(() => []),
     removeChannel: vi.fn(async () => 'ok'),
+    storage: {
+      from: vi.fn((bucket: string) => ({
+        upload: vi.fn(async (path: string, file: ArrayBuffer, opts?: any) => {
+          if (bucket !== 'avatars') {
+            return { data: null, error: { message: `Bucket not found: ${bucket}` } };
+          }
+          const owner = path.split('/')[0];
+          if (!owner || !/[0-9a-f-]{36}/.test(owner)) {
+            return {
+              data: null,
+              error: {
+                message:
+                  'new row for relation "objects" violates row-level security policy for table "objects"',
+              },
+            };
+          }
+          if (!file || file.byteLength === 0) {
+            return { data: null, error: { message: 'The file is empty' } };
+          }
+          const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+          if (opts?.contentType && !allowed.includes(opts.contentType)) {
+            return { data: null, error: { message: 'mime type not supported' } };
+          }
+          return { data: { path, id: 'mock-object-id' }, error: null };
+        }),
+        getPublicUrl: vi.fn((path: string) => ({
+          data: {
+            publicUrl: `https://test.supabase.co/storage/v1/object/public/${bucket}/${path}`,
+          },
+        })),
+      })),
+    },
   };
 }

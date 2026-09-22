@@ -40,6 +40,8 @@ const mockAlexProfile = {
   trust_score: DEV_PERSONAS[0]!.trustScore,
   interaction_count: 5,
   avatar_url: null,
+  bio: null,
+  preferred_languages: ['en'],
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };
@@ -169,6 +171,7 @@ describe('useAuthStore', () => {
         birthDate: '2000-01-01',
         gender: 'male',
         interests: ['football', 'badminton'],
+        preferredLanguages: ['en'],
       });
 
       expect(res.error).toBeUndefined();
@@ -205,6 +208,7 @@ describe('useAuthStore', () => {
         birthDate: '2000-01-01',
         gender: 'male',
         interests: ['football', 'badminton'],
+        preferredLanguages: ['en'],
       });
 
       expect(res.error).toBeUndefined();
@@ -236,6 +240,7 @@ describe('useAuthStore', () => {
         birthDate: '2000-01-01',
         gender: 'male',
         interests: ['football'],
+        preferredLanguages: ['en'],
       });
 
       expect(res.error).toBeUndefined();
@@ -246,6 +251,67 @@ describe('useAuthStore', () => {
       expect(insertPayload).not.toHaveProperty('interaction_count');
     });
 
+    it('should persist bio and preferred languages during onboarding', async () => {
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const qb = (supabase.from as any)('profiles');
+      qb.maybeSingle.mockResolvedValue({ data: null, error: null });
+
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football'],
+        preferredLanguages: ['en', 'hi'],
+        bio: 'Weekend footballer.',
+        avatarUrl: 'https://example.supabase.co/storage/v1/object/public/avatars/u/avatar.jpg',
+      });
+
+      expect(res.error).toBeUndefined();
+      const insertPayload = qb.insert.mock.calls[0][0];
+      expect(insertPayload.preferred_languages).toEqual(['en', 'hi']);
+      expect(insertPayload.bio).toBe('Weekend footballer.');
+      expect(insertPayload.avatar_url).toContain('/avatars/');
+    });
+
+    it('should reject a profile insert with more than three preferred languages at the database contract level', async () => {
+      const query = (supabase.from('profiles') as any).upsert({
+        id: VALID_UUIDS.alex,
+        phone: '+919876543210',
+        name: 'Alex Rivera',
+        preferred_languages: ['en', 'hi', 'ta', 'bn'],
+      });
+      const res = await query.select().single();
+
+      expect(res.error).toBeDefined();
+      expect(res.error.code).toBe('23514');
+      expect(res.error.message).toContain('check_preferred_languages');
+    });
+
+    it('should reject a profile insert with an unknown language code at the database contract level', async () => {
+      const query = (supabase.from('profiles') as any).upsert({
+        id: VALID_UUIDS.alex,
+        phone: '+919876543210',
+        name: 'Alex Rivera',
+        preferred_languages: ['en', 'klingon'],
+      });
+      const res = await query.select().single();
+
+      expect(res.error).toBeDefined();
+      expect(res.error.code).toBe('23514');
+      expect(res.error.message).toContain('check_preferred_languages');
+    });
+
     it('should reject upsertProfile if user has no authenticated session', async () => {
       useAuthStore.setState({ user: null });
       const store = useAuthStore.getState();
@@ -254,6 +320,7 @@ describe('useAuthStore', () => {
         birthDate: '2000-01-01',
         gender: 'male',
         interests: ['football'],
+        preferredLanguages: ['en'],
       });
 
       expect(res.error).toBe('You must be signed in to create a profile');
@@ -278,6 +345,7 @@ describe('useAuthStore', () => {
         birthDate: '2020-01-01',
         gender: 'male',
         interests: ['football'],
+        preferredLanguages: ['en'],
       });
 
       expect(res.error).toBeDefined();

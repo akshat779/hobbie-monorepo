@@ -207,6 +207,7 @@ Deno.serve(async (req: Request) => {
             birth_date: '1998-01-01',
             gender: 'prefer-not-to-say',
             interests: ['football', 'badminton'],
+            preferred_languages: ['en'],
             is_verified: true,
             trust_score: 5.0,
             interaction_count: 5,

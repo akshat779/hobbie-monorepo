@@ -1,7 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Platform,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { Host } from '@expo/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheet, { BottomSheetView } from '@expo/ui/community/bottom-sheet';
 import {
   ShieldCheck,
@@ -15,6 +23,21 @@ import { formatDistance, getPinTheme } from './utils';
 import { useAuthStore } from '../auth/useAuthStore';
 import { useCountdown } from '../../hooks/useCountdown';
 
+const SHEET_BACKGROUND = '#17131F';
+
+const sheetStyles = StyleSheet.create({
+  content: {
+    flex: 1,
+    backgroundColor: SHEET_BACKGROUND,
+    paddingHorizontal: 20,
+    // Clear the native drag handle. iOS uses the library's own 16pt indicator
+    // padding (cancelled by the chrome bleed below), so the real gap is set here.
+    // Android's Material handle already reserves its own space.
+    paddingTop: Platform.select({ ios: 28, android: 12, default: 16 }),
+    paddingBottom: 32,
+  },
+});
+
 interface ActivityBottomSheetProps {
   activity: DiscoveryActivity | null;
   onClose: () => void;
@@ -26,45 +49,63 @@ export function ActivityBottomSheet({
   onClose,
 }: ActivityBottomSheetProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.user?.id);
+
+  // `@expo/ui/community/bottom-sheet` hosts the RN content inside a native sheet
+  // whose chrome (drag-handle zone + home-indicator safe area on iOS) lives outside
+  // the RN layout. We bleed the opaque background into that chrome so the whole
+  // sheet reads as one uniform surface. Android's Material sheet paints its chrome
+  // from `backgroundStyle` (containerColor) and web from the drawer style, so
+  // neither needs this.
+  const iosChromeBleed: StyleProp<ViewStyle> =
+    Platform.OS === 'ios'
+      ? {
+          marginTop: -16, // cancels the library's drag-indicator paddingTop
+          marginBottom: -Math.max(insets.bottom, 16), // cancels the sheet's bottom safe area
+        }
+      : undefined;
 
   const { isExpired, formattedTtl, theme } = useCountdown(activity?.expiresAt);
   const isHost = currentUserId && activity ? activity.hostId === currentUserId : false;
 
   return (
-    <Host colorScheme="dark">
-      <BottomSheet
-        index={activity ? 0 : -1}
-        onClose={onClose}
-        snapPoints={['50%']}
-        enablePanDownToClose={true}
-        backgroundStyle={{ backgroundColor: '#17131F' }}
-      >
-        {activity ? (
-          <BottomSheetView style={{ backgroundColor: '#17131F', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 32 }}>
-            {/* Header Row: Title */}
-            <View className="mb-2">
-              <Text className="text-moonlight font-display text-lg font-bold">
-                {activity.title}
+    <BottomSheet
+      index={activity ? 0 : -1}
+      onClose={onClose}
+      // Two detents so every platform exposes the same states: iOS opens at the
+      // 50% detent and can grow; Android maps index 0 to Material's partial state
+      // and the last index to expanded (a single snap point would force Android
+      // to skip partial and open fully expanded); web maps them to CSS heights.
+      snapPoints={['50%', '90%']}
+      enablePanDownToClose={true}
+      backgroundStyle={{ backgroundColor: SHEET_BACKGROUND }}
+    >
+      {activity ? (
+        <BottomSheetView style={[sheetStyles.content, iosChromeBleed]}>
+          {/* Header Row: Title */}
+          <View className="mb-2">
+            <Text className="text-moonlight font-display text-lg font-bold">
+              {activity.title}
+            </Text>
+            {/* Host row */}
+            <View className="flex-row items-center mt-1">
+              <Text className="text-dusk font-medium text-xs mr-2">
+                Host: {activity.hostName}
               </Text>
-              {/* Host row */}
-              <View className="flex-row items-center mt-1">
-                <Text className="text-dusk font-medium text-xs mr-2">
-                  Host: {activity.hostName}
-                </Text>
-                {activity.hostIsVerified && (
-                  <View className="bg-signal-violet/20 border border-signal-violet/50 px-2 py-0.5 rounded-full flex-row items-center mr-2">
-                    <ShieldCheck size={11} color="#D2BBFF" />
-                    <Text className="text-signal-violet-light text-2xs font-bold ml-1">
-                      Verified
-                    </Text>
-                  </View>
-                )}
-                <Text className="text-pulse-lilac font-mono text-xs font-bold">
-                  ★ {typeof activity.hostTrustScore === 'number' ? activity.hostTrustScore.toFixed(2) : '5.00'}
-                </Text>
-              </View>
+              {activity.hostIsVerified && (
+                <View className="bg-signal-violet/20 border border-signal-violet/50 px-2 py-0.5 rounded-full flex-row items-center mr-2">
+                  <ShieldCheck size={11} color="#D2BBFF" />
+                  <Text className="text-signal-violet-light text-2xs font-bold ml-1">
+                    Verified
+                  </Text>
+                </View>
+              )}
+              <Text className="text-pulse-lilac font-mono text-xs font-bold">
+                ★ {typeof activity.hostTrustScore === 'number' ? activity.hostTrustScore.toFixed(2) : '5.00'}
+              </Text>
             </View>
+          </View>
 
           {/* Stats Row: TTL Countdown + Distance + Capacity */}
           <View className="flex-row items-center justify-between bg-void/60 border border-hairline/60 rounded-2xl p-3 mb-3">
@@ -141,6 +182,5 @@ export function ActivityBottomSheet({
         </BottomSheetView>
       ) : null}
     </BottomSheet>
-  </Host>
-);
+  );
 }

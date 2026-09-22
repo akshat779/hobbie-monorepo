@@ -38,6 +38,7 @@ describe('User Schemas', () => {
       birthDate: '1995-05-15',
       gender: 'non-binary' as const,
       interests: ['football' as const],
+      preferredLanguages: ['en' as const],
     };
     expect(UserProfileSchema.safeParse(validAdult).success).toBe(true);
 
@@ -46,8 +47,49 @@ describe('User Schemas', () => {
       birthDate: '2020-01-01',
       gender: 'male' as const,
       interests: ['football' as const],
+      preferredLanguages: ['en' as const],
     };
     expect(UserProfileSchema.safeParse(underage).success).toBe(false);
+  });
+
+  it('requires 1-3 unique preferred languages drawn from the canonical catalogue', () => {
+    const base = {
+      name: 'Alex',
+      birthDate: '1995-05-15',
+      gender: 'non-binary' as const,
+      interests: ['football' as const],
+    };
+
+    expect(UserProfileSchema.safeParse({ ...base, preferredLanguages: [] }).success).toBe(false);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['en'] }).success
+    ).toBe(true);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['en', 'hi', 'ta'] }).success
+    ).toBe(true);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['en', 'hi', 'ta', 'bn'] }).success
+    ).toBe(false);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['en', 'en'] }).success
+    ).toBe(false);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['klingon'] }).success
+    ).toBe(false);
+  });
+
+  it('caps the optional bio at 160 characters', () => {
+    const base = {
+      name: 'Alex',
+      birthDate: '1995-05-15',
+      gender: 'non-binary' as const,
+      interests: ['football' as const],
+      preferredLanguages: ['en' as const],
+    };
+
+    expect(UserProfileSchema.safeParse({ ...base, bio: 'a'.repeat(160) }).success).toBe(true);
+    expect(UserProfileSchema.safeParse({ ...base, bio: 'a'.repeat(161) }).success).toBe(false);
+    expect(UserProfileSchema.safeParse({ ...base }).success).toBe(true);
   });
 });
 

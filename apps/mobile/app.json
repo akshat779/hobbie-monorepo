@@ -33,10 +33,17 @@
       "expo-font",
       "expo-status-bar",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Hobbie to access your photos so you can add a profile picture."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/logo/splash-light.png",
           "resizeMode": "contain",
+          "imageWidth": 200,
           "backgroundColor": "#0D0B14",
           "dark": {
             "image": "./assets/logo/splash-light.png",
