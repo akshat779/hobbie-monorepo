@@ -1,12 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import * as Location from 'expo-location';
-import { supabase } from '../services/supabase';
+import { useEffect, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../features/auth/useAuthStore';
+import {
+  useLocationStore,
+  UserCoordinates,
+  DEFAULT_USER_LOCATION,
+  DEFAULT_CITY_NAME,
+} from '../features/location/useLocationStore';
 
-export interface UserCoordinates {
-  latitude: number;
-  longitude: number;
-}
+export type { UserCoordinates };
+export { DEFAULT_USER_LOCATION, DEFAULT_CITY_NAME };
 
 export interface UserLocationState {
   coords: UserCoordinates;
@@ -17,88 +20,36 @@ export interface UserLocationState {
   refreshLocation: () => Promise<void>;
 }
 
-// Default epicenter: Bangalore Tech Park / Koramangala (matches DB seed data)
-export const DEFAULT_USER_LOCATION: UserCoordinates = {
-  latitude: 12.9716,
-  longitude: 77.5946,
-};
-
-export const DEFAULT_CITY_NAME = 'Koramangala, BLR';
-
+/**
+ * Hook consuming the shared Zustand location store.
+ * Coordinates are acquired once and shared seamlessly across Map, List, and Create screens.
+ */
 export function useUserLocation(): UserLocationState {
-  const { user } = useAuthStore();
-  const [coords, setCoords] = useState<UserCoordinates>(DEFAULT_USER_LOCATION);
-  const [cityName, setCityName] = useState<string>(DEFAULT_CITY_NAME);
-  const [isLiveGps, setIsLiveGps] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const userId = useAuthStore((s) => s.user?.id);
 
-  const fetchLiveLocation = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const { coords, cityName, isLiveGps, isLoading, hasAttemptedInit, error, refreshLocation } =
+    useLocationStore(
+      useShallow((s) => ({
+        coords: s.coords,
+        cityName: s.cityName,
+        isLiveGps: s.isLiveGps,
+        isLoading: s.isLoading,
+        hasAttemptedInit: s.hasAttemptedInit,
+        error: s.error,
+        refreshLocation: s.refreshLocation,
+      }))
+    );
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        // Fallback to default Bangalore epicenter
-        setError('Location permission not granted. Using default zone.');
-        setIsLoading(false);
-        return;
-      }
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const userCoords: UserCoordinates = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-
-      setCoords(userCoords);
-      setIsLiveGps(true);
-
-      // Reverse geocode to get a clean neighborhood/city label
-      try {
-        const reverse = await Location.reverseGeocodeAsync(userCoords);
-        if (reverse && reverse.length > 0) {
-          const place = reverse[0];
-          const area = place?.district || place?.subregion || place?.name || place?.city;
-          const city = place?.city || place?.region || '';
-          if (area && city) {
-            setCityName(`${area}, ${city}`);
-          } else if (area || city) {
-            setCityName(area || city || DEFAULT_CITY_NAME);
-          }
-        }
-      } catch {
-        // Keep previous or default city label
-      }
-
-      // Sync coarse location to Supabase profile in background if logged in
-      if (user?.id) {
-        try {
-          await supabase.rpc('update_user_location', {
-            p_user_id: user.id,
-            p_lat: userCoords.latitude,
-            p_lng: userCoords.longitude,
-            p_geohash: `${userCoords.latitude.toFixed(3)},${userCoords.longitude.toFixed(3)}`,
-          });
-        } catch {
-          // Non-blocking background sync
-        }
-      }
-    } catch (err: any) {
-      console.warn('Location resolution warning:', err?.message);
-      setError(err?.message || 'Failed to acquire device GPS');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id]);
+  const handleRefresh = useCallback(async () => {
+    await refreshLocation(userId, true);
+  }, [refreshLocation, userId]);
 
   useEffect(() => {
-    fetchLiveLocation();
-  }, [fetchLiveLocation]);
+    // Acquire location once on mount if not yet attempted
+    if (!hasAttemptedInit && !isLoading) {
+      void refreshLocation(userId, false);
+    }
+  }, [hasAttemptedInit, isLoading, refreshLocation, userId]);
 
   return {
     coords,
@@ -106,6 +57,6 @@ export function useUserLocation(): UserLocationState {
     isLiveGps,
     isLoading,
     error,
-    refreshLocation: fetchLiveLocation,
+    refreshLocation: handleRefresh,
   };
 }

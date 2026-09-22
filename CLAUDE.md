@@ -106,16 +106,18 @@ The app uses **NativeWind (Tailwind CSS for React Native)** with a unified `glob
 
 To prevent technical debt, testing is mandatory across all layers:
 
-### A. Unit Tests (Vitest)
-* **Shared Schemas:** Validate all Zod schemas in `packages/shared` against valid/invalid payloads.
+### A. Unit Tests (Vitest) — Real Execution & Anti-Mocking
+* **Real Code Execution:** Unit tests must execute real business logic, state machines, normalization routines, and mathematical algorithms. Never create tautological mocks that blindly return `{ data, error: null }` without validating input payloads against real Zod schemas.
+* **Network Boundary Mocks Must Validate Schemas:** If an external I/O boundary is mocked (e.g. Supabase client in unit tests), the mock MUST execute the real shared Zod validation schemas (`PhoneAuthSchema`, `UserProfileSchema`, `CreateActivitySchema`) against incoming arguments and reject payloads that violate database constraints (e.g. `check_e164_phone`).
+* **Zero Dummy Fallbacks:** Never mask missing session or user data with fake defaults (e.g. `phone: user.phone || '+919999999999'`). Code must fail fast with explicit, typed errors when mandatory fields are missing.
+* **Shared Schemas:** Validate all Zod schemas in `packages/shared` against valid and invalid payloads.
 * **Backend Domain Logic:** Pure unit tests for matching algorithms, dynamic radius calculations, $k$-anonymity checks, and rolling trust decay math.
-* **Mobile Components:** React Native Testing Library / Vitest for UI utilities and filter engines.
 
 ### B. Integration Tests (Supertest + Fastify)
-* API endpoint testing verifying database persistence, auth headers, and status codes against a local Supabase test instance.
+* API endpoint testing verifying database persistence, auth headers, and status codes executing the real Fastify server instance (`app.inject()`).
 
 ### C. Mobile E2E Flow Testing (Maestro)
-* Declarative YAML flows in `apps/mobile/.maestro/` for:
+* Declarative YAML flows in `apps/mobile/.maestro/` running on live simulators against real PostgreSQL instances to verify actual database triggers and RLS policies:
   1. `onboarding_flow.yaml`: Phone input -> OTP -> Interest selection.
   2. `create_activity_flow.yaml`: Host creates an activity -> pin appears on map.
   3. `join_and_room_flow.yaml`: Joiner requests -> Host accepts -> Ephemeral room unlocks.

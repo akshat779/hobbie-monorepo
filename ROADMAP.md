@@ -47,13 +47,14 @@ This roadmap tracks feature implementation slices across development sessions. E
 
 ---
 
-## ⚡ Milestone 3: Squad Creation & Matching Handshake
+## 🟢 Milestone 3: Squad Creation & Matching Handshake (COMPLETED)
 **Goal:** Host posts a squad $\rightarrow$ Joiner discovers and sends request $\rightarrow$ Host accepts/declines.
-- [ ] Wire `app/activity/create.tsx` modal with category picker, venue name, exact/fuzzed GPS, and TTL slider (1–4 hrs)
-- [ ] Host's request management queue (view incoming joiners with trust scores & verified badges)
-- [ ] Accept/Decline action buttons with instant Supabase DB updates (`public.join_requests` $\rightarrow$ `public.activity_members`)
-- [ ] **Motion/Animation:** Smooth spring slide-up for `ActivityBottomSheet`, card stagger fade-in on feed, and interactive button press scaling (`active:scale-95`)
-- [ ] **Motion/Animation:** Realtime handshake ripple & toast animation when a join request is accepted
+- [x] Wire `app/activity/create.tsx` with category picker, venue name, exact/fuzzed GPS (~100m), capacity selector, and TTL slider (1–4 hrs)
+- [x] Host's request management queue (`HostReviewModal.tsx`) with verified badges, trust scores, and incoming message
+- [x] Accept/Decline action buttons with atomic PostgreSQL stored procedure (`accept_join_request_tx` with `FOR UPDATE` lock $\rightarrow$ `public.activity_members`)
+- [x] **Motion/Animation:** Smooth spring animations, pulsing pending joiner state, and interactive button press scaling (`active:scale-95`)
+- [x] **Motion/Animation:** Supabase Realtime subscription transitioning joiner automatically to `app/room/[id].tsx` upon acceptance
+- [x] 49/49 passing Vitest monorepo tests and 100% clean typecheck (`npm run lint && npm test`)
 
 ---
 

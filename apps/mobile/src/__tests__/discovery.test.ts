@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getTtlStatus,
   getPinTheme,
@@ -9,7 +9,21 @@ import {
   fetchNearbyActivities,
   filterActivities,
 } from '../features/discovery/useDiscoveryQuery';
-import { NearbyActivity } from '../features/discovery/types';
+import { DiscoveryActivity } from '../features/discovery/types';
+import {
+  useDiscoveryFiltersStore,
+  DEFAULT_DISCOVERY_FILTERS,
+} from '../features/discovery/useDiscoveryFiltersStore';
+import { supabase } from '../services/supabase';
+
+import { createContractMockSupabase, VALID_UUIDS } from './helpers/contractMocks';
+
+vi.mock('../services/supabase', async () => {
+  const { createContractMockSupabase } = await import('./helpers/contractMocks');
+  return {
+    supabase: createContractMockSupabase(),
+  };
+});
 
 describe('Discovery Utilities', () => {
   describe('getTtlStatus', () => {
@@ -116,7 +130,7 @@ describe('Discovery Utilities', () => {
   });
 
   describe('Multi-Facet Filtering (Category, Gender, Age Group)', () => {
-    const mockActivities: NearbyActivity[] = [
+    const mockActivities: DiscoveryActivity[] = [
       {
         id: '1',
         hostId: 'h1',
@@ -127,15 +141,16 @@ describe('Discovery Utilities', () => {
         title: 'Men Football',
         description: '',
         tier: 'physical',
-        lat: 12.97,
-        lng: 77.59,
+        fuzzedLocation: { latitude: 12.97, longitude: 77.59 },
+        imageUrls: [],
+        createdAt: new Date().toISOString(),
         expiresAt: new Date().toISOString(),
+        status: 'open',
         maxParticipants: 10,
         currentParticipantsCount: 4,
         distanceMeters: 500,
         distanceKm: 0.5,
-        ttlStatus: { minutesLeft: 90, formattedTtl: '1h 30m', urgency: 'fresh' },
-        filterGender: 'men_only',
+        filterGender: 'male-only',
         filterAgeMin: 18,
         filterAgeMax: 24,
       },
@@ -149,15 +164,16 @@ describe('Discovery Utilities', () => {
         title: 'Women Badminton',
         description: '',
         tier: 'physical',
-        lat: 12.98,
-        lng: 77.60,
+        fuzzedLocation: { latitude: 12.98, longitude: 77.6 },
+        imageUrls: [],
+        createdAt: new Date().toISOString(),
         expiresAt: new Date().toISOString(),
+        status: 'open',
         maxParticipants: 4,
         currentParticipantsCount: 2,
         distanceMeters: 1200,
         distanceKm: 1.2,
-        ttlStatus: { minutesLeft: 20, formattedTtl: '20m', urgency: 'expiring' },
-        filterGender: 'women_only',
+        filterGender: 'female-only',
         filterAgeMin: 22,
         filterAgeMax: 30,
       },
@@ -171,35 +187,36 @@ describe('Discovery Utilities', () => {
         title: 'Chess Meet',
         description: '',
         tier: 'physical',
-        lat: 12.96,
-        lng: 77.61,
+        fuzzedLocation: { latitude: 12.96, longitude: 77.61 },
+        imageUrls: [],
+        createdAt: new Date().toISOString(),
         expiresAt: new Date().toISOString(),
+        status: 'open',
         maxParticipants: 6,
         currentParticipantsCount: 2,
         distanceMeters: 2000,
         distanceKm: 2.0,
-        ttlStatus: { minutesLeft: 40, formattedTtl: '40m', urgency: 'moderate' },
-        filterGender: 'coed',
+        filterGender: 'any',
         filterAgeMin: 35,
         filterAgeMax: 60,
       },
     ];
 
     it('should filter activities by gender preference', () => {
-      const womenOnly = filterActivities(mockActivities, 'all', 'women_only', 'all');
+      const womenOnly = filterActivities(mockActivities, undefined, 'women_only', 'all');
       expect(womenOnly.length).toBe(1);
       expect(womenOnly[0]?.id).toBe('2');
 
-      const allGenders = filterActivities(mockActivities, 'all', 'all', 'all');
+      const allGenders = filterActivities(mockActivities, undefined, 'all', 'all');
       expect(allGenders.length).toBe(3);
     });
 
     it('should filter activities by demographic age group', () => {
-      const collegeAge = filterActivities(mockActivities, 'all', 'all', '18_24');
+      const collegeAge = filterActivities(mockActivities, undefined, 'all', '18_24');
       // Matches football (18-24) and badminton (22-30)
       expect(collegeAge.length).toBe(2);
 
-      const matureGroup = filterActivities(mockActivities, 'all', 'all', '35_plus');
+      const matureGroup = filterActivities(mockActivities, undefined, 'all', '35_plus');
       // Matches chess meet (35-60)
       expect(matureGroup.length).toBe(1);
       expect(matureGroup[0]?.id).toBe('3');
@@ -208,7 +225,7 @@ describe('Discovery Utilities', () => {
     it('should combine category, gender, and age filters seamlessly', () => {
       const combined = filterActivities(
         mockActivities,
-        'badminton',
+        ['badminton'],
         'women_only',
         '25_34'
       );
@@ -218,26 +235,169 @@ describe('Discovery Utilities', () => {
   });
 
   describe('fetchNearbyActivities', () => {
-    it('should fetch and filter fallback activities by category', async () => {
+    const mockRpcActivities = [
+      {
+        id: 'act-1',
+        host_id: 'host-1',
+        interest_id: 'football',
+        title: 'Turf Football 5v5',
+        description: 'Friendly match',
+        tier: 'physical',
+        lat: 12.9716,
+        lng: 77.5946,
+        venue_name: 'Turf Arena',
+        expires_at: new Date(Date.now() + 7200000).toISOString(),
+        max_participants: 10,
+        current_participants_count: 6,
+        distance_meters: 650,
+      },
+      {
+        id: 'act-2',
+        host_id: 'host-2',
+        interest_id: 'badminton',
+        title: 'Badminton Doubles',
+        description: 'Need 2 more',
+        tier: 'physical',
+        lat: 12.978,
+        lng: 77.599,
+        venue_name: 'Smash Zone',
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        max_participants: 4,
+        current_participants_count: 2,
+        distance_meters: 1200,
+      },
+    ];
+
+    const mockProfiles = [
+      {
+        id: 'host-1',
+        name: 'Alex Rivera',
+        trust_score: 4.95,
+        is_verified: true,
+        avatar_url: null,
+      },
+      {
+        id: 'host-2',
+        name: 'Sam Chen',
+        trust_score: 4.88,
+        is_verified: true,
+        avatar_url: null,
+      },
+    ];
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should call get_nearby_activities RPC and enrich with host profiles', async () => {
       const allActivities = await fetchNearbyActivities({
-        userLat: 12.9716,
-        userLng: 77.5946,
+        latitude: 12.9716,
+        longitude: 77.5946,
         radiusKm: 4.5,
-        category: 'all',
       });
 
-      expect(allActivities.length).toBeGreaterThanOrEqual(2);
+      expect(supabase.rpc).toHaveBeenCalledWith('get_nearby_activities', {
+        user_lat: 12.9716,
+        user_lng: 77.5946,
+        radius_km: 4.5,
+      });
+      expect(allActivities.length).toBe(2);
+      expect(allActivities[0]?.hostName).toBe('Alex Rivera');
+      expect(allActivities[0]?.hostTrustScore).toBe(4.95);
+      expect(allActivities[0]?.fuzzedLocation.latitude).toBe(12.9716);
+      expect(allActivities[0]?.distanceMeters).toBe(650);
+    });
 
+    it('should filter RPC activities by interest taxonomy', async () => {
       const footballOnly = await fetchNearbyActivities({
-        userLat: 12.9716,
-        userLng: 77.5946,
+        latitude: 12.9716,
+        longitude: 77.5946,
         radiusKm: 4.5,
-        category: 'football',
+        interestIds: ['football'],
       });
 
       expect(footballOnly.length).toBe(1);
       expect(footballOnly[0]?.interestId).toBe('football');
       expect(footballOnly[0]?.hostTrustScore).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('should return empty array when RPC errors or finds no squads', async () => {
+      (supabase.rpc as any).mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Network error' },
+      });
+
+      const activities = await fetchNearbyActivities({
+        latitude: 12.9716,
+        longitude: 77.5946,
+        radiusKm: 4.5,
+      });
+
+      expect(activities).toEqual([]);
+    });
+
+    it('should reject coordinates that violate DiscoveryQuerySchema contract (out of bounds)', async () => {
+      // Out of bounds coordinates (latitude 999) rejected by contract mock
+      const activities = await fetchNearbyActivities({
+        latitude: 999,
+        longitude: 77.5946,
+        radiusKm: 4.5,
+      });
+
+      expect(activities).toEqual([]);
+    });
+  });
+
+  describe('useDiscoveryFiltersStore', () => {
+    beforeEach(() => {
+      useDiscoveryFiltersStore.getState().resetFilters();
+    });
+
+    it('should initialize with default discovery filters', () => {
+      const state = useDiscoveryFiltersStore.getState().filters;
+      expect(state).toEqual(DEFAULT_DISCOVERY_FILTERS);
+      expect(state.radiusKm).toBe(4.5);
+      expect(state.gender).toBe('all');
+      expect(state.ageGroup).toBe('all');
+    });
+
+    it('should update radiusKm independently', () => {
+      useDiscoveryFiltersStore.getState().setRadiusKm(12.5);
+      expect(useDiscoveryFiltersStore.getState().filters.radiusKm).toBe(12.5);
+      expect(useDiscoveryFiltersStore.getState().filters.gender).toBe('all');
+    });
+
+    it('should update gender filter', () => {
+      useDiscoveryFiltersStore.getState().setGender('women_only');
+      expect(useDiscoveryFiltersStore.getState().filters.gender).toBe('women_only');
+    });
+
+    it('should update ageGroup filter', () => {
+      useDiscoveryFiltersStore.getState().setAgeGroup('25_34');
+      expect(useDiscoveryFiltersStore.getState().filters.ageGroup).toBe('25_34');
+    });
+
+    it('should batch-update filters via setFilters', () => {
+      useDiscoveryFiltersStore.getState().setFilters({
+        radiusKm: 25,
+        gender: 'coed',
+        ageGroup: '18_24',
+      });
+      expect(useDiscoveryFiltersStore.getState().filters).toEqual({
+        radiusKm: 25,
+        gender: 'coed',
+        ageGroup: '18_24',
+      });
+    });
+
+    it('should reset filters back to defaults via resetFilters', () => {
+      useDiscoveryFiltersStore.getState().setFilters({
+        radiusKm: 30,
+        gender: 'men_only',
+        ageGroup: '35_plus',
+      });
+      useDiscoveryFiltersStore.getState().resetFilters();
+      expect(useDiscoveryFiltersStore.getState().filters).toEqual(DEFAULT_DISCOVERY_FILTERS);
     });
   });
 });

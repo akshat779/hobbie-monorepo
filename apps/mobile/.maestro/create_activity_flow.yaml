@@ -1,15 +1,33 @@
-appId: com.hobbie.app
+appId: host.exp.Exponent
 ---
-# Test 2: Host Activity Creation Flow
-- launchApp
-- tapOn: "Skip to Map Discovery (Demo)"
-- assertVisible: "Radar"
-- tapOn: "+"
-- assertVisible: "Post Live Squad"
-- tapOn: "e.g. 5-a-side Football Turf match"
+# Real host flow: authenticate, create a squad, and verify the discovery map.
+- openLink: "exp://localhost:8081"
+- tapOn:
+    text: ".*(Get Started|Continue to Squads|Explore Hobbie).*"
+    optional: true
+- tapOn:
+    text: ".*Alex \\(host\\).*"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "host-squad-button"
+    timeout: 25000
+- tapOn:
+    id: "host-squad-button"
+- assertVisible: "Host Live Squad"
+- tapOn:
+    id: "Squad Title Input"
 - inputText: "Weekend Turf Soccer 5v5"
-- tapOn: "Need 2 more players.*"
+- tapOn:
+    id: "Details Input"
 - inputText: "Casual game at EcoWorld pitch."
+- hideKeyboard
 - tapOn: "3h"
-- tapOn: "Broadcast Squad.*"
-- assertVisible: "Radar"
+- tapOn:
+    id: "broadcast-live-squad"
+- extendedWaitUntil:
+    visible:
+      id: "discovery-map"
+    timeout: 20000
+- assertVisible:
+    id: "discovery-map"

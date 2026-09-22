@@ -8,42 +8,23 @@ import {
   SubmitFeedbackSchema,
 } from '@hobbie/shared';
 import { authMiddleware } from '../../middleware/auth.js';
-import {
-  calculateDistanceKm,
-  fuzzCoordinates,
-} from '../matching/matching.service.js';
-
-// In-memory mock storage for rapid Phase 1 testing and offline simulation
-const mockActivities: any[] = [];
-const mockJoinRequests: any[] = [];
-const mockMessages: any[] = [];
+import { activityService } from './activity.service.js';
 
 export async function activityRoutes(fastify: FastifyInstance) {
-  // Discovery endpoint - Live map feed with dynamic radius
+  // Discovery endpoint - Live PostGIS geospatial radius search
   fastify.get('/discovery', async (request, reply) => {
     const query = DiscoveryQuerySchema.safeParse(request.query);
     if (!query.success) {
       return reply.status(400).send({ error: query.error.errors });
     }
 
-    const { latitude, longitude, radiusKm, interestIds } = query.data;
-
-    const matched = mockActivities
-      .filter((act) => act.status === 'open')
-      .map((act) => {
-        const distance = calculateDistanceKm(
-          { latitude, longitude },
-          act.rawLocation
-        );
-        return { ...act, distanceKm: distance };
-      })
-      .filter((act) => act.distanceKm <= radiusKm)
-      .filter((act) => {
-        if (!interestIds || interestIds.length === 0) return true;
-        return interestIds.includes(act.interestId);
-      });
-
-    return reply.send({ activities: matched });
+    try {
+      const activities = await activityService.getDiscoveryActivities(query.data);
+      return reply.send({ activities });
+    } catch (err: any) {
+      request.log.error({ err }, 'Failed to fetch nearby activities');
+      return reply.status(500).send({ error: err.message });
+    }
   });
 
   // Create Activity endpoint
@@ -56,37 +37,14 @@ export async function activityRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: parsed.error.errors });
       }
 
-      const user = request.user!;
-      const data = parsed.data;
-      const fuzzed = fuzzCoordinates(data.location);
-
-      const now = new Date();
-      const expiresAt = new Date(
-        now.getTime() + data.ttlHours * 60 * 60 * 1000
-      );
-
-      const newActivity = {
-        id: `act-${Date.now()}`,
-        hostId: user.id,
-        hostName: user.id.includes('1') ? 'Alex' : 'Sam',
-        hostIsVerified: true,
-        hostTrustScore: 4.8,
-        interestId: data.interestId,
-        title: data.title,
-        description: data.description,
-        tier: data.tier,
-        fuzzedLocation: fuzzed,
-        rawLocation: data.location,
-        venueName: data.venueName,
-        createdAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-        maxParticipants: data.maxParticipants,
-        currentParticipantsCount: 1,
-        status: 'open',
-      };
-
-      mockActivities.push(newActivity);
-      return reply.status(201).send({ activity: newActivity });
+      try {
+        const user = request.user!;
+        const activity = await activityService.createActivity(user.id, parsed.data);
+        return reply.status(201).send({ activity });
+      } catch (err: any) {
+        request.log.error({ err }, 'Failed to create activity');
+        return reply.status(500).send({ error: err.message });
+      }
     }
   );
 
@@ -100,21 +58,14 @@ export async function activityRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: parsed.error.errors });
       }
 
-      const user = request.user!;
-      const newRequest = {
-        id: `req-${Date.now()}`,
-        activityId: parsed.data.activityId,
-        userId: user.id,
-        userName: user.id.includes('2') ? 'Sam' : 'Alex',
-        userTrustScore: 4.9,
-        isVerified: true,
-        message: parsed.data.message,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-
-      mockJoinRequests.push(newRequest);
-      return reply.status(201).send({ request: newRequest });
+      try {
+        const user = request.user!;
+        const rpcData = await activityService.submitJoinRequest(user.id, parsed.data);
+        return reply.status(201).send({ request: rpcData });
+      } catch (err: any) {
+        request.log.error({ err }, 'Failed to submit join request');
+        return reply.status(400).send({ error: err.message });
+      }
     }
   );
 
@@ -128,19 +79,14 @@ export async function activityRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: parsed.error.errors });
       }
 
-      const user = request.user!;
-      const message = {
-        id: `msg-${Date.now()}`,
-        activityId: parsed.data.activityId,
-        senderId: user.id,
-        senderName: user.id.includes('1') ? 'Alex' : 'Sam',
-        content: parsed.data.content,
-        createdAt: new Date().toISOString(),
-        isHost: user.id.includes('1'),
-      };
-
-      mockMessages.push(message);
-      return reply.status(201).send({ message });
+      try {
+        const user = request.user!;
+        const message = await activityService.sendRoomMessage(user.id, parsed.data);
+        return reply.status(201).send({ message });
+      } catch (err: any) {
+        request.log.error({ err }, 'Failed to send room message');
+        return reply.status(400).send({ error: err.message });
+      }
     }
   );
 
@@ -149,19 +95,28 @@ export async function activityRoutes(fastify: FastifyInstance) {
     '/join-requests/:id/respond',
     { preHandler: [authMiddleware] },
     async (request, reply) => {
-      const parsed = RespondJoinRequestSchema.safeParse(request.body);
+      const params = request.params as { id?: string };
+      const rawBody =
+        typeof request.body === 'object' && request.body !== null
+          ? request.body
+          : {};
+      const parsed = RespondJoinRequestSchema.safeParse({
+        requestId: params.id,
+        ...rawBody,
+      });
+
       if (!parsed.success) {
         return reply.status(400).send({ error: parsed.error.errors });
       }
 
-      const { id } = request.params as { id: string };
-      const req = mockJoinRequests.find((r) => r.id === id);
-      if (!req) {
-        return reply.status(404).send({ error: 'Join request not found' });
+      try {
+        const user = request.user!;
+        const result = await activityService.respondToJoinRequest(user.id, parsed.data);
+        return reply.status(200).send({ request: result });
+      } catch (err: any) {
+        request.log.error({ err }, 'Failed to respond to join request');
+        return reply.status(400).send({ error: err.message });
       }
-
-      req.status = parsed.data.action === 'accept' ? 'accepted' : 'declined';
-      return reply.status(200).send({ request: req });
     }
   );
 
@@ -175,15 +130,14 @@ export async function activityRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: parsed.error.errors });
       }
 
-      const user = request.user!;
-      const rating = {
-        id: `rate-${Date.now()}`,
-        reviewerId: user.id,
-        ...parsed.data,
-        createdAt: new Date().toISOString(),
-      };
-
-      return reply.status(201).send({ rating });
+      try {
+        const user = request.user!;
+        const rating = await activityService.submitRating(user.id, parsed.data);
+        return reply.status(201).send({ rating });
+      } catch (err: any) {
+        request.log.error({ err }, 'Failed to insert feedback rating');
+        return reply.status(400).send({ error: err.message });
+      }
     }
   );
 }

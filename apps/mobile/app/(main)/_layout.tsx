@@ -1,72 +1,60 @@
+import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
-import { Sparkles, ListFilter, Users, User } from 'lucide-react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { FloatingGlassTabBar } from '../../src/components/navigation/FloatingGlassTabBar';
+import { useAuthStore } from '../../src/features/auth/useAuthStore';
+import { queryKeys } from '../../src/services/queryKeys';
+import { fetchMySquads } from '../../src/features/activity/useMyActivitiesQuery';
 
 export default function MainTabLayout() {
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id);
+
+  // Proactive background prefetching (pf-route-prefetch)
+  // Warms the "My Squads" cache on layout mount so switching tabs is instantaneous (0ms)
+  useEffect(() => {
+    if (userId) {
+      void queryClient.prefetchQuery({
+        queryKey: queryKeys.activities.mySquads(userId),
+        queryFn: () => fetchMySquads(userId),
+        staleTime: 1000 * 60,
+      });
+    }
+  }, [userId, queryClient]);
+
   return (
     <Tabs
+      tabBar={(props) => <FloatingGlassTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#17131F',
-          borderTopColor: '#2C2739',
-          borderTopWidth: 1,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
-        tabBarActiveTintColor: '#C77DFF',
-        tabBarInactiveTintColor: '#A99BC2',
+        lazy: true,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Hobbie',
-          tabBarIcon: ({ color }) => <Sparkles color={color} size={20} />,
-          tabBarLabel: ({ color }) => (
-            <Text style={{ color, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
-              Hobbie
-            </Text>
-          ),
         }}
       />
       <Tabs.Screen
         name="list"
         options={{
           title: 'Feed',
-          tabBarIcon: ({ color }) => <ListFilter color={color} size={20} />,
-          tabBarLabel: ({ color }) => (
-            <Text style={{ color, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
-              Feed
-            </Text>
-          ),
         }}
       />
       <Tabs.Screen
         name="my-activities"
         options={{
           title: 'My Squads',
-          tabBarIcon: ({ color }) => <Users color={color} size={20} />,
-          tabBarLabel: ({ color }) => (
-            <Text style={{ color, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
-              My Squads
-            </Text>
-          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <User color={color} size={20} />,
-          tabBarLabel: ({ color }) => (
-            <Text style={{ color, fontSize: 11, fontWeight: '600', marginTop: 2 }}>
-              Profile
-            </Text>
-          ),
         }}
       />
     </Tabs>
   );
 }
+

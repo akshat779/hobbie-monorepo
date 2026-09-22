@@ -35,6 +35,8 @@ export function DiscoveryEmptyState({
       <View className="w-full flex-row space-x-3">
         {isFiltered && onResetFilter && (
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="View All Squads"
             onPress={onResetFilter}
             className="flex-1 h-12 bg-ink border border-hairline rounded-full items-center justify-center mr-2"
             activeOpacity={0.75}
@@ -46,6 +48,8 @@ export function DiscoveryEmptyState({
         )}
 
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Host a Squad"
           onPress={() => router.push('/activity/create')}
           className="flex-1 h-12 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
           activeOpacity={0.85}

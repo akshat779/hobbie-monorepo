@@ -1,127 +1,83 @@
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  DiscoveryActivity,
+  DiscoveryActivitySchema,
+  GenderFilter,
+  InterestId,
+  NearbyActivityRowsSchema,
+} from '@hobbie/shared';
 import { supabase } from '../../services/supabase';
-import { DEV_PERSONAS } from '../auth/useAuthStore';
+import { queryKeys } from '../../services/queryKeys';
 import {
   AgeGroupOption,
+  DiscoveryDemographicFilters,
   DiscoveryQueryParams,
   GenderFilterOption,
   HostProfile,
-  NearbyActivity,
 } from './types';
-import { getTtlStatus } from './utils';
 
-// Fallback seed activities for simulator/dev preview when database has 0 activities
-const FALLBACK_DEV_ACTIVITIES: NearbyActivity[] = [
-  {
-    id: '10000000-0000-0000-0000-000000000001',
-    hostId: '00000000-0000-0000-0000-000000000001',
-    hostName: 'Alex Rivera',
-    hostTrustScore: 4.95,
-    hostIsVerified: true,
-    hostAvatarUrl: null,
-    interestId: 'football',
-    title: '5-a-side Turf Football Match',
-    description: 'Need 2 more players for casual match at EcoWorld turf. Bibs provided.',
-    tier: 'physical',
-    lat: 12.9720,
-    lng: 77.5950,
-    venueName: 'EcoWorld Turf Club Pitch 2',
-    expiresAt: new Date(Date.now() + 145 * 60 * 1000).toISOString(), // ~2h 25m -> fresh
-    maxParticipants: 10,
-    currentParticipantsCount: 3,
-    distanceMeters: 800,
-    distanceKm: 0.8,
-    ttlStatus: getTtlStatus(new Date(Date.now() + 145 * 60 * 1000)),
-    filterGender: 'all',
-    filterAgeMin: 18,
-    filterAgeMax: 30,
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000002',
-    hostId: '00000000-0000-0000-0000-000000000003',
-    hostName: 'Priya Sharma',
-    hostTrustScore: 5.0,
-    hostIsVerified: true,
-    hostAvatarUrl: null,
-    interestId: 'badminton',
-    title: 'Badminton Doubles Match',
-    description: 'Court booked till 9:30 PM. Need 1 intermediate player.',
-    tier: 'physical',
-    lat: 12.9805,
-    lng: 77.6005,
-    venueName: 'Smash Zone Indoor Arena',
-    expiresAt: new Date(Date.now() + 25 * 60 * 1000).toISOString(), // 25m -> urgent ember
-    maxParticipants: 4,
-    currentParticipantsCount: 3,
-    distanceMeters: 1400,
-    distanceKm: 1.4,
-    ttlStatus: getTtlStatus(new Date(Date.now() + 25 * 60 * 1000)),
-    filterGender: 'women_only',
-    filterAgeMin: 21,
-    filterAgeMax: 32,
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000003',
-    hostId: '00000000-0000-0000-0000-000000000002',
-    hostName: 'Sam Chen',
-    hostTrustScore: 4.88,
-    hostIsVerified: true,
-    hostAvatarUrl: null,
-    interestId: 'cafe_coffee',
-    title: 'Filter Coffee & Tech Chat',
-    description: 'Casual morning coffee & discussing startup ideas in Indiranagar.',
-    tier: 'physical',
-    lat: 12.9650,
-    lng: 77.6100,
-    venueName: 'Third Wave Coffee Roasters',
-    expiresAt: new Date(Date.now() + 50 * 60 * 1000).toISOString(), // 50m -> moderate signal violet
-    maxParticipants: 4,
-    currentParticipantsCount: 2,
-    distanceMeters: 2100,
-    distanceKm: 2.1,
-    ttlStatus: getTtlStatus(new Date(Date.now() + 50 * 60 * 1000)),
-    filterGender: 'coed',
-    filterAgeMin: 25,
-    filterAgeMax: 45,
-  },
-];
+/**
+ * Maps the database `gender_filter` enum onto the client demographic filter
+ * vocabulary. `null` (no restriction) behaves as an unconstrained activity.
+ */
+function toGenderFilterOption(value: GenderFilter | null): GenderFilterOption {
+  switch (value) {
+    case 'male-only':
+      return 'men_only';
+    case 'female-only':
+      return 'women_only';
+    case 'any':
+      return 'coed';
+    default:
+      return 'all';
+  }
+}
 
-export async function fetchNearbyActivities(
-  params: DiscoveryQueryParams
-): Promise<NearbyActivity[]> {
-  const {
-    userLat,
-    userLng,
-    radiusKm = 4.5,
-    category,
-    gender = 'all',
-    ageGroup = 'all',
-  } = params;
-
+/**
+ * Raw data fetcher: executes the PostGIS RPC, rigorously validates the payload
+ * against the shared row contract, then enriches with host profiles.
+ *
+ * Every runtime shape failure is surfaced through the contract schema instead of
+ * being silently blind-cast into a client DTO.
+ */
+export async function fetchRawNearbyActivities(
+  latitude: number,
+  longitude: number,
+  radiusKm: number = 4.5
+): Promise<DiscoveryActivity[]> {
   try {
-    const { data: rawActivities, error } = await supabase.rpc(
-      'get_nearby_activities',
-      {
-        user_lat: userLat,
-        user_lng: userLng,
-        radius_km: radiusKm,
-      }
-    );
+    // `getSession()` only reads the locally cached token. Validate the token
+    // with Auth so an expired/stale local store can never issue an anon RPC.
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) return [];
+
+    const { data: rawActivities, error } = await supabase.rpc('get_nearby_activities', {
+      user_lat: latitude,
+      user_lng: longitude,
+      radius_km: radiusKm,
+    });
 
     if (error) {
-      console.warn('get_nearby_activities RPC error, using fallback:', error.message);
-      return filterActivities(FALLBACK_DEV_ACTIVITIES, category, gender, ageGroup);
+      console.warn('get_nearby_activities RPC error:', error.message);
+      return [];
     }
 
-    if (!rawActivities || rawActivities.length === 0) {
-      if (__DEV__) {
-        return filterActivities(FALLBACK_DEV_ACTIVITIES, category, gender, ageGroup);
-      }
+    const parsedRows = NearbyActivityRowsSchema.safeParse(rawActivities ?? []);
+    if (!parsedRows.success) {
+      console.warn(
+        'get_nearby_activities payload failed contract validation:',
+        parsedRows.error.flatten()
+      );
+      return [];
+    }
+
+    if (parsedRows.data.length === 0) {
       return [];
     }
 
     // Extract unique host IDs to fetch host profiles
-    const hostIds = Array.from(new Set(rawActivities.map((a) => a.host_id)));
+    const hostIds = Array.from(new Set(parsedRows.data.map((row) => row.host_id)));
 
     const { data: hostProfiles } = await supabase
       .from('profiles')
@@ -129,89 +85,115 @@ export async function fetchNearbyActivities(
       .in('id', hostIds);
 
     const profileMap = new Map<string, HostProfile>();
-
-    // Index DB host profiles
-    if (hostProfiles) {
-      hostProfiles.forEach((p) => {
-        profileMap.set(p.id, {
-          id: p.id,
-          name: p.name,
-          trustScore: p.trust_score,
-          isVerified: p.is_verified,
-          avatarUrl: p.avatar_url,
-        });
+    for (const profile of hostProfiles ?? []) {
+      profileMap.set(profile.id, {
+        id: profile.id,
+        name: profile.name,
+        trustScore: profile.trust_score,
+        isVerified: profile.is_verified,
+        avatarUrl: profile.avatar_url,
       });
     }
 
-    // Fallback to dev personas if any profile is missing
-    DEV_PERSONAS.forEach((p) => {
-      if (!profileMap.has(p.id)) {
-        profileMap.set(p.id, {
-          id: p.id,
-          name: p.name,
-          trustScore: p.trustScore,
-          isVerified: p.isVerified,
-          avatarUrl: null,
-        });
+    const enriched: DiscoveryActivity[] = [];
+
+    for (const row of parsedRows.data) {
+      const host = profileMap.get(row.host_id);
+      if (!host) {
+        // A missing host profile means a broken activity → profile link. Skip
+        // rather than fabricate a trust score the database never asserted.
+        console.warn(
+          `Discovery skipped activity ${row.id}: host profile ${row.host_id} unavailable`
+        );
+        continue;
       }
-    });
 
-    const enriched: NearbyActivity[] = rawActivities.map((act) => {
-      const host = profileMap.get(act.host_id);
-      const ttlStatus = getTtlStatus(act.expires_at);
+      const validated = DiscoveryActivitySchema.safeParse({
+        id: row.id,
+        hostId: row.host_id,
+        hostName: host.name,
+        hostAvatarUrl: host.avatarUrl ?? null,
+        hostTrustScore: host.trustScore,
+        hostIsVerified: host.isVerified,
+        interestId: row.interest_id,
+        title: row.title,
+        description: row.description ?? '',
+        tier: row.tier,
+        fuzzedLocation: { latitude: row.lat, longitude: row.lng },
+        venueName: row.venue_name,
+        imageUrls: row.image_urls ?? [],
+        createdAt: row.created_at,
+        expiresAt: row.expires_at,
+        maxParticipants: row.max_participants,
+        currentParticipantsCount: row.current_participants_count,
+        status: row.status,
+        distanceMeters: row.distance_meters,
+        distanceKm: Math.round((row.distance_meters / 1000) * 10) / 10,
+        filterGender: row.filter_gender,
+        filterAgeMin: row.filter_age_min,
+        filterAgeMax: row.filter_age_max,
+      });
 
-      return {
-        id: act.id,
-        hostId: act.host_id,
-        hostName: host?.name || 'Hobbie Host',
-        hostTrustScore: host?.trustScore ?? 5.0,
-        hostIsVerified: host?.isVerified ?? false,
-        hostAvatarUrl: host?.avatarUrl ?? null,
-        interestId: act.interest_id,
-        title: act.title,
-        description: act.description || '',
-        tier: act.tier || 'physical',
-        lat: act.lat,
-        lng: act.lng,
-        venueName: act.venue_name,
-        expiresAt: act.expires_at,
-        maxParticipants: act.max_participants,
-        currentParticipantsCount: act.current_participants_count,
-        distanceMeters: act.distance_meters,
-        distanceKm: Math.round((act.distance_meters / 1000) * 10) / 10,
-        ttlStatus,
-      };
-    });
+      if (!validated.success) {
+        console.warn(
+          `Discovery skipped activity ${row.id}: enriched payload failed contract validation:`,
+          validated.error.flatten()
+        );
+        continue;
+      }
 
-    return filterActivities(enriched, category, gender, ageGroup);
+      enriched.push(validated.data);
+    }
+
+    return enriched;
   } catch (err) {
     console.warn('fetchNearbyActivities catch error:', err);
-    return filterActivities(FALLBACK_DEV_ACTIVITIES, category, gender, ageGroup);
+    return [];
   }
 }
 
+/**
+ * Convenience helper for callers/unit tests fetching and filtering directly.
+ */
+export async function fetchNearbyActivities(
+  params: DiscoveryQueryParams,
+  filters: DiscoveryDemographicFilters = {}
+): Promise<DiscoveryActivity[]> {
+  const { latitude, longitude, radiusKm = 4.5, interestIds } = params;
+
+  const raw = await fetchRawNearbyActivities(latitude, longitude, radiusKm);
+  return filterActivities(raw, interestIds, filters.gender ?? 'all', filters.ageGroup ?? 'all');
+}
+
+/**
+ * Pure, deterministic in-memory filter function for the interest taxonomy and
+ * demographic chips. Interest matching is array-based (`InterestId[]`).
+ */
 export function filterActivities(
-  activities: NearbyActivity[],
-  category?: string,
-  gender?: GenderFilterOption,
-  ageGroup?: AgeGroupOption
-): NearbyActivity[] {
+  activities: DiscoveryActivity[],
+  interestIds?: InterestId[],
+  gender: GenderFilterOption = 'all',
+  ageGroup: AgeGroupOption = 'all'
+): DiscoveryActivity[] {
+  const activeInterests =
+    interestIds && interestIds.length > 0 ? new Set<InterestId>(interestIds) : null;
+
   return activities.filter((act) => {
-    // 1. Category Filter
-    if (category && category !== 'all' && act.interestId !== category) {
+    // 1. Interest taxonomy Filter
+    if (activeInterests && !activeInterests.has(act.interestId)) {
       return false;
     }
 
     // 2. Gender Target Filter
-    if (gender && gender !== 'all') {
-      const actGender = act.filterGender ?? 'all';
+    if (gender !== 'all') {
+      const actGender = toGenderFilterOption(act.filterGender ?? null);
       if (actGender !== 'all' && actGender !== gender) {
         return false;
       }
     }
 
     // 3. Age Group Filter
-    if (ageGroup && ageGroup !== 'all') {
+    if (ageGroup !== 'all') {
       const min = act.filterAgeMin ?? 18;
       const max = act.filterAgeMax ?? 99;
 
@@ -228,38 +210,40 @@ export function filterActivities(
   });
 }
 
-export function useDiscoveryQuery(params: DiscoveryQueryParams) {
-  const {
-    userLat,
-    userLng,
-    radiusKm = 4.5,
-    category = 'all',
-    gender = 'all',
-    ageGroup = 'all',
-  } = params;
+/**
+ * Type-safe discovery query hook adhering to TanStack Query best practices:
+ * - qk-factory-pattern: Uses `queryKeys.discovery.nearby(lat, lng, radius)`
+ * - perf-select-transform: In-memory demographic/interest filtering via `select`
+ *   prevents unnecessary RPC re-fetches when switching chips or filter sheets.
+ */
+export function useDiscoveryQuery(
+  params: DiscoveryQueryParams,
+  filters: DiscoveryDemographicFilters = {}
+) {
+  const queryEnabled = params.enabled !== false;
+  const { latitude, longitude, radiusKm = 4.5, interestIds } = params;
+  const gender = filters.gender ?? 'all';
+  const ageGroup = filters.ageGroup ?? 'all';
 
-  return useQuery<NearbyActivity[]>({
-    queryKey: [
-      'discovery',
-      'nearby_activities',
-      userLat,
-      userLng,
-      radiusKm,
-      category,
-      gender,
-      ageGroup,
-    ],
-    queryFn: () =>
-      fetchNearbyActivities({
-        userLat,
-        userLng,
-        radiusKm,
-        category,
-        gender,
-        ageGroup,
-      }),
-    staleTime: 1000 * 30, // 30 seconds
-    refetchInterval: 1000 * 30, // Auto sync live pin feed every 30s
-    enabled: typeof userLat === 'number' && typeof userLng === 'number',
+  // Round coordinates to ~100m grid for query cache key to prevent GPS jitter thrashing
+  const cacheLat = typeof latitude === 'number' ? Math.round(latitude * 1000) / 1000 : latitude;
+  const cacheLng = typeof longitude === 'number' ? Math.round(longitude * 1000) / 1000 : longitude;
+
+  const selectFiltered = useCallback(
+    (activities: DiscoveryActivity[]) =>
+      filterActivities(activities, interestIds, gender, ageGroup),
+    [interestIds, gender, ageGroup]
+  );
+
+  return useQuery<DiscoveryActivity[], Error, DiscoveryActivity[]>({
+    queryKey: queryKeys.discovery.nearby(cacheLat, cacheLng, radiusKm),
+    queryFn: () => fetchRawNearbyActivities(latitude, longitude, radiusKm),
+    select: selectFiltered,
+    staleTime: 1000 * 60, // 1 minute (Realtime pushes immediate mutations)
+    retry: false,
+    enabled:
+      queryEnabled &&
+      typeof latitude === 'number' &&
+      typeof longitude === 'number',
   });
 }

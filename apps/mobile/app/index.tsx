@@ -2,13 +2,23 @@ import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sparkles, ArrowRight, Shield } from 'lucide-react-native';
-import { useAuthStore } from '../src/features/auth/useAuthStore';
+import { ArrowRight, Shield } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
+import { useAuthStore, DEV_PERSONAS } from '../src/features/auth/useAuthStore';
+import { HobbieLogo } from '../src/components/common/HobbieLogo';
 
 export default function WelcomeLandingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { initialize, user, profile } = useAuthStore();
+  const { initialize, user, profile, loginWithPersona, isDevMode } = useAuthStore(
+    useShallow((s) => ({
+      initialize: s.initialize,
+      user: s.user,
+      profile: s.profile,
+      loginWithPersona: s.loginWithPersona,
+      isDevMode: s.isDevMode,
+    }))
+  );
 
   useEffect(() => {
     initialize();
@@ -22,24 +32,21 @@ export default function WelcomeLandingScreen() {
       }}
       className="flex-1 bg-void justify-between px-6"
     >
-      {/* Top Brand Pill */}
-      <View className="items-center pt-6">
-        <View className="flex-row items-center px-3 py-1.5 rounded-full bg-ink border border-hairline mb-8">
+      {/* Top Brand Pill & Hero Logo */}
+      <View className="items-center pt-8">
+        <View className="flex-row items-center px-3.5 py-1.5 rounded-full bg-ink border border-hairline mb-12">
           <Shield size={14} color="#C77DFF" />
           <Text className="text-xs font-semibold text-pulse-lilac ml-1.5">
             Hyperlocal Physical Squads
           </Text>
         </View>
 
-        {/* Minimalist Logo */}
-        <View className="w-24 h-24 rounded-3xl bg-ink-raised border border-hairline items-center justify-center mb-6">
-          <Sparkles size={40} color="#C77DFF" />
+        {/* Bespoke Hobbie Wordmark SVG Logo */}
+        <View className="items-center justify-center my-6">
+          <HobbieLogo width={240} />
         </View>
 
-        <Text className="text-4xl font-extrabold font-display text-moonlight tracking-tight mb-3">
-          Hobbie
-        </Text>
-        <Text className="text-base text-dusk text-center px-4 leading-relaxed">
+        <Text className="text-base text-dusk text-center px-4 leading-relaxed mt-4">
           Activity-anchored coordination. Match with verified squads within 4.5km right now.
         </Text>
       </View>
@@ -47,6 +54,8 @@ export default function WelcomeLandingScreen() {
       {/* Bottom CTA Actions */}
       <View className="w-full space-y-3">
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={user && profile ? 'Continue to Squads' : 'Get Started'}
           onPress={() => router.push('/(auth)/phone')}
           className="w-full h-14 bg-signal-violet rounded-full flex-row items-center justify-center border border-signal-violet-light/30"
           activeOpacity={0.8}
@@ -58,7 +67,14 @@ export default function WelcomeLandingScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.push('/(main)')}
+          accessibilityRole="button"
+          accessibilityLabel="Explore Hobbie Demo Mode"
+          onPress={async () => {
+            if (isDevMode && !profile) {
+              await loginWithPersona(DEV_PERSONAS[0]!.id);
+            }
+            router.push('/(main)');
+          }}
           className="w-full h-14 bg-ink border border-hairline rounded-full items-center justify-center mt-3"
           activeOpacity={0.7}
         >

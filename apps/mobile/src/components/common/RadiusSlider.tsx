@@ -4,7 +4,6 @@ import {
   Text,
   PanResponder,
   GestureResponderEvent,
-  PanResponderGestureState,
   StyleSheet,
   LayoutChangeEvent,
   AccessibilityActionEvent,
@@ -75,10 +74,8 @@ export function RadiusSlider({
     const x = pageX - trackPageX.current;
     const ratio = Math.max(0, Math.min(1, x / currentTrackWidth));
 
-    // 1. Instant 60fps/120fps hardware animated value
     animRatio.setValue(ratio);
 
-    // 2. Compute stepped value
     const rawVal = min + ratio * (max - min);
     const stepped = Math.round(rawVal / step) * step;
     const clamped = Math.max(min, Math.min(max, Math.round(stepped * 10) / 10));
@@ -135,34 +132,21 @@ export function RadiusSlider({
     }
   };
 
+  const targetWidth = trackWidth > 0 ? trackWidth : 280;
+
   const activeTrackWidth = animRatio.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
+    outputRange: [0, targetWidth],
   });
 
   const thumbTranslateX = animRatio.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, trackWidth > 0 ? trackWidth : 300],
+    outputRange: [0, targetWidth],
   });
 
   return (
-    <View className="w-full my-1">
-      {/* Live Numeric Readout Header */}
-      <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-dusk font-mono text-xs font-medium">
-          {min} km
-        </Text>
-        <View className="px-3 py-1 rounded-full bg-ink border border-hairline">
-          <Text className="text-moonlight font-mono text-xs font-bold">
-            {displayValue >= max ? `${max}+ km (Anywhere / Virtual)` : `${displayValue.toFixed(1)} km`}
-          </Text>
-        </View>
-        <Text className="text-dusk font-mono text-xs font-medium">
-          {max}+ km
-        </Text>
-      </View>
-
-      {/* Touch Interactive Track Area with Directional Gesture Filtering */}
+    <View style={styles.sliderContainer}>
+      {/* Touch Interactive Track Area */}
       <View
         ref={trackRef}
         onLayout={handleLayout}
@@ -181,6 +165,7 @@ export function RadiusSlider({
         ]}
         onAccessibilityAction={handleAccessibilityAction}
         {...panResponder.panHandlers}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         style={styles.touchContainer}
       >
         {/* Inactive Background Rail */}
@@ -194,57 +179,69 @@ export function RadiusSlider({
           ]}
         />
 
-        {/* Draggable Knob (GPU transform translateX) */}
+        {/* Minimalist Moonlight Thumb */}
         <Animated.View
           style={[
             styles.thumb,
             { transform: [{ translateX: thumbTranslateX }] },
           ]}
-        >
-          <View style={styles.thumbCenter} />
-        </Animated.View>
+        />
+      </View>
+
+      {/* Min / Max Edge Labels */}
+      <View style={styles.limitsRow}>
+        <Text style={styles.limitLabel}>{min} km</Text>
+        <Text style={styles.limitLabel}>{max}+ km</Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  sliderContainer: {
+    width: '100%',
+    paddingTop: 2,
+  },
   touchContainer: {
-    height: 52,
+    height: 44,
     justifyContent: 'center',
     position: 'relative',
-    backgroundColor: 'rgba(255, 255, 255, 0.001)',
+    backgroundColor: 'transparent',
   },
   trackRail: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#2C2739', // hairline
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#2C2739',
     width: '100%',
   },
   trackFilled: {
     position: 'absolute',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#7B2FF7', // signal-violet
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#7B2FF7',
     left: 0,
   },
   thumb: {
     position: 'absolute',
     left: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F5F0FF', // Moonlight solid
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F5F0FF',
     borderColor: '#7B2FF7',
     borderWidth: 2.5,
-    marginLeft: -14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginLeft: -12,
+    boxShadow: '0 2px 5px rgba(0, 0, 0, 0.4)',
   },
-  thumbCenter: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#7B2FF7',
+  limitsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  limitLabel: {
+    color: '#A99BC2',
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

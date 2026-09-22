@@ -22,5 +22,17 @@ export const ReportUserSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
-export type SubmitFeedbackInput = z.infer<typeof SubmitFeedbackSchema>;
+/** Raw JSONB contract of `submit_activity_feedback_tx`. */
+export const SubmitFeedbackResultSchema = z.object({
+  success: z.literal(true),
+  activity_id: z.string().uuid(),
+  reviewer_id: z.string().uuid(),
+  target_user_id: z.string().uuid(),
+  score: z.number().int().min(1).max(5),
+  mutual_connection: z.boolean(),
+});
+
+export type SubmitFeedbackInput = z.input<typeof SubmitFeedbackSchema>;
+export type SubmitFeedbackOutput = z.output<typeof SubmitFeedbackSchema>;
 export type ReportUserInput = z.infer<typeof ReportUserSchema>;
+export type SubmitFeedbackResult = z.infer<typeof SubmitFeedbackResultSchema>;

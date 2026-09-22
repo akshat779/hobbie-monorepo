@@ -4,7 +4,7 @@ import {
   VerifyOtpSchema,
   UserProfileSchema,
 } from '../schemas/user.schema.js';
-import { CreateActivitySchema } from '../schemas/activity.schema.js';
+import { CreateActivitySchema, ActivityPublicSchema } from '../schemas/activity.schema.js';
 
 describe('User Schemas', () => {
   it('validates E.164 phone numbers correctly', () => {
@@ -38,6 +38,7 @@ describe('User Schemas', () => {
       birthDate: '1995-05-15',
       gender: 'non-binary' as const,
       interests: ['football' as const],
+      preferredLanguages: ['en' as const],
     };
     expect(UserProfileSchema.safeParse(validAdult).success).toBe(true);
 
@@ -46,8 +47,49 @@ describe('User Schemas', () => {
       birthDate: '2020-01-01',
       gender: 'male' as const,
       interests: ['football' as const],
+      preferredLanguages: ['en' as const],
     };
     expect(UserProfileSchema.safeParse(underage).success).toBe(false);
+  });
+
+  it('requires 1-3 unique preferred languages drawn from the canonical catalogue', () => {
+    const base = {
+      name: 'Alex',
+      birthDate: '1995-05-15',
+      gender: 'non-binary' as const,
+      interests: ['football' as const],
+    };
+
+    expect(UserProfileSchema.safeParse({ ...base, preferredLanguages: [] }).success).toBe(false);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['en'] }).success
+    ).toBe(true);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['en', 'hi', 'ta'] }).success
+    ).toBe(true);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['en', 'hi', 'ta', 'bn'] }).success
+    ).toBe(false);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['en', 'en'] }).success
+    ).toBe(false);
+    expect(
+      UserProfileSchema.safeParse({ ...base, preferredLanguages: ['klingon'] }).success
+    ).toBe(false);
+  });
+
+  it('caps the optional bio at 160 characters', () => {
+    const base = {
+      name: 'Alex',
+      birthDate: '1995-05-15',
+      gender: 'non-binary' as const,
+      interests: ['football' as const],
+      preferredLanguages: ['en' as const],
+    };
+
+    expect(UserProfileSchema.safeParse({ ...base, bio: 'a'.repeat(160) }).success).toBe(true);
+    expect(UserProfileSchema.safeParse({ ...base, bio: 'a'.repeat(161) }).success).toBe(false);
+    expect(UserProfileSchema.safeParse({ ...base }).success).toBe(true);
   });
 });
 
@@ -63,5 +105,36 @@ describe('Activity Schemas', () => {
       maxParticipants: 5,
     };
     expect(CreateActivitySchema.safeParse(validActivity).success).toBe(true);
+  });
+
+  it('rejects an inverted age range', () => {
+    expect(CreateActivitySchema.safeParse({
+      interestId: 'football', title: 'Evening match', location: { latitude: 12, longitude: 77 },
+      filterAgeMin: 35, filterAgeMax: 24,
+    }).success).toBe(false);
+  });
+
+  it('validates ActivityPublicSchema including cancelled status', () => {
+    const validCancelled = {
+      id: '11111111-1111-1111-1111-111111111111',
+      hostId: '22222222-2222-2222-2222-222222222222',
+      hostName: 'Host User',
+      hostIsVerified: true,
+      hostTrustScore: 4.8,
+      interestId: 'football' as const,
+      title: 'Disbanded game',
+      description: 'Host left',
+      tier: 'physical' as const,
+      fuzzedLocation: { latitude: 12.9716, longitude: 77.5946 },
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      maxParticipants: 5,
+      currentParticipantsCount: 0,
+      status: 'cancelled' as const,
+    };
+    expect(ActivityPublicSchema.safeParse(validCancelled).success).toBe(true);
+
+    const invalidStatus = { ...validCancelled, status: 'unknown_status' };
+    expect(ActivityPublicSchema.safeParse(invalidStatus).success).toBe(false);
   });
 });

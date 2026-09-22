@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { INTEREST_IDS } from '../constants/interests.js';
+import { LANGUAGE_CODES, MAX_PREFERRED_LANGUAGES } from '../constants/languages.js';
+
+/** Upper bound for the optional profile bio, mirrored by `check_bio_length`. */
+export const BIO_MAX_LENGTH = 160;
 
 export const PhoneAuthSchema = z.object({
   phone: z
@@ -17,6 +21,10 @@ export const VerifyOtpSchema = z.object({
     .regex(/^\d+$/, 'OTP must be digits only'),
 });
 
+/** Canonical user gender values, mirrored from the `user_gender` Postgres enum. */
+export const USER_GENDERS = ['male', 'female', 'non-binary', 'prefer-not-to-say'] as const;
+export const UserGenderSchema = z.enum(USER_GENDERS);
+
 export const UserProfileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(50),
   birthDate: z
@@ -29,19 +37,32 @@ export const UserProfileSchema = z.object({
       const age = Math.abs(ageDate.getUTCFullYear() - 1970);
       return age >= 18;
     }, 'Must be at least 18 years old'),
-  gender: z.enum(['male', 'female', 'non-binary', 'prefer-not-to-say']),
+  gender: UserGenderSchema,
   interests: z
     .array(z.enum(INTEREST_IDS))
     .min(1, 'Select at least one interest')
     .max(5, 'Maximum 5 interests allowed'),
+  preferredLanguages: z
+    .array(z.enum(LANGUAGE_CODES))
+    .min(1, 'Select at least one preferred language')
+    .max(MAX_PREFERRED_LANGUAGES, `Select up to ${MAX_PREFERRED_LANGUAGES} languages`)
+    .refine(
+      (codes) => new Set(codes).size === codes.length,
+      'Preferred languages must be unique'
+    ),
+  bio: z
+    .string()
+    .trim()
+    .max(BIO_MAX_LENGTH, `Bio must be ${BIO_MAX_LENGTH} characters or fewer`)
+    .optional(),
   avatarUrl: z.string().url().optional(),
 });
 
 export const UserSummarySchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  gender: z.enum(['male', 'female', 'non-binary', 'prefer-not-to-say']),
-  avatarUrl: z.string().url().optional(),
+  gender: UserGenderSchema,
+  avatarUrl: z.string().url().nullable().optional(),
   isVerified: z.boolean(),
   trustScore: z.number().min(1).max(5),
   interactionCount: z.number().int().nonnegative(),

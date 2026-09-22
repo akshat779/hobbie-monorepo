@@ -19,8 +19,11 @@ export const CategoryFilterBar = React.memo(function CategoryFilterBar({
       contentContainerStyle={{ paddingRight: 20 }}
     >
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="All Squads"
+        accessibilityState={{ selected: selectedCategory === 'all' }}
         onPress={() => onSelectCategory('all')}
-        className={`px-4 py-2 rounded-full mr-2 border ${
+        className={`min-h-[42px] px-4 py-2.5 rounded-full mr-2.5 border items-center justify-center ${
           selectedCategory === 'all'
             ? 'bg-signal-violet border-signal-violet'
             : 'bg-ink border-hairline'
@@ -41,8 +44,11 @@ export const CategoryFilterBar = React.memo(function CategoryFilterBar({
         return (
           <TouchableOpacity
             key={c.id}
+            accessibilityRole="button"
+            accessibilityLabel={c.label}
+            accessibilityState={{ selected: isSelected }}
             onPress={() => onSelectCategory(c.id)}
-            className={`px-4 py-2 rounded-full mr-2 border ${
+            className={`min-h-[42px] px-4 py-2.5 rounded-full mr-2.5 border items-center justify-center ${
               isSelected
                 ? 'bg-signal-violet border-signal-violet'
                 : 'bg-ink border-hairline'

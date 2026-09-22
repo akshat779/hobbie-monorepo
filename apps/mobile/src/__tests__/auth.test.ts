@@ -1,8 +1,76 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore, DEV_PERSONAS } from '../features/auth/useAuthStore';
+import { supabase } from '../services/supabase';
+
+import { createContractMockSupabase, VALID_UUIDS } from './helpers/contractMocks';
+
+vi.mock('../services/supabase', async () => {
+  const { createContractMockSupabase } = await import('./helpers/contractMocks');
+  return {
+    supabase: createContractMockSupabase(),
+  };
+});
+
+const mockAlexUser = {
+  id: DEV_PERSONAS[0]!.id,
+  phone: DEV_PERSONAS[0]!.phone,
+  email: 'phone_919876543210@dev.hobbie.internal',
+  app_metadata: {},
+  user_metadata: {},
+  aud: 'authenticated',
+  created_at: new Date().toISOString(),
+};
+
+const mockAlexSession = {
+  access_token: 'fake-jwt-alex',
+  refresh_token: 'fake-refresh-alex',
+  expires_in: 3600,
+  token_type: 'bearer',
+  user: mockAlexUser,
+};
+
+const mockAlexProfile = {
+  id: DEV_PERSONAS[0]!.id,
+  phone: DEV_PERSONAS[0]!.phone,
+  name: DEV_PERSONAS[0]!.name,
+  birth_date: DEV_PERSONAS[0]!.birthDate,
+  gender: DEV_PERSONAS[0]!.gender,
+  interests: DEV_PERSONAS[0]!.interests,
+  is_verified: DEV_PERSONAS[0]!.isVerified,
+  trust_score: DEV_PERSONAS[0]!.trustScore,
+  interaction_count: 5,
+  avatar_url: null,
+  bio: null,
+  preferred_languages: ['en'],
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
 
 describe('useAuthStore', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+
+    (supabase.functions.invoke as any).mockResolvedValue({
+      data: { session: mockAlexSession, user: mockAlexUser },
+      error: null,
+    });
+    (supabase.auth.setSession as any).mockResolvedValue({
+      data: { session: mockAlexSession, user: mockAlexUser },
+      error: null,
+    });
+    (supabase.auth.signOut as any).mockResolvedValue({
+      error: null,
+    });
+    const qb = (supabase.from as any)('profiles');
+    qb.maybeSingle.mockResolvedValue({
+      data: mockAlexProfile,
+      error: null,
+    });
+    qb.single.mockResolvedValue({
+      data: mockAlexProfile,
+      error: null,
+    });
+
     useAuthStore.setState({
       session: null,
       user: null,
@@ -19,14 +87,35 @@ describe('useAuthStore', () => {
     expect(state.isDevMode).toBe(true);
   });
 
-  it('should switch personas instantly in dev mode', async () => {
+  it('should switch personas instantly in dev mode with optimistic hydration', async () => {
     const store = useAuthStore.getState();
-    await store.loginWithPersona(DEV_PERSONAS[0]!.id);
+    const loginPromise = store.loginWithPersona(DEV_PERSONAS[0]!.id);
+
+    // Optimistic state is updated synchronously in local memory before promise resolves
+    const optimisticState = useAuthStore.getState();
+    expect(optimisticState.profile?.name).toBe('Alex Rivera');
+    expect(optimisticState.profile?.trust_score).toBe(4.95);
+    expect(optimisticState.isLoading).toBe(false);
+
+    await loginPromise;
+    const finalState = useAuthStore.getState();
+    expect(finalState.user?.id).toBe(DEV_PERSONAS[0]!.id);
+    expect(finalState.profile?.name).toBe('Alex Rivera');
+  });
+
+  it('should auto-hydrate default persona on cold-start initialize in dev mode', async () => {
+    (supabase.auth.getSession as any).mockResolvedValueOnce({
+      data: { session: null },
+      error: null,
+    });
+
+    const store = useAuthStore.getState();
+    await store.initialize();
 
     const state = useAuthStore.getState();
-    expect(state.user?.id).toBe(DEV_PERSONAS[0]!.id);
+    expect(state.profile).not.toBeNull();
     expect(state.profile?.name).toBe('Alex Rivera');
-    expect(state.profile?.trust_score).toBe(4.95);
+    expect(state.activePersonaId).toBe(DEV_PERSONAS[0]!.id);
   });
 
   it('should authenticate with 123456 dev bypass OTP', async () => {
@@ -47,5 +136,232 @@ describe('useAuthStore', () => {
     await store.signOut();
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().profile).toBeNull();
+  });
+
+  describe('upsertProfile', () => {
+    it('should normalize un-prefixed phone number to E.164 and save successfully', async () => {
+      // Simulate Supabase GoTrue returning user.phone without '+'
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const qb = (supabase.from as any)('profiles');
+      qb.single.mockResolvedValue({
+        data: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          name: 'Akshat',
+          birth_date: '2000-01-01',
+          gender: 'male',
+          interests: ['football', 'badminton'],
+        },
+        error: null,
+      });
+
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football', 'badminton'],
+        preferredLanguages: ['en'],
+      });
+
+      expect(res.error).toBeUndefined();
+      expect(qb.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phone: '+919876543210',
+          name: 'Akshat',
+        })
+      );
+      expect(useAuthStore.getState().profile?.name).toBe('Akshat');
+    });
+
+    it('should not overwrite database-owned trust metrics when updating an existing profile', async () => {
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const qb = (supabase.from as any)('profiles');
+      qb.maybeSingle.mockResolvedValue({
+        data: { id: '00000000-0000-0000-0000-000000000001' },
+        error: null,
+      });
+
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football', 'badminton'],
+        preferredLanguages: ['en'],
+      });
+
+      expect(res.error).toBeUndefined();
+      const updatePayload = qb.update.mock.calls[0][0];
+      expect(updatePayload).not.toHaveProperty('is_verified');
+      expect(updatePayload).not.toHaveProperty('trust_score');
+      expect(updatePayload).not.toHaveProperty('interaction_count');
+      expect(updatePayload).not.toHaveProperty('ratings_count');
+    });
+
+    it('should insert a new profile with database-owned metrics omitted (first-time onboarding)', async () => {
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const qb = (supabase.from as any)('profiles');
+      qb.maybeSingle.mockResolvedValue({ data: null, error: null });
+
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football'],
+        preferredLanguages: ['en'],
+      });
+
+      expect(res.error).toBeUndefined();
+      const insertPayload = qb.insert.mock.calls[0][0];
+      expect(insertPayload.phone).toBe('+919876543210');
+      expect(insertPayload).not.toHaveProperty('is_verified');
+      expect(insertPayload).not.toHaveProperty('trust_score');
+      expect(insertPayload).not.toHaveProperty('interaction_count');
+    });
+
+    it('should persist bio and preferred languages during onboarding', async () => {
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const qb = (supabase.from as any)('profiles');
+      qb.maybeSingle.mockResolvedValue({ data: null, error: null });
+
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football'],
+        preferredLanguages: ['en', 'hi'],
+        bio: 'Weekend footballer.',
+        avatarUrl: 'https://example.supabase.co/storage/v1/object/public/avatars/u/avatar.jpg',
+      });
+
+      expect(res.error).toBeUndefined();
+      const insertPayload = qb.insert.mock.calls[0][0];
+      expect(insertPayload.preferred_languages).toEqual(['en', 'hi']);
+      expect(insertPayload.bio).toBe('Weekend footballer.');
+      expect(insertPayload.avatar_url).toContain('/avatars/');
+    });
+
+    it('should reject a profile insert with more than three preferred languages at the database contract level', async () => {
+      const query = (supabase.from('profiles') as any).upsert({
+        id: VALID_UUIDS.alex,
+        phone: '+919876543210',
+        name: 'Alex Rivera',
+        preferred_languages: ['en', 'hi', 'ta', 'bn'],
+      });
+      const res = await query.select().single();
+
+      expect(res.error).toBeDefined();
+      expect(res.error.code).toBe('23514');
+      expect(res.error.message).toContain('check_preferred_languages');
+    });
+
+    it('should reject a profile insert with an unknown language code at the database contract level', async () => {
+      const query = (supabase.from('profiles') as any).upsert({
+        id: VALID_UUIDS.alex,
+        phone: '+919876543210',
+        name: 'Alex Rivera',
+        preferred_languages: ['en', 'klingon'],
+      });
+      const res = await query.select().single();
+
+      expect(res.error).toBeDefined();
+      expect(res.error.code).toBe('23514');
+      expect(res.error.message).toContain('check_preferred_languages');
+    });
+
+    it('should reject upsertProfile if user has no authenticated session', async () => {
+      useAuthStore.setState({ user: null });
+      const store = useAuthStore.getState();
+      const res = await store.upsertProfile({
+        name: 'Akshat',
+        birthDate: '2000-01-01',
+        gender: 'male',
+        interests: ['football'],
+        preferredLanguages: ['en'],
+      });
+
+      expect(res.error).toBe('You must be signed in to create a profile');
+    });
+
+    it('should reject upsertProfile if input violates UserProfileSchema', async () => {
+      useAuthStore.setState({
+        user: {
+          id: '00000000-0000-0000-0000-000000000001',
+          phone: '+919876543210',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      });
+
+      const store = useAuthStore.getState();
+      // Underage birth date (<18 years old)
+      const res = await store.upsertProfile({
+        name: 'Kid',
+        birthDate: '2020-01-01',
+        gender: 'male',
+        interests: ['football'],
+        preferredLanguages: ['en'],
+      });
+
+      expect(res.error).toBeDefined();
+    });
+
+    it('should reject profile upsert at database contract level when phone violates check_e164_phone', async () => {
+      // Direct call to contract mock with invalid un-normalized phone
+      const query = (supabase.from('profiles') as any).upsert({
+        id: VALID_UUIDS.alex,
+        phone: '919876543210', // Missing leading '+'
+        name: 'Alex Rivera',
+      });
+      const res = await query.select().single();
+      expect(res.error).toBeDefined();
+      expect(res.error.code).toBe('23514');
+      expect(res.error.message).toContain('check_e164_phone');
+    });
   });
 });

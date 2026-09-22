@@ -11,16 +11,24 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Shield, Sparkles, ArrowRight, Zap } from 'lucide-react-native';
+import { Shield, ArrowRight, Zap } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, DEV_PERSONAS } from '../../src/features/auth/useAuthStore';
 import { PhoneAuthSchema } from '@hobbie/shared';
+import { HobbieLogo } from '../../src/components/common/HobbieLogo';
 
 export default function PhoneAuthScreen() {
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode] = useState('+91');
   const [errorMsg, setErrorMsg] = useState('');
-  const { signInWithPhone, loginWithPersona, isLoading } = useAuthStore();
+  const { signInWithPhone, loginWithPersona, isLoading } = useAuthStore(
+    useShallow((s) => ({
+      signInWithPhone: s.signInWithPhone,
+      loginWithPersona: s.loginWithPersona,
+      isLoading: s.isLoading,
+    }))
+  );
 
   const handleSendOtp = async () => {
     setErrorMsg('');
@@ -50,22 +58,16 @@ export default function PhoneAuthScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <TouchableWithoutFeedback accessible={false} onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
+        accessible={false}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1 justify-between px-6 py-6"
       >
         {/* Header Branding */}
         <View className="pt-4">
           <View className="flex-row items-center justify-between mb-8">
-            <View className="flex-row items-center space-x-2">
-              <View className="w-9 h-9 rounded-xl bg-ink-raised border border-hairline items-center justify-center">
-                <Sparkles size={18} color="#C77DFF" />
-              </View>
-              <Text className="text-xl font-bold font-display text-moonlight tracking-tight ml-2">
-                Hobbie
-              </Text>
-            </View>
+            <HobbieLogo width={120} />
 
             <View className="flex-row items-center px-2.5 py-1 rounded-full bg-ink border border-hairline">
               <Shield size={12} color="#A99BC2" />
@@ -112,6 +114,8 @@ export default function PhoneAuthScreen() {
 
           {/* Primary CTA */}
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Send Verification Code"
             className={`h-14 mt-5 rounded-full flex-row items-center justify-center ${
               phoneNumber.length >= 10 ? 'bg-signal-violet' : 'bg-ink-raised border border-hairline'
             }`}
@@ -140,35 +144,40 @@ export default function PhoneAuthScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Dev Quick Personas Bypass */}
-        <View className="pt-4 border-t border-hairline/60">
-          <View className="flex-row items-center mb-3">
-            <Zap size={14} color="#C77DFF" />
-            <Text className="text-xs font-semibold text-dusk uppercase tracking-wider ml-1.5">
-              Instant Dev Personas (1-Tap)
-            </Text>
-          </View>
+        {/* Dev Quick Personas Bypass (Compiled out in production) */}
+        {__DEV__ && (
+          <View className="pt-4 border-t border-hairline/60">
+            <View className="flex-row items-center mb-3">
+              <Zap size={14} color="#C77DFF" />
+              <Text className="text-xs font-semibold text-dusk uppercase tracking-wider ml-1.5">
+                Instant Dev Personas (1-Tap)
+              </Text>
+            </View>
 
-          <View className="flex-row flex-wrap gap-2">
-            {DEV_PERSONAS.slice(0, 3).map((p) => (
-              <TouchableOpacity
-                key={p.id}
-                onPress={() => handleQuickPersona(p.id)}
-                className="px-3.5 py-2 rounded-xl bg-ink border border-hairline flex-row items-center"
-                activeOpacity={0.7}
-              >
-                <View
-                  className={`w-2 h-2 rounded-full mr-2 ${
-                    p.role === 'host' ? 'bg-signal-violet' : 'bg-pulse-lilac'
-                  }`}
-                />
-                <Text className="text-xs font-medium text-moonlight">
-                  {p.name.split(' ')[0]} ({p.role})
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <View className="flex-row flex-wrap gap-2">
+              {DEV_PERSONAS.slice(0, 3).map((p) => (
+                <TouchableOpacity
+                  key={p.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Dev persona ${p.name} as ${p.role}`}
+                  onPress={() => handleQuickPersona(p.id)}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  className="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-ink border border-hairline flex-row items-center justify-center"
+                  activeOpacity={0.7}
+                >
+                  <View
+                    className={`w-2 h-2 rounded-full mr-2 ${
+                      p.role === 'host' ? 'bg-signal-violet' : 'bg-pulse-lilac'
+                    }`}
+                  />
+                  <Text className="text-xs font-medium text-moonlight">
+                    {p.name.split(' ')[0]} ({p.role})
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );

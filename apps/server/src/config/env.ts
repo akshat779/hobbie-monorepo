@@ -15,4 +15,7 @@ const EnvSchema = z.object({
     .default('dev-mock-service-role-key-12345'),
 });
 
-export const env = EnvSchema.parse(process.env);
+export const env = EnvSchema.parse({
+  ...process.env,
+  SUPABASE_URL: process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
+});

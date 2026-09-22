@@ -4,11 +4,40 @@ This repository follows the architecture, design system, and development guideli
 
 ## Key Directives for Agent Turns:
 
-1. **Independent Deployability:** Never couple `apps/mobile` dependencies into `apps/server` or vice versa. Shared contracts must strictly live in `packages/shared`.
-2. **Design Tokens & Styling:** Always use Tailwind/NativeWind classes adhering to the **Nocturnal Pulse** palette (`bg-void`, `bg-ink`, `bg-ink-raised`, `signal-violet`, `pulse-lilac`, `ember`, `text-moonlight`, `text-dusk`, `border-hairline`).
-3. **No Untyped Code:** Maintain strict TypeScript everywhere (`noImplicitAny`, exact DTO validation with Zod).
-4. **Testing First:** Every business logic function in `apps/server` or `packages/shared` must have a corresponding `.test.ts` with Vitest. Mobile UI flows should be accompanied by Maestro YAML specs.
-5. **Multi-User Dev Personas:** Ensure mock authentication and `__DEV__` persona switcher utilities remain intact to facilitate multi-user simulator testing.
+1. **Zero Assumptions — Ground Truth Code Verification (STRICT):** Never assume, recall from memory, or infer database enums, column names, schema models, API contracts, third-party library signatures, or file paths. ALWAYS inspect the concrete code in the repository (`grep_search`, `view_file`) before planning or coding.
+2. **Independent Deployability:** Never couple `apps/mobile` dependencies into `apps/server` or vice versa. Shared contracts must strictly live in `packages/shared`.
+3. **Design Tokens & Styling:** Always use Tailwind/NativeWind classes adhering to the **Nocturnal Pulse** palette (`bg-void`, `bg-ink`, `bg-ink-raised`, `signal-violet`, `pulse-lilac`, `ember`, `text-moonlight`, `text-dusk`, `border-hairline`).
+4. **No Untyped Code:** Maintain strict TypeScript everywhere (`noImplicitAny`, exact DTO validation with Zod).
+5. **Testing First:** Every business logic function in `apps/server` or `packages/shared` must have a corresponding `.test.ts` with Vitest. Mobile UI flows should be accompanied by Maestro YAML specs.
+6. **Multi-User Dev Personas:** Ensure mock authentication and `__DEV__` persona switcher utilities remain intact to facilitate multi-user simulator testing.
+
+---
+
+## 🔍 Zero-Assumption Directive — Ground Truth & Concrete Verification (STRICT):
+
+1. **Zero Guesswork, Zero Semantic Intuition:**
+   * This is a concrete codebase, not a conceptual discussion. **NEVER make assumptions about database schemas, enum values, table columns, constraints, foreign keys, route parameters, types, or third-party APIs.**
+   * Do not rely on what "feels semantically natural" (e.g. assuming an activity has a `'cancelled'` status because join requests have one). If you have not seen the exact line of code in the repository with your own tools, **it does not exist**.
+   * Every reference to an entity, type, column, or enum MUST be preceded by verifying the actual source of truth via `grep_search` or `view_file`.
+
+2. **Mandatory Tri-Layer Schema Parity (PostgreSQL DDL $\iff$ Shared Zod $\iff$ TypeScript Types):**
+   * Any database enum, column, table, or constraint change MUST be implemented across all three layers atomically in the exact same turn:
+     1. **PostgreSQL Migration (`supabase/migrations/`)**: Discrete, forward-only timestamped SQL file (`ALTER TYPE ... ADD VALUE`, `CREATE TABLE`, etc.).
+     2. **Shared Zod Schemas (`packages/shared/src/schemas/`)**: Runtime validation schemas (`z.enum([...])`) that govern both mobile client and server API inputs/outputs.
+     3. **Database Types (`packages/shared/src/types/database.types.ts`)**: Inferred Supabase client type definitions (`Database["public"]["Enums"]` and `Constants.public.Enums`).
+   * Divergence across any of these three layers is a critical breaking bug.
+
+3. **PL/pgSQL Deferred Validation Trap:**
+   * Be aware: PostgreSQL's `CREATE OR REPLACE FUNCTION` parses syntax but does **NOT** validate enum literal casts (e.g., `'cancelled'::activity_status`) at migration push time. Evaluation is deferred to runtime.
+   * Never rely on `supabase db push` succeeding as proof that SQL functions are valid. Every enum literal, column cast, and foreign key reference inside a PL/pgSQL function MUST be explicitly verified against the source DDL before writing the migration.
+
+4. **Concrete Evidence in Planning Mode:**
+   * In Planning Mode, never provide high-level conceptual plans without grounding them in the code.
+   * Every implementation plan touching data or APIs **MUST include a "Verified Codebase Ground Truth" checklist** citing the exact file paths, line numbers, and existing definitions verified before proposing changes.
+
+5. **Anti-Assumption Testing Directive:**
+   * Never write hollow mocks (e.g., `mockResolvedValue({ data: { success: true } })`) that bypass schema validation and hide broken database contracts.
+   * Unit tests must execute real Zod validation or integration assertions to prove that data structures conform to the database schema.
 
 ---
 
@@ -85,3 +114,42 @@ export const supabase = createClient<Database>(
 ### Mandatory Rules:
 * Never write untyped Supabase queries (`createClient()` without `<Database>`).
 * All table queries (`.from('activities')`, `.from('profiles')`), RPC calls (`.rpc('get_nearby_activities')`), and Realtime subscriptions must be 100% type-safe with zero `any` casts.
+
+---
+
+## 🎬 Animation, Layout Cascade & Gesture Directives (STRICT):
+
+1. **Impact Analysis Before Code Edits:**
+   * **NEVER** apply a UI animation, state change, or layout modification without first tracing all parent, child, and adjacent component dependencies.
+   * If a component moves (e.g. bottom sheet, modal, drawer), explicitly check how floating action buttons (FABs), map controls, header overlays, and adjacent views will respond.
+
+2. **Zero Desync Animation Hierarchy:**
+   * **NEVER** mix un-animated JS state toggles (e.g. `bottom: active ? 310 : 50`) with asynchronous GPU animations (`Animated.spring`).
+   * UI elements that move together **MUST** be unified under the exact same native driver animation thread (`useNativeDriver: true`) or rendered inside the same `Animated.View` parent layout container.
+
+3. **Stale Closure Prevention in Custom Gesture Handlers:**
+   * Any custom `PanResponder` or gesture responder reading dynamic coordinates or layout dimensions **MUST** back those values with a `useRef` (e.g. `trackWidthRef`) and use `measureInWindow` to prevent stale closure touch bugs inside modals or scroll views.
+
+---
+
+## 🧪 Real-Code Execution & Anti-Mocking Directives (STRICT — NO HOLLOW TESTS):
+
+1. **Target Real Code Execution Over Mocking:**
+   * Unit tests must execute real business logic, state machines, normalization routines, and mathematical algorithms.
+   * **Never create tautological mocks** that blindly return `{ data: mock, error: null }` without exercising real validation logic.
+   * If an external network boundary must be mocked in unit tests (e.g. Supabase HTTP/RPC client), the mock **MUST validate incoming arguments against real shared Zod schemas** (`PhoneAuthSchema`, `UserProfileSchema`, `CreateActivitySchema`) and reject invalid payloads just like PostgreSQL would.
+
+2. **Zero Fabricated / Dummy Fallbacks in Production Code:**
+   * **NEVER** mask missing session or user data with fake defaults (e.g. `phone: user.phone || '+919999999999'`).
+   * Production code must **fail fast with explicit, typed errors** when mandatory data is missing.
+   * Every phone number, coordinate, or user identifier must be normalized and verified against `@hobbie/shared` schemas before mutating state or sending queries to the database.
+
+3. **Database Constraint & Schema Parity:**
+   * Every PostgreSQL check constraint (e.g. `check_e164_phone`, trust score bounds `[1, 5]`, positive participant counts) **MUST** have an exact counterpart in `packages/shared/src/schemas`.
+   * Unit tests must explicitly test boundary conditions, invalid formats, un-normalized inputs, and edge cases to ensure bugs cannot slip past the test suite.
+
+4. **Integration Testing Standard:**
+   * Server endpoint tests in `apps/server` must execute the real Fastify server instance using `app.inject()` and real route handlers—never mock route controllers.
+   * Critical mobile user flows (auth onboarding, squad creation, join handshake, chat) must be tested on live simulators with Maestro YAML specs against real PostgreSQL instances to verify actual triggers, RLS policies, and database constraints.
+
+

@@ -4,23 +4,24 @@
     "slug": "hobbie",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo/icon-light.png",
     "userInterfaceStyle": "dark",
+    "backgroundColor": "#0D0B14",
+    "primaryColor": "#7B2FF7",
     "owner": "akshat779s-team",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0D0B14"
-    },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.hobbie.app"
+      "bundleIdentifier": "com.hobbie.app",
+      "backgroundColor": "#0D0B14",
+      "userInterfaceStyle": "dark"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/logo/icon-light.png",
         "backgroundColor": "#0D0B14"
       },
+      "backgroundColor": "#0D0B14",
+      "userInterfaceStyle": "dark",
       "package": "com.hobbie.app"
     },
     "web": {
@@ -29,7 +30,27 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Hobbie to access your photos so you can add a profile picture."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo/splash-light.png",
+          "resizeMode": "contain",
+          "imageWidth": 200,
+          "backgroundColor": "#0D0B14",
+          "dark": {
+            "image": "./assets/logo/splash-light.png",
+            "backgroundColor": "#0D0B14"
+          }
+        }
+      ]
     ],
     "scheme": "hobbie",
     "extra": {

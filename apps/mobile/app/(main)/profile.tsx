@@ -1,26 +1,75 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ShieldCheck, LogOut, Sparkles, Zap } from 'lucide-react-native';
+import { ShieldCheck, LogOut, Sparkles, Zap, Languages } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, DEV_PERSONAS } from '../../src/features/auth/useAuthStore';
+import { HobbieLogo } from '../../src/components/common/HobbieLogo';
+import { Avatar } from '../../src/components/common/Avatar';
+import { languageLabel } from '@hobbie/shared';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { profile, activePersonaId, loginWithPersona, signOut } = useAuthStore();
+  const queryClient = useQueryClient();
+  const { profile, activePersonaId, isDevMode, loginWithPersona, signOut } = useAuthStore(
+    useShallow((s) => ({
+      profile: s.profile,
+      activePersonaId: s.activePersonaId,
+      isDevMode: s.isDevMode,
+      loginWithPersona: s.loginWithPersona,
+      signOut: s.signOut,
+    }))
+  );
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
 
+  // If cold-started without active profile in dev mode, immediately hydrate default persona
+  useEffect(() => {
+    if (!profile && isDevMode) {
+      void loginWithPersona(DEV_PERSONAS[0]!.id);
+    }
+  }, [profile, isDevMode, loginWithPersona]);
+
   const handleSignOut = async () => {
+    queryClient.clear();
     await signOut();
     router.replace('/');
   };
 
-  const displayName = profile?.name || 'Alex Rivera';
-  const displayPhone = profile?.phone || '+91 98765 43210';
-  const trustScore = profile?.trust_score ?? 4.95;
-  const isVerified = profile?.is_verified ?? true;
-  const interests = profile?.interests || ['football', 'badminton'];
+  if (!profile) {
+    return (
+      <View
+        style={{ paddingTop: Math.max(insets.top, 16) }}
+        className="flex-1 bg-void px-5 justify-center items-center"
+      >
+        <ActivityIndicator size="large" color="#C77DFF" />
+        <Text className="text-dusk font-display text-sm mt-3">Connecting to profile...</Text>
+        {isDevMode && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Load demo persona"
+            onPress={() => loginWithPersona(DEV_PERSONAS[0]!.id)}
+            className="mt-5 px-4 py-2.5 bg-ink border border-signal-violet/60 rounded-full"
+            activeOpacity={0.8}
+          >
+            <Text className="text-pulse-lilac text-xs font-mono font-bold">
+              Load Demo Persona (Alex Rivera)
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }
+
+  const displayName = profile.name || 'Anonymous Member';
+  const displayPhone = profile.phone;
+  const trustScore = profile.trust_score ?? 5.0;
+  const isVerified = Boolean(profile.is_verified);
+  const interests = profile.interests || [];
+  const languages = profile.preferred_languages || [];
+  const bio = profile.bio;
 
   return (
     <View
@@ -37,26 +86,43 @@ export default function ProfileScreen() {
         </Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ paddingBottom: 100 }}
+        className="flex-1"
+      >
         {/* Identity & Rep Card */}
         <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4">
-          <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-xl font-bold font-display text-moonlight">
-              {displayName}
-            </Text>
-            {isVerified && (
-              <View className="bg-signal-violet/20 border border-signal-violet px-2.5 py-0.5 rounded-full flex-row items-center">
-                <ShieldCheck size={12} color="#D2BBFF" />
-                <Text className="text-signal-violet-light text-xs font-bold ml-1">
-                  Face Verified
+          <View className="flex-row items-center mb-3">
+            <Avatar name={displayName} url={profile.avatar_url} size={60} className="border border-hairline" />
+            <View className="flex-1 ml-4">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xl font-bold font-display text-moonlight flex-1 mr-2">
+                  {displayName}
                 </Text>
+                {isVerified && (
+                  <View className="bg-signal-violet/20 border border-signal-violet px-2.5 py-0.5 rounded-full flex-row items-center">
+                    <ShieldCheck size={12} color="#D2BBFF" />
+                    <Text className="text-signal-violet-light text-xs font-bold ml-1">
+                      Verified
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
+              <Text className="text-xs font-mono text-dusk mt-1">
+                {displayPhone
+                  ? displayPhone.replace(/(\d{3})\d{4}(\d{3})/, '$1 •••• $2')
+                  : 'No phone linked'}
+              </Text>
+            </View>
           </View>
 
-          <Text className="text-xs font-mono text-dusk mb-3">
-            {displayPhone.replace(/(\d{3})\d{4}(\d{3})/, '$1 •••• $2')}
-          </Text>
+          {bio ? (
+            <Text className="text-xs text-dusk leading-relaxed mb-3" selectable>
+              {bio}
+            </Text>
+          ) : null}
 
           <View className="bg-void/60 border border-hairline/60 p-3 rounded-2xl">
             <View className="flex-row justify-between items-center">
@@ -65,11 +131,35 @@ export default function ProfileScreen() {
                 ★ {trustScore.toFixed(2)} / 5.00
               </Text>
             </View>
-            <Text className="text-[11px] text-dusk/70 mt-1">
+            <Text className="text-2xs text-dusk/70 mt-1">
               Calculated dynamically over your last 10 peer squad interactions.
             </Text>
           </View>
         </View>
+
+        {/* Preferred Languages */}
+        {languages.length > 0 ? (
+          <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-sm font-bold font-display text-moonlight">
+                Preferred Languages
+              </Text>
+              <Languages size={14} color="#C77DFF" />
+            </View>
+            <View className="flex-row flex-wrap gap-2">
+              {languages.map((code) => (
+                <View
+                  key={code}
+                  className="bg-void border border-hairline px-3.5 py-1.5 rounded-full"
+                >
+                  <Text className="text-pulse-lilac text-xs font-semibold">
+                    {languageLabel(code)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         {/* Active Interests */}
         <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4">
@@ -103,16 +193,19 @@ export default function ProfileScreen() {
               </Text>
             </View>
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={personaPickerOpen ? 'Hide persona picker' : 'Switch dev persona'}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={() => setPersonaPickerOpen(!personaPickerOpen)}
-              className="px-2.5 py-1 rounded-full bg-ink-raised border border-hairline"
+              className="min-h-[40px] px-3.5 py-2 rounded-full bg-ink-raised border border-hairline items-center justify-center"
             >
-              <Text className="text-[10px] font-mono text-moonlight font-bold">
+              <Text className="text-2xs font-mono text-moonlight font-bold">
                 {personaPickerOpen ? 'Hide' : 'Switch'}
               </Text>
             </TouchableOpacity>
           </View>
 
-          <Text className="text-[11px] text-dusk mb-3">
+          <Text className="text-2xs text-dusk mb-3">
             Test multi-user squad matching with different verified personas.
           </Text>
 
@@ -123,6 +216,9 @@ export default function ProfileScreen() {
                 return (
                   <TouchableOpacity
                     key={p.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Switch to ${p.name}, role ${p.role}`}
+                    accessibilityState={{ selected: isSelected }}
                     onPress={async () => {
                       await loginWithPersona(p.id);
                       setPersonaPickerOpen(false);
@@ -138,13 +234,13 @@ export default function ProfileScreen() {
                       <Text className="text-xs font-bold font-display text-moonlight">
                         {p.name}
                       </Text>
-                      <Text className="text-[10px] text-dusk capitalize">
+                      <Text className="text-2xs text-dusk capitalize">
                         Role: {p.role} • ★ {p.trustScore}
                       </Text>
                     </View>
                     {isSelected && (
                       <View className="px-2 py-0.5 rounded-full bg-signal-violet">
-                        <Text className="text-[10px] text-moonlight font-bold">Active</Text>
+                        <Text className="text-2xs text-moonlight font-bold">Active</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -156,13 +252,21 @@ export default function ProfileScreen() {
 
         {/* Sign Out Button */}
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
           onPress={handleSignOut}
-          className="w-full h-14 bg-ink border border-hairline rounded-full flex-row items-center justify-center mb-8"
+          className="w-full h-14 bg-ink border border-hairline rounded-full flex-row items-center justify-center mb-6"
           activeOpacity={0.7}
         >
           <LogOut size={16} color="#FF6B5E" style={{ marginRight: 8 }} />
           <Text className="text-ember font-display text-sm font-bold">Sign Out</Text>
         </TouchableOpacity>
+
+        {/* Brand Signature Footer */}
+        <View className="items-center justify-center pt-2 pb-10 opacity-50">
+          <HobbieLogo width={110} />
+          <Text className="text-2xs text-dusk font-mono mt-2">v0.1.0 • Nocturnal Pulse</Text>
+        </View>
       </ScrollView>
     </View>
   );

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@hobbie/shared';
+import WebSocket from 'ws';
 import { env } from '../config/env.js';
 
 export const supabaseAdmin = createClient<Database>(
@@ -9,6 +10,9 @@ export const supabaseAdmin = createClient<Database>(
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+    },
+    realtime: {
+      transport: WebSocket,
     },
   }
 );

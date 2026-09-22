@@ -257,6 +257,7 @@ export type Database = {
           avatar_url: string | null
           ban_reason: string | null
           banned_at: string | null
+          bio: string | null
           birth_date: string
           coarse_geohash: string | null
           created_at: string
@@ -271,6 +272,7 @@ export type Database = {
           last_location: unknown
           name: string
           phone: string
+          preferred_languages: string[]
           trust_score: number
           updated_at: string
         }
@@ -278,6 +280,7 @@ export type Database = {
           avatar_url?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          bio?: string | null
           birth_date: string
           coarse_geohash?: string | null
           created_at?: string
@@ -292,6 +295,7 @@ export type Database = {
           last_location?: unknown
           name: string
           phone: string
+          preferred_languages?: string[]
           trust_score?: number
           updated_at?: string
         }
@@ -299,6 +303,7 @@ export type Database = {
           avatar_url?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          bio?: string | null
           birth_date?: string
           coarse_geohash?: string | null
           created_at?: string
@@ -313,6 +318,7 @@ export type Database = {
           last_location?: unknown
           name?: string
           phone?: string
+          preferred_languages?: string[]
           trust_score?: number
           updated_at?: string
         }
@@ -323,6 +329,7 @@ export type Database = {
           activity_id: string
           created_at: string
           id: string
+          keep_in_touch: boolean
           reviewer_id: string
           score: number
           tags: string[] | null
@@ -332,6 +339,7 @@ export type Database = {
           activity_id: string
           created_at?: string
           id?: string
+          keep_in_touch?: boolean
           reviewer_id: string
           score: number
           tags?: string[] | null
@@ -341,6 +349,7 @@ export type Database = {
           activity_id?: string
           created_at?: string
           id?: string
+          keep_in_touch?: boolean
           reviewer_id?: string
           score?: number
           tags?: string[] | null
@@ -797,13 +806,71 @@ export type Database = {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
       }
+      accept_join_request_tx: {
+        Args: { p_host_id: string; p_request_id: string }
+        Returns: Json
+      }
+      decline_join_request: {
+        Args: { p_host_id: string; p_request_id: string }
+        Returns: Json
+      }
+      request_to_join_activity: {
+        Args: { p_activity_id: string; p_message?: string; p_user_id: string }
+        Returns: Json
+      }
+      leave_activity: {
+        Args: { p_activity_id: string; p_user_id: string }
+        Returns: Json
+      }
+      conclude_activity_tx: {
+        Args: { p_activity_id: string; p_host_id: string }
+        Returns: Json
+      }
+      has_reviewed_activity: {
+        Args: { p_activity_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      submit_activity_feedback_tx: {
+        Args: {
+          p_activity_id: string
+          p_reviewer_id: string
+          p_target_user_id: string
+          p_score: number
+          p_tags?: string[]
+          p_keep_in_touch?: boolean
+        }
+        Returns: Json
+      }
+      get_activity_exact_location: {
+        Args: { p_activity_id: string }
+        Returns: Json
+      }
+      get_activity_members: {
+        Args: { p_activity_id: string }
+        Returns: {
+          user_id: string
+          name: string
+          avatar_url: string | null
+          is_host: boolean
+          trust_score: number
+          gender: Database["public"]["Enums"]["user_gender"]
+          is_verified: boolean
+          interaction_count: number
+        }[]
+      }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_nearby_activities: {
         Args: { radius_km: number; user_lat: number; user_lng: number }
         Returns: {
+          created_at: string
+          image_urls: string[] | null
+          status: Database["public"]["Enums"]["activity_status"]
           current_participants_count: number
           description: string
           distance_meters: number
+          filter_age_max: number | null
+          filter_age_min: number | null
+          filter_gender: Database["public"]["Enums"]["gender_filter"]
           expires_at: string
           host_id: string
           id: string
@@ -814,6 +881,13 @@ export type Database = {
           tier: string
           title: string
           venue_name: string
+        }[]
+      }
+      get_pending_request_counts: {
+        Args: { p_activity_ids: string[] }
+        Returns: {
+          activity_id: string
+          pending_count: number
         }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
@@ -1461,7 +1535,7 @@ export type Database = {
       }
     }
     Enums: {
-      activity_status: "open" | "full" | "in_progress" | "concluded" | "expired"
+      activity_status: "open" | "full" | "in_progress" | "concluded" | "expired" | "cancelled"
       gender_filter: "any" | "male-only" | "female-only"
       join_request_status: "pending" | "accepted" | "declined" | "cancelled"
       notification_type:
@@ -1616,7 +1690,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      activity_status: ["open", "full", "in_progress", "concluded", "expired"],
+      activity_status: ["open", "full", "in_progress", "concluded", "expired", "cancelled"],
       gender_filter: ["any", "male-only", "female-only"],
       join_request_status: ["pending", "accepted", "declined", "cancelled"],
       notification_type: [
