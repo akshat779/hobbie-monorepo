@@ -3,10 +3,12 @@ import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'rea
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ShieldCheck, LogOut, Sparkles, Zap } from 'lucide-react-native';
+import { ShieldCheck, LogOut, Sparkles, Zap, Languages } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, DEV_PERSONAS } from '../../src/features/auth/useAuthStore';
 import { HobbieLogo } from '../../src/components/common/HobbieLogo';
+import { Avatar } from '../../src/components/common/Avatar';
+import { languageLabel } from '@hobbie/shared';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -66,6 +68,8 @@ export default function ProfileScreen() {
   const trustScore = profile.trust_score ?? 5.0;
   const isVerified = Boolean(profile.is_verified);
   const interests = profile.interests || [];
+  const languages = profile.preferred_languages || [];
+  const bio = profile.bio;
 
   return (
     <View
@@ -90,25 +94,35 @@ export default function ProfileScreen() {
       >
         {/* Identity & Rep Card */}
         <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4">
-          <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-xl font-bold font-display text-moonlight">
-              {displayName}
-            </Text>
-            {isVerified && (
-              <View className="bg-signal-violet/20 border border-signal-violet px-2.5 py-0.5 rounded-full flex-row items-center">
-                <ShieldCheck size={12} color="#D2BBFF" />
-                <Text className="text-signal-violet-light text-xs font-bold ml-1">
-                  Face Verified
+          <View className="flex-row items-center mb-3">
+            <Avatar name={displayName} url={profile.avatar_url} size={60} className="border border-hairline" />
+            <View className="flex-1 ml-4">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xl font-bold font-display text-moonlight flex-1 mr-2">
+                  {displayName}
                 </Text>
+                {isVerified && (
+                  <View className="bg-signal-violet/20 border border-signal-violet px-2.5 py-0.5 rounded-full flex-row items-center">
+                    <ShieldCheck size={12} color="#D2BBFF" />
+                    <Text className="text-signal-violet-light text-xs font-bold ml-1">
+                      Verified
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
+              <Text className="text-xs font-mono text-dusk mt-1">
+                {displayPhone
+                  ? displayPhone.replace(/(\d{3})\d{4}(\d{3})/, '$1 •••• $2')
+                  : 'No phone linked'}
+              </Text>
+            </View>
           </View>
 
-          <Text className="text-xs font-mono text-dusk mb-3">
-            {displayPhone
-              ? displayPhone.replace(/(\d{3})\d{4}(\d{3})/, '$1 •••• $2')
-              : 'No phone linked'}
-          </Text>
+          {bio ? (
+            <Text className="text-xs text-dusk leading-relaxed mb-3" selectable>
+              {bio}
+            </Text>
+          ) : null}
 
           <View className="bg-void/60 border border-hairline/60 p-3 rounded-2xl">
             <View className="flex-row justify-between items-center">
@@ -122,6 +136,30 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Preferred Languages */}
+        {languages.length > 0 ? (
+          <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-sm font-bold font-display text-moonlight">
+                Preferred Languages
+              </Text>
+              <Languages size={14} color="#C77DFF" />
+            </View>
+            <View className="flex-row flex-wrap gap-2">
+              {languages.map((code) => (
+                <View
+                  key={code}
+                  className="bg-void border border-hairline px-3.5 py-1.5 rounded-full"
+                >
+                  <Text className="text-pulse-lilac text-xs font-semibold">
+                    {languageLabel(code)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         {/* Active Interests */}
         <View className="bg-ink border border-hairline p-5 rounded-3xl mb-4">

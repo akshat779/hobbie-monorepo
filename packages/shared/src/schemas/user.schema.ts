@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { INTEREST_IDS } from '../constants/interests.js';
+import { LANGUAGE_CODES, MAX_PREFERRED_LANGUAGES } from '../constants/languages.js';
+
+/** Upper bound for the optional profile bio, mirrored by `check_bio_length`. */
+export const BIO_MAX_LENGTH = 160;
 
 export const PhoneAuthSchema = z.object({
   phone: z
@@ -38,6 +42,19 @@ export const UserProfileSchema = z.object({
     .array(z.enum(INTEREST_IDS))
     .min(1, 'Select at least one interest')
     .max(5, 'Maximum 5 interests allowed'),
+  preferredLanguages: z
+    .array(z.enum(LANGUAGE_CODES))
+    .min(1, 'Select at least one preferred language')
+    .max(MAX_PREFERRED_LANGUAGES, `Select up to ${MAX_PREFERRED_LANGUAGES} languages`)
+    .refine(
+      (codes) => new Set(codes).size === codes.length,
+      'Preferred languages must be unique'
+    ),
+  bio: z
+    .string()
+    .trim()
+    .max(BIO_MAX_LENGTH, `Bio must be ${BIO_MAX_LENGTH} characters or fewer`)
+    .optional(),
   avatarUrl: z.string().url().optional(),
 });
 

@@ -1,12 +1,16 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { AppState, AppStateStatus, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
+import { AnimatedSplash } from '../src/components/common/AnimatedSplash';
 import { useAppFonts } from '../src/hooks/useAppFonts';
 import { useAuthStore } from '../src/features/auth/useAuthStore';
 import '../global.css';
+
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 // Wire TanStack Query focus management to React Native native AppState
 focusManager.setEventListener((handleFocus) => {
@@ -32,15 +36,15 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
-  const { fontsLoaded } = useAppFonts();
+  const { fontsLoaded, fontError } = useAppFonts();
+  const [splashFinished, setSplashFinished] = useState(false);
 
   useEffect(() => {
     void useAuthStore.getState().initialize();
   }, []);
 
-  if (!fontsLoaded) {
-    return <View className="flex-1 bg-void" />;
-  }
+  const appReady = fontsLoaded || fontError != null;
+  const handleSplashFinish = useCallback(() => setSplashFinished(true), []);
 
   return (
     <SafeAreaProvider>
@@ -73,6 +77,9 @@ export default function RootLayout() {
             <Stack.Screen name="activity/[id]" />
             <Stack.Screen name="room/[id]" />
           </Stack>
+          {splashFinished ? null : (
+            <AnimatedSplash ready={appReady} onFinish={handleSplashFinish} />
+          )}
         </View>
       </QueryClientProvider>
     </SafeAreaProvider>

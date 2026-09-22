@@ -5,10 +5,11 @@ import { Database, UserProfileInput, UserProfileSchema, PhoneAuthSchema } from '
 
 type ProfileState = Pick<Database['public']['Tables']['profiles']['Row'],
   'id' | 'name' | 'birth_date' | 'gender' | 'interests' | 'is_verified' |
-  'trust_score' | 'interaction_count' | 'avatar_url' | 'created_at' | 'updated_at'> & {
+  'trust_score' | 'interaction_count' | 'avatar_url' | 'bio' | 'preferred_languages' |
+  'created_at' | 'updated_at'> & {
   phone?: string;
 };
-const PROFILE_COLUMNS = 'id, name, birth_date, gender, interests, is_verified, trust_score, interaction_count, avatar_url, created_at, updated_at';
+const PROFILE_COLUMNS = 'id, name, birth_date, gender, interests, is_verified, trust_score, interaction_count, avatar_url, bio, preferred_languages, created_at, updated_at';
 
 const isDevelopment =
   typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
@@ -27,6 +28,8 @@ export interface DevPersona {
   interests: string[];
   gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
   birthDate: string;
+  bio: string | null;
+  preferredLanguages: string[];
 }
 
 export const DEV_PERSONAS: DevPersona[] = [
@@ -40,6 +43,8 @@ export const DEV_PERSONAS: DevPersona[] = [
     interests: ['football', 'badminton'],
     gender: 'male',
     birthDate: '1998-05-12',
+    bio: 'Weekend footballer and coffee nerd.',
+    preferredLanguages: ['en', 'hi'],
   },
   {
     id: '00000000-0000-0000-0000-000000000002',
@@ -51,6 +56,8 @@ export const DEV_PERSONAS: DevPersona[] = [
     interests: ['football', 'cafe_coffee'],
     gender: 'female',
     birthDate: '2000-08-22',
+    bio: null,
+    preferredLanguages: ['en'],
   },
   {
     id: '00000000-0000-0000-0000-000000000003',
@@ -59,9 +66,11 @@ export const DEV_PERSONAS: DevPersona[] = [
     role: 'joiner',
     trustScore: 5.0,
     isVerified: true,
-    interests: ['badminton', 'running_club'],
+    interests: ['badminton', 'running'],
     gender: 'female',
     birthDate: '1997-11-04',
+    bio: null,
+    preferredLanguages: ['en', 'hi', 'kn'],
   },
   {
     id: '00000000-0000-0000-0000-000000000004',
@@ -73,6 +82,8 @@ export const DEV_PERSONAS: DevPersona[] = [
     interests: ['board_games'],
     gender: 'male',
     birthDate: '2002-01-15',
+    bio: null,
+    preferredLanguages: ['en', 'gu'],
   },
 ];
 
@@ -388,6 +399,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         birth_date: validated.birthDate,
         gender: validated.gender,
         interests: validated.interests,
+        preferred_languages: validated.preferredLanguages,
+        bio: validated.bio ?? null,
         avatar_url: validated.avatarUrl ?? null,
         updated_at: new Date().toISOString(),
       };
@@ -483,6 +496,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       trust_score: persona.trustScore,
       interaction_count: 5,
       avatar_url: null,
+      bio: persona.bio,
+      preferred_languages: persona.preferredLanguages,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -517,6 +532,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           birth_date: persona.birthDate,
           gender: persona.gender,
           interests: persona.interests,
+          preferred_languages: persona.preferredLanguages,
+          bio: persona.bio,
           is_verified: persona.isVerified,
           trust_score: persona.trustScore,
           interaction_count: 5,

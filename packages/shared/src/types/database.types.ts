@@ -257,6 +257,7 @@ export type Database = {
           avatar_url: string | null
           ban_reason: string | null
           banned_at: string | null
+          bio: string | null
           birth_date: string
           coarse_geohash: string | null
           created_at: string
@@ -271,6 +272,7 @@ export type Database = {
           last_location: unknown
           name: string
           phone: string
+          preferred_languages: string[]
           trust_score: number
           updated_at: string
         }
@@ -278,6 +280,7 @@ export type Database = {
           avatar_url?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          bio?: string | null
           birth_date: string
           coarse_geohash?: string | null
           created_at?: string
@@ -292,6 +295,7 @@ export type Database = {
           last_location?: unknown
           name: string
           phone: string
+          preferred_languages?: string[]
           trust_score?: number
           updated_at?: string
         }
@@ -299,6 +303,7 @@ export type Database = {
           avatar_url?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          bio?: string | null
           birth_date?: string
           coarse_geohash?: string | null
           created_at?: string
@@ -313,6 +318,7 @@ export type Database = {
           last_location?: unknown
           name?: string
           phone?: string
+          preferred_languages?: string[]
           trust_score?: number
           updated_at?: string
         }
