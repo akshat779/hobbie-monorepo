@@ -9,9 +9,10 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import darkMapStyle from '../../src/theme/dark-map-style.json';
 import {
   INTEREST_CATEGORIES,
   InterestId,
@@ -314,6 +315,8 @@ export default function CreateActivityScreen() {
           <MapView
             accessibilityLabel="Selected activity location map"
             style={{ height: 135, borderRadius: 16, marginBottom: 10 }}
+            provider={PROVIDER_DEFAULT}
+            customMapStyle={darkMapStyle}
             region={{ ...selectedLocation, latitudeDelta: 0.012, longitudeDelta: 0.012 }}
             scrollEnabled={false}
             zoomEnabled={false}

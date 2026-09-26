@@ -11,6 +11,19 @@ import type { BottomTabBarProps } from 'expo-router/build/react-navigation/botto
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Map, Rss, Users, User } from 'lucide-react-native';
 
+/** Rendered height of the floating dock, used to compute scroll clearance. */
+export const FLOATING_TAB_BAR_HEIGHT = 68;
+
+/**
+ * Bottom padding a scrollable tab screen must apply so its final content is not
+ * obscured by the absolutely-positioned floating dock.
+ */
+export function useFloatingTabBarClearance(): number {
+  const insets = useSafeAreaInsets();
+  const bottomOffset = insets.bottom > 0 ? Math.max(insets.bottom - 16, 14) : 12;
+  return bottomOffset + FLOATING_TAB_BAR_HEIGHT + 28;
+}
+
 const TAB_CONFIG: Record<
   string,
   {
@@ -55,7 +68,7 @@ export function FloatingGlassTabBar({
         { bottom: bottomOffset },
       ]}
     >
-      <View style={styles.dockContainer}>
+      <View style={[styles.dockContainer, hasLiquidGlass && styles.dockContainerGlass]}>
         {/* Apple Liquid Glass Backdrop if available */}
         {hasLiquidGlass && (
           <GlassView
@@ -142,7 +155,7 @@ const styles = StyleSheet.create({
   dockContainer: {
     width: '100%',
     maxWidth: 420,
-    height: 68,
+    height: FLOATING_TAB_BAR_HEIGHT,
     borderRadius: 9999,
     borderWidth: 1,
     borderColor: '#2C2739',
@@ -152,6 +165,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: 6,
     boxShadow: '0 4px 14px rgba(0, 0, 0, 0.4)',
+  },
+  // The GlassView is drawn above this container, so an opaque background here is
+  // all it has to refract — it would render as a flat dark surface. Drop the fill
+  // when Liquid Glass is active so the map behind shows through the glass.
+  dockContainerGlass: {
+    backgroundColor: 'transparent',
   },
   tabButton: {
     flex: 1,

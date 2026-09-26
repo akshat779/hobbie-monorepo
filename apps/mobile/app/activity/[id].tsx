@@ -14,7 +14,6 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
-  ShieldCheck,
   Clock,
   MapPin,
   Send,
@@ -25,6 +24,7 @@ import {
   ArrowRight,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/features/auth/useAuthStore';
+import { VerifiedBadge } from '../../src/components/common/VerifiedBadge';
 import { subscribeToJoinRequestUpdates } from '../../src/services/handshake';
 import {
   useActivityDetailQuery,
@@ -257,14 +257,7 @@ export default function ActivityDetailScreen() {
                   Host: {activity.hostName}
                 </Text>
                 <View className="flex-row items-center gap-2">
-                  {activity.hostIsVerified && (
-                    <View className="bg-signal-violet/20 border border-signal-violet px-2.5 py-0.5 rounded-full flex-row items-center">
-                      <ShieldCheck size={12} color="#D2BBFF" />
-                      <Text className="text-signal-violet-light text-[11px] font-bold ml-1">
-                        Verified
-                      </Text>
-                    </View>
-                  )}
+                  {activity.hostIsVerified && <VerifiedBadge size={14} />}
                   <View className="bg-void border border-hairline px-2 py-0.5 rounded-full">
                     <Text className="text-pulse-lilac font-mono text-xs font-bold">
                       ★ {activity.hostTrustScore !== null ? activity.hostTrustScore.toFixed(2) : '5.00'}

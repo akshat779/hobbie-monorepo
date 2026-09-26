@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import {
   X,
-  ShieldCheck,
   Check,
   UserX,
   Users,
@@ -26,6 +25,7 @@ import {
 } from '../../services/handshake';
 import { useAuthStore } from '../auth/useAuthStore';
 import { useReviewRequestMutation } from '../activity/useActivityMutations';
+import { VerifiedBadge } from '../../components/common/VerifiedBadge';
 
 interface HostReviewModalProps {
   visible: boolean;
@@ -271,14 +271,7 @@ export function HostReviewModal({
                           <Text className="text-moonlight font-display font-bold text-base mr-2">
                             {req.user.name}
                           </Text>
-                          {req.user.isVerified && (
-                            <View className="bg-signal-violet/20 border border-signal-violet/60 px-2 py-0.5 rounded-full flex-row items-center">
-                              <ShieldCheck size={11} color="#D2BBFF" />
-                              <Text className="text-signal-violet-light text-2xs font-bold ml-1">
-                                Verified
-                              </Text>
-                            </View>
-                          )}
+                          {req.user.isVerified && <VerifiedBadge size={14} />}
                         </View>
                       </View>
 

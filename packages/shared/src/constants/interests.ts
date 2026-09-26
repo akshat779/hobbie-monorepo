@@ -17,3 +17,8 @@ export const INTEREST_IDS = INTEREST_CATEGORIES.map((i) => i.id) as [
   InterestId,
   ...InterestId[]
 ];
+
+/** Human-readable label for an interest id, falling back to the raw id. */
+export function interestLabel(id: string): string {
+  return INTEREST_CATEGORIES.find((category) => category.id === id)?.label ?? id;
+}

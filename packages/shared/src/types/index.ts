@@ -10,4 +10,5 @@ export * from '../constants/trust.js';
 export * from './database.types.js';
 export * from '../utils/geo.js';
 export * from '../utils/initials.js';
+export * from '../utils/age.js';
 

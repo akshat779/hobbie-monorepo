@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheet, { BottomSheetView } from '@expo/ui/community/bottom-sheet';
 import {
-  ShieldCheck,
   Clock,
   MapPin,
   Users,
@@ -22,6 +21,7 @@ import { DiscoveryActivity } from './types';
 import { formatDistance, getPinTheme } from './utils';
 import { useAuthStore } from '../auth/useAuthStore';
 import { useCountdown } from '../../hooks/useCountdown';
+import { VerifiedBadge } from '../../components/common/VerifiedBadge';
 
 const SHEET_BACKGROUND = '#17131F';
 
@@ -93,14 +93,7 @@ export function ActivityBottomSheet({
               <Text className="text-dusk font-medium text-xs mr-2">
                 Host: {activity.hostName}
               </Text>
-              {activity.hostIsVerified && (
-                <View className="bg-signal-violet/20 border border-signal-violet/50 px-2 py-0.5 rounded-full flex-row items-center mr-2">
-                  <ShieldCheck size={11} color="#D2BBFF" />
-                  <Text className="text-signal-violet-light text-2xs font-bold ml-1">
-                    Verified
-                  </Text>
-                </View>
-              )}
+              {activity.hostIsVerified && <VerifiedBadge size={13} className="mr-2" />}
               <Text className="text-pulse-lilac font-mono text-xs font-bold">
                 ★ {typeof activity.hostTrustScore === 'number' ? activity.hostTrustScore.toFixed(2) : '5.00'}
               </Text>

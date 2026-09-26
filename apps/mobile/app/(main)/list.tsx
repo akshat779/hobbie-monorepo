@@ -2,13 +2,14 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ListFilter, Clock, MapPin, Users, ShieldCheck } from 'lucide-react-native';
+import { ListFilter, Clock, MapPin, Users } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { useDiscoveryQuery } from '../../src/features/discovery/useDiscoveryQuery';
 import { useDiscoveryFiltersStore } from '../../src/features/discovery/useDiscoveryFiltersStore';
 import { CategoryFilterBar } from '../../src/features/discovery/CategoryFilterBar';
 import { DiscoveryEmptyState } from '../../src/features/discovery/DiscoveryEmptyState';
 import { DevPersonaSwitcher } from '../../src/components/dev/DevPersonaSwitcher';
+import { VerifiedBadge } from '../../src/components/common/VerifiedBadge';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
 import { useRefreshByUser } from '../../src/hooks/useRefreshByUser';
 import { useCountdown } from '../../src/hooks/useCountdown';
@@ -46,14 +47,7 @@ function SquadFeedCard({
             <Text className="text-dusk text-xs mr-2">
               Host: {item.hostName}
             </Text>
-            {item.hostIsVerified && (
-              <View className="bg-signal-violet/20 border border-signal-violet/50 px-2 py-0.5 rounded-full flex-row items-center mr-2">
-                <ShieldCheck size={11} color="#D2BBFF" />
-                <Text className="text-signal-violet-light text-2xs font-bold ml-1">
-                  Verified
-                </Text>
-              </View>
-            )}
+            {item.hostIsVerified && <VerifiedBadge size={13} className="mr-2" />}
             <Text className="text-pulse-lilac font-mono text-xs font-bold">
               ★ {item.hostTrustScore.toFixed(2)}
             </Text>
