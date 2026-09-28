@@ -3,7 +3,11 @@ import {
   PhoneAuthSchema,
   VerifyOtpSchema,
   UserProfileSchema,
+  PublicProfileSchema,
+  FuzzedDistanceSchema,
+  MAX_PROFILE_PHOTOS,
 } from '../schemas/user.schema.js';
+import { BlockActionResultSchema, REPORT_REASONS } from '../schemas/moderation.schema.js';
 import { CreateActivitySchema, ActivityPublicSchema } from '../schemas/activity.schema.js';
 
 describe('User Schemas', () => {
@@ -90,6 +94,92 @@ describe('User Schemas', () => {
     expect(UserProfileSchema.safeParse({ ...base, bio: 'a'.repeat(160) }).success).toBe(true);
     expect(UserProfileSchema.safeParse({ ...base, bio: 'a'.repeat(161) }).success).toBe(false);
     expect(UserProfileSchema.safeParse({ ...base }).success).toBe(true);
+  });
+
+  it('accepts up to six unique photo URLs and rejects more or duplicates', () => {
+    const base = {
+      name: 'Alex',
+      birthDate: '1995-05-15',
+      gender: 'non-binary' as const,
+      interests: ['football' as const],
+      preferredLanguages: ['en' as const],
+    };
+    const url = (n: number) => `https://cdn.example.com/photo-${n}.jpg`;
+
+    expect(UserProfileSchema.safeParse({ ...base }).success).toBe(true);
+    expect(
+      UserProfileSchema.safeParse({ ...base, photoUrls: [url(1), url(2)] }).success
+    ).toBe(true);
+    expect(
+      UserProfileSchema.safeParse({
+        ...base,
+        photoUrls: Array.from({ length: MAX_PROFILE_PHOTOS }, (_, i) => url(i)),
+      }).success
+    ).toBe(true);
+    expect(
+      UserProfileSchema.safeParse({
+        ...base,
+        photoUrls: Array.from({ length: MAX_PROFILE_PHOTOS + 1 }, (_, i) => url(i)),
+      }).success
+    ).toBe(false);
+    expect(
+      UserProfileSchema.safeParse({ ...base, photoUrls: [url(1), url(1)] }).success
+    ).toBe(false);
+    expect(
+      UserProfileSchema.safeParse({ ...base, photoUrls: ['not-a-url'] }).success
+    ).toBe(false);
+  });
+});
+
+describe('Public Profile & Moderation Schemas', () => {
+  const publicProfile = {
+    id: '00000000-0000-0000-0000-000000000002',
+    name: 'Sam Chen',
+    birthDate: '2000-08-22',
+    gender: 'female' as const,
+    interests: ['football' as const],
+    bio: null,
+    preferredLanguages: ['en' as const],
+    avatarUrl: null,
+    photoUrls: ['https://cdn.example.com/a.jpg'],
+    isVerified: true,
+    trustScore: 4.88,
+    interactionCount: 12,
+    ratingsCount: 0,
+    createdAt: '2026-09-05T10:00:00Z',
+  };
+
+  it('validates a public profile and rejects missing/out-of-range fields', () => {
+    expect(PublicProfileSchema.safeParse(publicProfile).success).toBe(true);
+    expect(
+      PublicProfileSchema.safeParse({ ...publicProfile, ratingsCount: undefined }).success
+    ).toBe(false);
+    expect(
+      PublicProfileSchema.safeParse({ ...publicProfile, trustScore: 6 }).success
+    ).toBe(false);
+    expect(
+      PublicProfileSchema.safeParse({ ...publicProfile, photoUrls: ['not-a-url'] }).success
+    ).toBe(false);
+  });
+
+  it('accepts an available or unavailable fuzzed distance', () => {
+    expect(FuzzedDistanceSchema.safeParse({ available: true, distanceM: 100 }).success).toBe(true);
+    expect(FuzzedDistanceSchema.safeParse({ available: true }).success).toBe(true);
+    expect(FuzzedDistanceSchema.safeParse({ available: false }).success).toBe(true);
+    expect(FuzzedDistanceSchema.safeParse({ available: 'yes' }).success).toBe(false);
+    expect(FuzzedDistanceSchema.safeParse({ available: true, distanceM: -5 }).success).toBe(false);
+  });
+
+  it('exposes the canonical report reasons and a strict block contract', () => {
+    expect(REPORT_REASONS).toContain('harassment');
+    expect(REPORT_REASONS).toHaveLength(6);
+    expect(
+      BlockActionResultSchema.safeParse({
+        success: true,
+        blocked_id: '00000000-0000-0000-0000-000000000002',
+      }).success
+    ).toBe(true);
+    expect(BlockActionResultSchema.safeParse({ success: false }).success).toBe(false);
   });
 });
 

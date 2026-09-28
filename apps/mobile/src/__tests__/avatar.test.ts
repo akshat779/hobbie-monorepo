@@ -4,6 +4,7 @@ import {
   extensionForImage,
   normalizeAvatarMimeType,
   pickAvatarImage,
+  preparePhoto,
   uploadAvatarImage,
 } from '../services/avatar';
 import { VALID_UUIDS } from './helpers/contractMocks';
@@ -12,6 +13,36 @@ vi.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: vi.fn(),
   launchImageLibraryAsync: vi.fn(),
 }));
+
+const { mockSaveAsync, mockResize, mockManipulate } = vi.hoisted(() => {
+  const mockSaveAsync = vi.fn(async () => ({
+    uri: 'file:///tmp/prepared.jpg',
+    width: 1600,
+    height: 1200,
+  }));
+  const mockResize = vi.fn();
+  const mockManipulate = vi.fn();
+  return { mockSaveAsync, mockResize, mockManipulate };
+});
+
+vi.mock('expo-image-manipulator', () => {
+  const context = {
+    resize: (size: unknown) => {
+      mockResize(size);
+      return context;
+    },
+    renderAsync: async () => ({ saveAsync: mockSaveAsync }),
+  };
+  return {
+    ImageManipulator: {
+      manipulate: (uri: string) => {
+        mockManipulate(uri);
+        return context;
+      },
+    },
+    SaveFormat: { JPEG: 'jpeg', PNG: 'png', WEBP: 'webp' },
+  };
+});
 
 vi.mock('../services/supabase', async () => {
   const { createContractMockSupabase } = await import('./helpers/contractMocks');
@@ -81,34 +112,94 @@ describe('pickAvatarImage', () => {
     expect(result).toEqual({});
   });
 
-  it('rejects an unsupported image format with a clear message', async () => {
+  it('converts a HEIC asset to a compressed JPEG instead of rejecting it', async () => {
     picker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true });
     picker.launchImageLibraryAsync.mockResolvedValue({
       canceled: false,
-      assets: [{ uri: 'file:///tmp/photo.heic', mimeType: 'image/heic', fileName: 'photo.heic' }],
-    });
-
-    const result = await pickAvatarImage();
-
-    expect(result.image).toBeUndefined();
-    expect(result.error).toContain('Unsupported image format');
-  });
-
-  it('normalises a supported asset before returning it', async () => {
-    picker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true });
-    picker.launchImageLibraryAsync.mockResolvedValue({
-      canceled: false,
-      assets: [{ uri: 'file:///tmp/photo.jpg', mimeType: undefined, fileName: 'photo.JPG' }],
+      assets: [
+        {
+          uri: 'file:///tmp/photo.heic',
+          mimeType: 'image/heic',
+          fileName: 'photo.heic',
+          width: 3024,
+          height: 4032,
+        },
+      ],
     });
 
     const result = await pickAvatarImage();
 
     expect(result.error).toBeUndefined();
+    expect(mockManipulate).toHaveBeenCalledWith('file:///tmp/photo.heic');
+    // Portrait source is capped by height.
+    expect(mockResize).toHaveBeenCalledWith({ height: 1600 });
     expect(result.image).toEqual({
-      uri: 'file:///tmp/photo.jpg',
+      uri: 'file:///tmp/prepared.jpg',
       mimeType: 'image/jpeg',
-      fileName: 'photo.JPG',
+      fileName: expect.stringMatching(/^photo-\d+\.jpg$/),
+      width: 1600,
+      height: 1200,
     });
+  });
+
+  it('normalises a supported asset to the prepared JPEG', async () => {
+    picker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true });
+    picker.launchImageLibraryAsync.mockResolvedValue({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file:///tmp/photo.jpg',
+          mimeType: undefined,
+          fileName: 'photo.JPG',
+          width: 4000,
+          height: 3000,
+        },
+      ],
+    });
+
+    const result = await pickAvatarImage();
+
+    expect(result.error).toBeUndefined();
+    // Landscape source is capped by width.
+    expect(mockResize).toHaveBeenCalledWith({ width: 1600 });
+    expect(result.image?.mimeType).toBe('image/jpeg');
+    expect(result.image?.uri).toBe('file:///tmp/prepared.jpg');
+  });
+});
+
+describe('preparePhoto', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('re-encodes any picked image (including HEIC) as JPEG', async () => {
+    const result = await preparePhoto({
+      uri: 'file:///tmp/IMG_0001.HEIC',
+      mimeType: 'image/heic',
+      fileName: 'IMG_0001.HEIC',
+      width: 4032,
+      height: 3024,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.image?.mimeType).toBe('image/jpeg');
+    expect(result.image?.fileName).toMatch(/\.jpg$/);
+    expect(result.image?.uri).toBe('file:///tmp/prepared.jpg');
+  });
+
+  it('surfaces a clear error when the native manipulator fails', async () => {
+    mockManipulate.mockImplementationOnce(() => {
+      throw new Error('decode failed');
+    });
+
+    const result = await preparePhoto({
+      uri: 'file:///tmp/broken.heic',
+      mimeType: 'image/heic',
+      fileName: 'broken.heic',
+    });
+
+    expect(result.image).toBeUndefined();
+    expect(result.error).toBe('decode failed');
   });
 });
 

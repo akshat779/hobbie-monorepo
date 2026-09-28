@@ -6,6 +6,7 @@ import {
   BIO_MAX_LENGTH,
   LANGUAGE_CODES,
   MAX_PREFERRED_LANGUAGES,
+  MAX_PROFILE_PHOTOS,
 } from '@hobbie/shared';
 
 export const VALID_UUIDS = {
@@ -49,6 +50,18 @@ function validateProfileColumnConstraints(
         code: '23514',
         message:
           'new row for relation "profiles" violates check constraint "check_preferred_languages"',
+      };
+    }
+  }
+
+  if (payload?.photo_urls !== undefined) {
+    const photos = payload.photo_urls;
+    const isValid = Array.isArray(photos) && photos.length <= MAX_PROFILE_PHOTOS;
+    if (!isValid) {
+      return {
+        code: '23514',
+        message:
+          'new row for relation "profiles" violates check constraint "check_photo_urls_count"',
       };
     }
   }

@@ -127,6 +127,39 @@ export type Database = {
           },
         ]
       }
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       join_requests: {
         Row: {
           activity_id: string
@@ -272,7 +305,9 @@ export type Database = {
           last_location: unknown
           name: string
           phone: string
+          photo_urls: string[]
           preferred_languages: string[]
+          ratings_count: number
           trust_score: number
           updated_at: string
         }
@@ -295,7 +330,9 @@ export type Database = {
           last_location?: unknown
           name: string
           phone: string
+          photo_urls?: string[]
           preferred_languages?: string[]
+          ratings_count?: number
           trust_score?: number
           updated_at?: string
         }
@@ -318,7 +355,9 @@ export type Database = {
           last_location?: unknown
           name?: string
           phone?: string
+          photo_urls?: string[]
           preferred_languages?: string[]
+          ratings_count?: number
           trust_score?: number
           updated_at?: string
         }
@@ -889,6 +928,22 @@ export type Database = {
           activity_id: string
           pending_count: number
         }[]
+      }
+      get_fuzzed_distance: {
+        Args: { p_target_user_id: string }
+        Returns: Json
+      }
+      is_blocked_between: {
+        Args: { p_a: string; p_b: string }
+        Returns: boolean
+      }
+      block_user: {
+        Args: { p_blocked_id: string }
+        Returns: Json
+      }
+      unblock_user: {
+        Args: { p_blocked_id: string }
+        Returns: Json
       }
       gettransactionid: { Args: never; Returns: unknown }
       longtransactionsenabled: { Args: never; Returns: boolean }

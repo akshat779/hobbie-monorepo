@@ -15,6 +15,7 @@ import {
   RequestToJoinResultSchema,
 } from '@hobbie/shared';
 import { subscribeToPostgresChanges } from './realtimePool';
+import { getMyBlockedIds } from './moderation';
 
 export type JoinRequestRow = Database['public']['Tables']['join_requests']['Row'];
 export type ActivityRow = Database['public']['Tables']['activities']['Row'];
@@ -163,6 +164,11 @@ export async function fetchIncomingJoinRequests(
   activityId: string
 ): Promise<JoinRequestPublic[]> {
   try {
+    // Hide requesters the host has blocked (the reverse direction is blocked
+    // server-side in request_to_join_activity).
+    const blockedIds = await getMyBlockedIds();
+    const blocked = new Set(blockedIds);
+
     const { data, error } = await supabase
       .from('join_requests')
       .select(`
@@ -198,6 +204,10 @@ export async function fetchIncomingJoinRequests(
         console.warn(
           `fetchIncomingJoinRequests skipped request ${item.id}: joined profile unavailable`
         );
+        continue;
+      }
+
+      if (blocked.has(profile.id)) {
         continue;
       }
 

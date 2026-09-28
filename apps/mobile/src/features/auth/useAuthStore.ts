@@ -5,11 +5,11 @@ import { Database, UserProfileInput, UserProfileSchema, PhoneAuthSchema } from '
 
 type ProfileState = Pick<Database['public']['Tables']['profiles']['Row'],
   'id' | 'name' | 'birth_date' | 'gender' | 'interests' | 'is_verified' |
-  'trust_score' | 'interaction_count' | 'avatar_url' | 'bio' | 'preferred_languages' |
+  'trust_score' | 'interaction_count' | 'avatar_url' | 'photo_urls' | 'bio' | 'preferred_languages' |
   'created_at' | 'updated_at'> & {
   phone?: string;
 };
-const PROFILE_COLUMNS = 'id, name, birth_date, gender, interests, is_verified, trust_score, interaction_count, avatar_url, bio, preferred_languages, created_at, updated_at';
+const PROFILE_COLUMNS = 'id, name, birth_date, gender, interests, is_verified, trust_score, interaction_count, avatar_url, photo_urls, bio, preferred_languages, created_at, updated_at';
 
 const isDevelopment =
   typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
@@ -18,74 +18,18 @@ const isDevelopment =
 const isDevAuthEnabled =
   isDevelopment && process.env.EXPO_PUBLIC_DEV_AUTH_ENABLED !== 'false';
 
-export interface DevPersona {
+/**
+ * A real account that can be impersonated from the dev-only switcher. This is
+ * sourced from `public.profiles`, not a hardcoded fixture, so every account
+ * created through the onboarding flow becomes switchable in place.
+ */
+export interface DevUserSummary {
   id: string;
   name: string;
-  phone: string;
-  role: 'host' | 'joiner' | 'unverified';
-  trustScore: number;
-  isVerified: boolean;
-  interests: string[];
-  gender: 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
-  birthDate: string;
-  bio: string | null;
-  preferredLanguages: string[];
+  avatar_url: string | null;
+  is_verified: boolean;
+  trust_score: number;
 }
-
-export const DEV_PERSONAS: DevPersona[] = [
-  {
-    id: '00000000-0000-0000-0000-000000000001',
-    name: 'Alex Rivera',
-    phone: '+919876543210',
-    role: 'host',
-    trustScore: 4.95,
-    isVerified: true,
-    interests: ['football', 'badminton'],
-    gender: 'male',
-    birthDate: '1998-05-12',
-    bio: 'Weekend footballer and coffee nerd.',
-    preferredLanguages: ['en', 'hi'],
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000002',
-    name: 'Sam Chen',
-    phone: '+919876543211',
-    role: 'joiner',
-    trustScore: 4.88,
-    isVerified: true,
-    interests: ['football', 'cafe_coffee'],
-    gender: 'female',
-    birthDate: '2000-08-22',
-    bio: null,
-    preferredLanguages: ['en'],
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000003',
-    name: 'Priya Sharma',
-    phone: '+919876543212',
-    role: 'joiner',
-    trustScore: 5.0,
-    isVerified: true,
-    interests: ['badminton', 'running'],
-    gender: 'female',
-    birthDate: '1997-11-04',
-    bio: null,
-    preferredLanguages: ['en', 'hi', 'kn'],
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000004',
-    name: 'Rohan Patel',
-    phone: '+919876543213',
-    role: 'unverified',
-    trustScore: 3.8,
-    isVerified: false,
-    interests: ['board_games'],
-    gender: 'male',
-    birthDate: '2002-01-15',
-    bio: null,
-    preferredLanguages: ['en', 'gu'],
-  },
-];
 
 /**
  * Authenticates a phone number into an authentic Supabase Auth session in development.
@@ -185,7 +129,8 @@ interface AuthState {
   profile: ProfileState | null;
   isLoading: boolean;
   isDevMode: boolean;
-  activePersonaId: string | null;
+  activeDevUserId: string | null;
+  devUsers: DevUserSummary[];
 
   // Actions
   initialize: () => Promise<void>;
@@ -193,7 +138,8 @@ interface AuthState {
   verifyOtp: (phone: string, token: string) => Promise<{ hasProfile: boolean; error?: string }>;
   upsertProfile: (input: UserProfileInput) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
-  loginWithPersona: (personaId: string) => Promise<void>;
+  loadDevUsers: () => Promise<void>;
+  switchDevUser: (userId: string) => Promise<void>;
 }
 
 let isAuthListenerRegistered = false;
@@ -204,7 +150,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profile: null,
   isLoading: true,
   isDevMode: isDevelopment,
-  activePersonaId: null,
+  activeDevUserId: null,
+  devUsers: [],
 
   initialize: async () => {
     try {
@@ -223,15 +170,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           session,
           user: session.user,
           profile,
+          activeDevUserId: isDevAuthEnabled ? session.user.id : null,
           isLoading: false,
         });
-      } else if (isDevAuthEnabled) {
-        // Cold start in development / demo mode:
-        // Automatically default to the primary dev persona (Alex Rivera)
-        // so cold starts have full profile context immediately (0ms).
-        await get().loginWithPersona(DEV_PERSONAS[0]!.id);
       } else {
-        set({ session: null, user: null, profile: null, isLoading: false });
+        // No persisted session: start unauthenticated. Dev accounts are
+        // selected explicitly through onboarding or the dev user switcher, so
+        // cold starts never silently impersonate a fixture account.
+        set({ session: null, user: null, profile: null, activeDevUserId: null, isLoading: false });
       }
 
       // Listen to Auth state changes if supported (ensure single global listener)
@@ -249,10 +195,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               session,
               user: session.user,
               profile,
+              activeDevUserId: isDevAuthEnabled ? session.user.id : null,
               isLoading: false,
             });
-          } else if (!get().activePersonaId) {
-            set({ session: null, user: null, profile: null, isLoading: false });
+          } else {
+            // A null session means the Supabase client is now unauthenticated
+            // (token-refresh failure, revocation, or sign-out). Drop
+            // `session` and `user` so session-gated queries stop firing as the
+            // `anon` role.
+            set({
+              session: null,
+              user: null,
+              profile: null,
+              activeDevUserId: null,
+              isLoading: false,
+            });
           }
         });
       }
@@ -332,11 +289,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // In development: Authenticate with a genuine Supabase Auth session!
-      const matchedPersona = DEV_PERSONAS.find((p) => p.phone === phone);
-      const { session, error } = await authenticateDevSession(
-        phone,
-        matchedPersona ? matchedPersona.name : undefined
-      );
+      const { session, error } = await authenticateDevSession(phone);
 
       if (error || !session) {
         set({ isLoading: false });
@@ -354,7 +307,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         session,
         user: session.user,
         profile,
-        activePersonaId: matchedPersona ? matchedPersona.id : null,
+        activeDevUserId: session.user.id,
         isLoading: false,
       });
 
@@ -401,7 +354,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         interests: validated.interests,
         preferred_languages: validated.preferredLanguages,
         bio: validated.bio ?? null,
-        avatar_url: validated.avatarUrl ?? null,
+        photo_urls: validated.photoUrls ?? [],
+        avatar_url: validated.avatarUrl ?? validated.photoUrls?.[0] ?? null,
         updated_at: new Date().toISOString(),
       };
 
@@ -474,81 +428,75 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       session: null,
       user: null,
       profile: null,
-      activePersonaId: null,
+      activeDevUserId: null,
     });
   },
 
-  loginWithPersona: async (personaId: string) => {
-    if (!isDevAuthEnabled) return; // Hard security lock: Persona switcher disabled in production
+  loadDevUsers: async () => {
+    if (!isDevAuthEnabled) return; // Hard security lock: dev tools disabled in production
 
-    const persona = DEV_PERSONAS.find((p) => p.id === personaId) || DEV_PERSONAS[0]!;
-
-    // 1. Optimistic Local Hydration (0ms):
-    // Populate profile and active persona immediately from DEV_PERSONAS so the UI never stalls.
-    const optimisticProfile: ProfileState = {
-      id: persona.id,
-      name: persona.name,
-      phone: persona.phone,
-      birth_date: persona.birthDate,
-      gender: persona.gender,
-      interests: persona.interests,
-      is_verified: persona.isVerified,
-      trust_score: persona.trustScore,
-      interaction_count: 5,
-      avatar_url: null,
-      bio: persona.bio,
-      preferred_languages: persona.preferredLanguages,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    set({
-      activePersonaId: persona.id,
-      profile: optimisticProfile,
-      isLoading: false,
-    });
-
-    // 2. Establish authenticated Supabase session in the background
-    const { session, error } = await authenticateDevSession(persona.phone, persona.name);
-    if (error || !session) {
-      console.warn('loginWithPersona dev session error:', error);
-      return;
-    }
-
-    // 3. Ensure profile exists in Supabase database
-    let { data: profile } = await supabase
-      .from('profiles')
-      .select(PROFILE_COLUMNS)
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    if (!profile) {
-      const { data: createdProfile } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('profiles')
-        .insert({
-          id: session.user.id,
-          phone: persona.phone,
-          name: persona.name,
-          birth_date: persona.birthDate,
-          gender: persona.gender,
-          interests: persona.interests,
-          preferred_languages: persona.preferredLanguages,
-          bio: persona.bio,
-          is_verified: persona.isVerified,
-          trust_score: persona.trustScore,
-          interaction_count: 5,
-        })
-        .select(PROFILE_COLUMNS)
-        .single();
-      profile = createdProfile;
-    }
+        .select('id, name, avatar_url, is_verified, trust_score')
+        .order('created_at', { ascending: false });
 
-    set({
-      session,
-      user: session.user,
-      profile: profile || optimisticProfile,
-      activePersonaId: persona.id,
-      isLoading: false,
-    });
+      if (error) {
+        console.warn('loadDevUsers error:', error.message);
+        return;
+      }
+
+      set({ devUsers: data ?? [] });
+    } catch (err) {
+      console.warn('loadDevUsers failed:', err);
+    }
+  },
+
+  switchDevUser: async (userId: string) => {
+    if (!isDevAuthEnabled) return; // Hard security lock: dev tools disabled in production
+    if (get().user?.id === userId) return; // Already acting as this account
+
+    set({ isLoading: true });
+
+    try {
+      // Mints an authentic session for the target account server-side. The
+      // phone number (the only credential) never leaves the Edge Function.
+      const { data, error } = await supabase.functions.invoke('dev-phone-login', {
+        body: { userId },
+      });
+
+      if (error || !data?.session) {
+        console.warn(
+          'switchDevUser error:',
+          error?.message ?? 'Dev session switch is unavailable'
+        );
+        set({ isLoading: false });
+        return;
+      }
+
+      const { error: sessionError } = await supabase.auth.setSession(data.session);
+      if (sessionError) {
+        console.warn('switchDevUser setSession error:', sessionError.message);
+        set({ isLoading: false });
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select(PROFILE_COLUMNS)
+        .eq('id', data.session.user.id)
+        .maybeSingle();
+
+      set({
+        session: data.session,
+        user: data.session.user,
+        profile: profile ?? null,
+        activeDevUserId: data.session.user.id,
+        isLoading: false,
+      });
+    } catch (err) {
+      console.warn('switchDevUser failed:', err);
+      set({ isLoading: false });
+    }
   },
 }));

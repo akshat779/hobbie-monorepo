@@ -17,8 +17,8 @@ interface SeedSquadSpec {
  * Uses real PostGIS geometries and fresh 2-3 hour TTLs so they render accurately on the radar.
  *
  * RLS note: the `activities` insert policy strictly enforces
- * `WITH CHECK (auth.uid() = host_id)`. The previous implementation hardcoded
- * `DEV_PERSONAS[*].id` as the host, which can never match the authenticated
+ * `WITH CHECK (auth.uid() = host_id)`. A previous implementation hardcoded a
+ * fixture persona id as the host, which could never match the authenticated
  * session (dev login provisions auth users with generated UUIDs), so every
  * insert was rejected. Every generated squad is therefore attributed to the
  * active authenticated session instead of a detached mock identity.

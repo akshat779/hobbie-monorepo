@@ -1,8 +1,14 @@
 import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { supabase } from './supabase';
 
 /** Public Storage bucket that holds user profile photos. */
 export const AVATAR_BUCKET = 'avatars';
+
+/** Longest-edge cap for an uploaded photo, in pixels. */
+export const MAX_PHOTO_DIMENSION = 1600;
+/** JPEG quality used when re-encoding a picked photo. */
+export const PHOTO_JPEG_QUALITY = 0.8;
 
 const MIME_EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -47,6 +53,45 @@ export interface PickedAvatar {
   uri: string;
   mimeType: string;
   fileName: string;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Normalizes any picked image (including iOS HEIC/HEIF) into a downscaled,
+ * compressed JPEG using the native manipulator. This keeps uploads well within
+ * the bucket's size limit and guarantees the result renders on every platform,
+ * so we never have to reject a format or a large file outright.
+ */
+export async function preparePhoto(
+  image: PickedAvatar
+): Promise<{ image?: PickedAvatar; error?: string }> {
+  try {
+    const context = ImageManipulator.manipulate(image.uri);
+    const isPortrait =
+      image.height !== undefined && image.width !== undefined && image.height > image.width;
+    context.resize(isPortrait ? { height: MAX_PHOTO_DIMENSION } : { width: MAX_PHOTO_DIMENSION });
+
+    const rendered = await context.renderAsync();
+    const result = await rendered.saveAsync({
+      compress: PHOTO_JPEG_QUALITY,
+      format: SaveFormat.JPEG,
+    });
+
+    return {
+      image: {
+        uri: result.uri,
+        mimeType: 'image/jpeg',
+        fileName: `photo-${Date.now()}.jpg`,
+        width: result.width,
+        height: result.height,
+      },
+    };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'Could not process the selected image.',
+    };
+  }
 }
 
 /** Resolve a Storage-safe file extension for a picked image. */
@@ -90,20 +135,14 @@ export async function pickAvatarImage(): Promise<{
   }
 
   const asset = result.assets[0]!;
-  const mimeType = normalizeAvatarMimeType(asset.mimeType, asset.fileName);
-  if (!mimeType) {
-    return {
-      error: 'Unsupported image format. Choose a JPEG, PNG, or WebP photo.',
-    };
-  }
-
-  return {
-    image: {
-      uri: asset.uri,
-      mimeType,
-      fileName: asset.fileName ?? `avatar.${extensionForImage(mimeType)}`,
-    },
-  };
+  // Re-encode to JPEG up front so HEIC/HEIF and oversized originals work too.
+  return preparePhoto({
+    uri: asset.uri,
+    mimeType: asset.mimeType ?? '',
+    fileName: asset.fileName ?? 'avatar.jpg',
+    width: asset.width,
+    height: asset.height,
+  });
 }
 
 export interface UploadAvatarParams {
@@ -111,14 +150,12 @@ export interface UploadAvatarParams {
   image: PickedAvatar;
 }
 
-/**
- * Uploads a picked image to `<userId>/avatar.<ext>` in the public `avatars`
- * bucket and returns the public URL (with a cache-busting version param).
- */
-export async function uploadAvatarImage({
-  userId,
-  image,
-}: UploadAvatarParams): Promise<{ url?: string; error?: string }> {
+/** Uploads a picked image to an arbitrary path in the public `avatars` bucket. */
+async function uploadToAvatars(
+  userId: string,
+  path: string,
+  image: PickedAvatar
+): Promise<{ url?: string; error?: string }> {
   if (!userId) {
     return { error: 'You must be signed in to upload a profile picture' };
   }
@@ -134,8 +171,6 @@ export async function uploadAvatarImage({
     if (!contentType) {
       return { error: 'Unsupported image format. Choose a JPEG, PNG, or WebP photo.' };
     }
-    const extension = extensionForImage(contentType, image.fileName);
-    const path = `${userId}/avatar.${extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from(AVATAR_BUCKET)
@@ -155,4 +190,81 @@ export async function uploadAvatarImage({
       error: err instanceof Error ? err.message : 'Failed to upload profile picture',
     };
   }
+}
+
+/**
+ * Uploads a picked image to `<userId>/avatar.<ext>` in the public `avatars`
+ * bucket and returns the public URL (with a cache-busting version param).
+ */
+export async function uploadAvatarImage({
+  userId,
+  image,
+}: UploadAvatarParams): Promise<{ url?: string; error?: string }> {
+  const contentType = normalizeAvatarMimeType(image.mimeType, image.fileName);
+  if (!contentType) {
+    return { error: 'Unsupported image format. Choose a JPEG, PNG, or WebP photo.' };
+  }
+  const extension = extensionForImage(contentType, image.fileName);
+  return uploadToAvatars(userId, `${userId}/avatar.${extension}`, image);
+}
+
+/**
+ * Requests photo-library permission and launches the native picker for a
+ * gallery photo (portrait, uncropped). Returns `{}` when cancelled.
+ */
+export async function pickGalleryImage(): Promise<{
+  image?: PickedAvatar;
+  error?: string;
+}> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    return {
+      error: 'Photo access is needed to add profile photos. Enable it in Settings.',
+    };
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: false,
+    quality: 0.8,
+  });
+
+  if (result.canceled || !result.assets?.length) {
+    return {};
+  }
+
+  const asset = result.assets[0]!;
+  // Re-encode to JPEG up front so HEIC/HEIF and oversized originals work too.
+  return preparePhoto({
+    uri: asset.uri,
+    mimeType: asset.mimeType ?? '',
+    fileName: asset.fileName ?? 'photo.jpg',
+    width: asset.width,
+    height: asset.height,
+  });
+}
+
+export interface UploadProfilePhotoParams {
+  userId: string;
+  image: PickedAvatar;
+  /** Slot index so each photo in the gallery gets a distinct Storage object. */
+  index: number;
+}
+
+/**
+ * Uploads a gallery photo to `<userId>/photos/photo-<index>-<ts>.<ext>` and
+ * returns the public URL. A unique filename per upload avoids stale CDN copies.
+ */
+export async function uploadProfilePhoto({
+  userId,
+  image,
+  index,
+}: UploadProfilePhotoParams): Promise<{ url?: string; error?: string }> {
+  const contentType = normalizeAvatarMimeType(image.mimeType, image.fileName);
+  if (!contentType) {
+    return { error: 'Unsupported image format. Choose a JPEG, PNG, or WebP photo.' };
+  }
+  const extension = extensionForImage(contentType, image.fileName);
+  const path = `${userId}/photos/photo-${index}-${Date.now()}.${extension}`;
+  return uploadToAvatars(userId, path, image);
 }

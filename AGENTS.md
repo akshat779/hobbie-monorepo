@@ -10,6 +10,7 @@ This repository follows the architecture, design system, and development guideli
 4. **No Untyped Code:** Maintain strict TypeScript everywhere (`noImplicitAny`, exact DTO validation with Zod).
 5. **Testing First:** Every business logic function in `apps/server` or `packages/shared` must have a corresponding `.test.ts` with Vitest. Mobile UI flows should be accompanied by Maestro YAML specs.
 6. **Multi-User Dev Personas:** Ensure mock authentication and `__DEV__` persona switcher utilities remain intact to facilitate multi-user simulator testing.
+7. **Platform Scope — iOS & Android Only (STRICT):** Hobbie ships to **iOS and Android only**. Web is **not** a supported target. Do not treat web-only gaps as bugs, do not add web branches/fallbacks, and do not gate work on "does it work on web". Every cross-platform concern must be evaluated strictly as **iOS vs Android** (e.g. Apple Maps vs Google Maps, Liquid Glass availability, `KeyboardAvoidingView` behavior, native sheet chrome).
 
 ---
 

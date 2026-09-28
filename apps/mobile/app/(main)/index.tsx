@@ -18,14 +18,16 @@ import {
   DiscoveryActivity,
   selectedCategoryToInterestIds,
 } from '../../src/features/discovery/types';
-import { PulsePin } from '../../src/components/map/PulsePin';
+import {
+  ActivityPin,
+  ACTIVITY_PIN_ANCHOR,
+} from '../../src/components/map/ActivityPin';
 import { UserLocationPin } from '../../src/components/map/UserLocationPin';
 import { useShallow } from 'zustand/react/shallow';
 import { CategoryFilterBar } from '../../src/features/discovery/CategoryFilterBar';
 import { ActivityBottomSheet } from '../../src/features/discovery/ActivityBottomSheet';
 import { useDiscoveryFiltersStore } from '../../src/features/discovery/useDiscoveryFiltersStore';
 import { DiscoveryEmptyState } from '../../src/features/discovery/DiscoveryEmptyState';
-import { DevPersonaSwitcher } from '../../src/components/dev/DevPersonaSwitcher';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
 import { useAuthStore } from '../../src/features/auth/useAuthStore';
 import { subscribeToPostgresChanges } from '../../src/services/realtimePool';
@@ -38,7 +40,7 @@ export default function DiscoveryMapScreen() {
   const mapRef = useRef<MapView>(null);
 
   const { coords: userLocation, cityName, refreshLocation } = useUserLocation();
-  const authUser = useAuthStore((s) => s.user);
+  const sessionUser = useAuthStore((s) => s.session?.user);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] =
@@ -46,6 +48,7 @@ export default function DiscoveryMapScreen() {
 
   // One-time marker rasterization lock to prevent continuous 60fps bitmap allocation
   const [userPinTracking, setUserPinTracking] = useState(true);
+  const [activityPinTracking, setActivityPinTracking] = useState(true);
 
   useEffect(() => {
     setUserPinTracking(true);
@@ -92,10 +95,20 @@ export default function DiscoveryMapScreen() {
       longitude: userLocation.longitude,
       radiusKm: filters.radiusKm,
       interestIds,
-      enabled: Boolean(authUser) && !isAuthLoading,
+      enabled: Boolean(sessionUser) && !isAuthLoading,
     },
     { gender: filters.gender, ageGroup: filters.ageGroup }
   );
+
+  // Re-rasterize activity markers briefly when the pin set or selection changes
+  // so emoji, urgency colour and the selected outline are reflected.
+  useEffect(() => {
+    setActivityPinTracking(true);
+    const timer = setTimeout(() => {
+      setActivityPinTracking(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [activities.length, selectedActivity?.id]);
 
   const mapRegion = {
     latitude: userLocation.latitude,
@@ -156,28 +169,29 @@ export default function DiscoveryMapScreen() {
             <UserLocationPin />
           </Marker>
 
-          {/* Live Squad Animated Pulse Pins (Zero Continuous Snapshotting) */}
-          {activities.map((activity) => (
-            <Marker
-              key={activity.id}
-              coordinate={{
-                latitude: activity.fuzzedLocation.latitude,
-                longitude: activity.fuzzedLocation.longitude,
-              }}
-              anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={false}
-              tracksInfoWindowChanges={false}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleSelectActivity(activity);
-              }}
-            >
-              <PulsePin
-                activity={activity}
-                isSelected={selectedActivity?.id === activity.id}
-              />
-            </Marker>
-          ))}
+          {/* Live Squad Teardrop Pins (Bounded Bitmap Rasterization) */}
+          {activities.map((activity) => {
+            const isSelected = selectedActivity?.id === activity.id;
+            return (
+              <Marker
+                key={activity.id}
+                coordinate={{
+                  latitude: activity.fuzzedLocation.latitude,
+                  longitude: activity.fuzzedLocation.longitude,
+                }}
+                anchor={ACTIVITY_PIN_ANCHOR}
+                zIndex={isSelected ? 500 : 1}
+                tracksViewChanges={activityPinTracking}
+                tracksInfoWindowChanges={false}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleSelectActivity(activity);
+                }}
+              >
+                <ActivityPin activity={activity} isSelected={isSelected} />
+              </Marker>
+            );
+          })}
         </MapView>
 
         {/* Floating Top Radar Header & Category Filter Bar */}
@@ -292,9 +306,6 @@ export default function DiscoveryMapScreen() {
             style={{ bottom: Math.max(insets.bottom, 12) + 76 }}
             className="absolute right-5 z-40 items-end pointer-events-box-none"
           >
-            {/* Dev Persona Switcher FAB */}
-            <DevPersonaSwitcher variant="fab" />
-
             {/* Floating Recenter Radar Button */}
             <TouchableOpacity
               accessibilityRole="button"

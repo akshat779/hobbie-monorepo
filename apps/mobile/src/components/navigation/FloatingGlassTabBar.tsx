@@ -10,6 +10,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Map, Rss, Users, User } from 'lucide-react-native';
+import { useTabBadges } from '../../features/notifications/useTabBadges';
+
+/** Rendered height of the floating dock, used to compute scroll clearance. */
+export const FLOATING_TAB_BAR_HEIGHT = 68;
+
+/**
+ * Bottom padding a scrollable tab screen must apply so its final content is not
+ * obscured by the absolutely-positioned floating dock.
+ */
+export function useFloatingTabBarClearance(): number {
+  const insets = useSafeAreaInsets();
+  const bottomOffset = insets.bottom > 0 ? Math.max(insets.bottom - 16, 14) : 12;
+  return bottomOffset + FLOATING_TAB_BAR_HEIGHT + 28;
+}
 
 const TAB_CONFIG: Record<
   string,
@@ -43,6 +57,7 @@ export function FloatingGlassTabBar({
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const hasLiquidGlass = Platform.OS === 'ios' && isLiquidGlassAvailable();
+  const badges = useTabBadges();
 
   // Grounded floating position framing the iOS home bar cleanly
   const bottomOffset = insets.bottom > 0 ? Math.max(insets.bottom - 16, 14) : 12;
@@ -55,7 +70,7 @@ export function FloatingGlassTabBar({
         { bottom: bottomOffset },
       ]}
     >
-      <View style={styles.dockContainer}>
+      <View style={[styles.dockContainer, hasLiquidGlass && styles.dockContainerGlass]}>
         {/* Apple Liquid Glass Backdrop if available */}
         {hasLiquidGlass && (
           <GlassView
@@ -73,6 +88,7 @@ export function FloatingGlassTabBar({
 
           const isFocused = state.index === index;
           const iconColor = isFocused ? '#F5F0FF' : '#A99BC2';
+          const showBadge = badges[route.name as keyof typeof badges] ?? false;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -98,7 +114,9 @@ export function FloatingGlassTabBar({
               key={route.key}
               accessibilityRole="tab"
               accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={options.tabBarAccessibilityLabel || config.label}
+              accessibilityLabel={`${
+                options.tabBarAccessibilityLabel || config.label
+              }${showBadge ? ', new notifications' : ''}`}
               testID={options.tabBarButtonTestID}
               onPress={onPress}
               onLongPress={onLongPress}
@@ -112,7 +130,10 @@ export function FloatingGlassTabBar({
                   isFocused && styles.tabCapsuleActive,
                 ]}
               >
-                {config.renderIcon(iconColor)}
+                <View style={styles.iconWrap}>
+                  {config.renderIcon(iconColor)}
+                  {showBadge && <View style={styles.tabBadgeDot} />}
+                </View>
                 <Text
                   style={[
                     styles.tabLabel,
@@ -142,7 +163,7 @@ const styles = StyleSheet.create({
   dockContainer: {
     width: '100%',
     maxWidth: 420,
-    height: 68,
+    height: FLOATING_TAB_BAR_HEIGHT,
     borderRadius: 9999,
     borderWidth: 1,
     borderColor: '#2C2739',
@@ -152,6 +173,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: 6,
     boxShadow: '0 4px 14px rgba(0, 0, 0, 0.4)',
+  },
+  // The GlassView is drawn above this container, so an opaque background here is
+  // all it has to refract — it would render as a flat dark surface. Drop the fill
+  // when Liquid Glass is active so the map behind shows through the glass.
+  dockContainerGlass: {
+    backgroundColor: 'transparent',
   },
   tabButton: {
     flex: 1,
@@ -169,6 +196,20 @@ const styles = StyleSheet.create({
   },
   tabCapsuleActive: {
     backgroundColor: 'rgba(123, 47, 247, 0.25)',
+  },
+  iconWrap: {
+    position: 'relative',
+  },
+  tabBadgeDot: {
+    position: 'absolute',
+    top: -2,
+    right: -3,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#C77DFF',
+    borderWidth: 2,
+    borderColor: '#17131F',
   },
   tabLabel: {
     fontSize: 11,

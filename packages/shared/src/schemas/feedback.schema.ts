@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ReportReasonSchema } from './moderation.schema.js';
 
 export const SubmitFeedbackSchema = z.object({
   activityId: z.string().uuid(),
@@ -11,14 +12,7 @@ export const SubmitFeedbackSchema = z.object({
 export const ReportUserSchema = z.object({
   targetUserId: z.string().uuid(),
   activityId: z.string().uuid().optional(),
-  reason: z.enum([
-    'harassment',
-    'catfishing',
-    'no_show',
-    'unsafe_behavior',
-    'spam',
-    'other',
-  ]),
+  reason: ReportReasonSchema,
   notes: z.string().max(500).optional(),
 });
 

@@ -12,7 +12,7 @@ export interface PostgresChangeConfig {
 /** Owns channel naming, stale-channel replacement, and teardown in one place. */
 export function subscribeToPostgresChanges(
   key: string,
-  config: PostgresChangeConfig,
+  config: PostgresChangeConfig | PostgresChangeConfig[],
   onPayload: (payload: unknown) => void,
   onError?: (message: string) => void,
 ): () => void {
@@ -21,14 +21,19 @@ export function subscribeToPostgresChanges(
     void supabase.removeChannel(existing);
   }
 
-  const channel = supabase
-    .channel(key)
-    .on('postgres_changes', config, (payload) => onPayload(payload))
-    .subscribe((status, error) => {
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        onError?.(error?.message ?? `Realtime ${status.toLowerCase()}`);
-      }
-    });
+  // Multiple filters can be AND-combined as separate `.on` bindings on a single
+  // channel (one channel vs. one per filter).
+  const configs = Array.isArray(config) ? config : [config];
+  const channel = configs.reduce(
+    (ch, cfg) => ch.on('postgres_changes', cfg, (payload) => onPayload(payload)),
+    supabase.channel(key)
+  );
+
+  channel.subscribe((status, error) => {
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      onError?.(error?.message ?? `Realtime ${status.toLowerCase()}`);
+    }
+  });
 
   return () => {
     void supabase.removeChannel(channel);

@@ -25,6 +25,9 @@ export const VerifyOtpSchema = z.object({
 export const USER_GENDERS = ['male', 'female', 'non-binary', 'prefer-not-to-say'] as const;
 export const UserGenderSchema = z.enum(USER_GENDERS);
 
+/** Number of profile photos a user may upload (first one is the cover/avatar). */
+export const MAX_PROFILE_PHOTOS = 6;
+
 export const UserProfileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(50),
   birthDate: z
@@ -56,6 +59,11 @@ export const UserProfileSchema = z.object({
     .max(BIO_MAX_LENGTH, `Bio must be ${BIO_MAX_LENGTH} characters or fewer`)
     .optional(),
   avatarUrl: z.string().url().optional(),
+  photoUrls: z
+    .array(z.string().url())
+    .max(MAX_PROFILE_PHOTOS, `Up to ${MAX_PROFILE_PHOTOS} photos allowed`)
+    .refine((urls) => new Set(urls).size === urls.length, 'Photos must be unique')
+    .optional(),
 });
 
 export const UserSummarySchema = z.object({
@@ -68,7 +76,37 @@ export const UserSummarySchema = z.object({
   interactionCount: z.number().int().nonnegative(),
 });
 
+/**
+ * Read-only public profile of another user, assembled from the profile columns
+ * the Data API exposes (never phone or location). Used by the join-request
+ * review flow so a host can evaluate a requester before accepting.
+ */
+export const PublicProfileSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Birth date must be YYYY-MM-DD'),
+  gender: UserGenderSchema,
+  interests: z.array(z.enum(INTEREST_IDS)),
+  bio: z.string().nullable(),
+  preferredLanguages: z.array(z.enum(LANGUAGE_CODES)),
+  avatarUrl: z.string().url().nullable(),
+  photoUrls: z.array(z.string().url()),
+  isVerified: z.boolean(),
+  trustScore: z.number().min(1).max(5),
+  interactionCount: z.number().int().nonnegative(),
+  ratingsCount: z.number().int().nonnegative(),
+  createdAt: z.string(),
+});
+
+/** Fuzzed (~100 m) distance between the caller and another user. */
+export const FuzzedDistanceSchema = z.object({
+  available: z.boolean(),
+  distanceM: z.number().int().nonnegative().optional(),
+});
+
 export type PhoneAuthInput = z.infer<typeof PhoneAuthSchema>;
 export type VerifyOtpInput = z.infer<typeof VerifyOtpSchema>;
 export type UserProfileInput = z.infer<typeof UserProfileSchema>;
 export type UserSummary = z.infer<typeof UserSummarySchema>;
+export type PublicProfile = z.infer<typeof PublicProfileSchema>;
+export type FuzzedDistance = z.infer<typeof FuzzedDistanceSchema>;
