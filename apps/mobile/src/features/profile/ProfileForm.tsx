@@ -13,14 +13,11 @@ import {
 } from 'react-native';
 import {
   ChevronLeft,
-  Camera,
   CalendarDays,
   Languages,
   Check,
 } from 'lucide-react-native';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
-import { Avatar } from '../../components/common/Avatar';
-import { pickAvatarImage, uploadAvatarImage, type PickedAvatar } from '../../services/avatar';
 import {
   BIO_MAX_LENGTH,
   INTEREST_CATEGORIES,
@@ -33,6 +30,7 @@ import {
   type UserProfileInput,
 } from '@hobbie/shared';
 import { GENDER_LABELS, getInterestIcon, type Gender } from './profileMeta';
+import { PhotoGrid } from './PhotoGrid';
 
 export interface ProfileFormValues {
   name?: string;
@@ -42,6 +40,7 @@ export interface ProfileFormValues {
   interests?: readonly InterestId[];
   preferredLanguages?: readonly LanguageCode[];
   avatarUrl?: string | null;
+  photoUrls?: readonly string[];
 }
 
 export interface ProfileFormProps {
@@ -151,10 +150,14 @@ export function ProfileForm({
   const [selectedLanguages, setSelectedLanguages] = useState<LanguageCode[]>(() =>
     initialValues?.preferredLanguages ? [...initialValues.preferredLanguages] : []
   );
-  const [pendingAvatar, setPendingAvatar] = useState<PickedAvatar | null>(null);
-  const [existingAvatarUrl] = useState<string | null>(initialValues?.avatarUrl ?? null);
-  const [avatarRemoved, setAvatarRemoved] = useState(false);
-  const [avatarError, setAvatarError] = useState('');
+  const [photoUrls, setPhotoUrls] = useState<string[]>(() =>
+    initialValues?.photoUrls?.length
+      ? [...initialValues.photoUrls]
+      : initialValues?.avatarUrl
+        ? [initialValues.avatarUrl]
+        : []
+  );
+  const [photoError, setPhotoError] = useState('');
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -195,8 +198,6 @@ export function ProfileForm({
 
   const markTouched = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }));
 
-  const displayedAvatarUrl = pendingAvatar?.uri ?? (avatarRemoved ? null : existingAvatarUrl);
-
   const toggleInterest = (id: InterestId) => {
     setErrorMsg('');
     setSelectedInterests((current) => {
@@ -218,28 +219,6 @@ export function ProfileForm({
     });
   };
 
-  const handlePickAvatar = async () => {
-    setAvatarError('');
-    const result = await pickAvatarImage();
-    if (result.error) {
-      setAvatarError(result.error);
-      return;
-    }
-    if (result.image) {
-      setPendingAvatar(result.image);
-      setAvatarRemoved(false);
-    }
-  };
-
-  const handleRemoveAvatar = () => {
-    setAvatarError('');
-    if (pendingAvatar) {
-      setPendingAvatar(null);
-      return;
-    }
-    setAvatarRemoved(true);
-  };
-
   const handleSubmit = async () => {
     setSubmitted(true);
     setErrorMsg('');
@@ -251,26 +230,8 @@ export function ProfileForm({
 
     setIsSubmitting(true);
     try {
-      let avatarUrl: string | undefined;
-
-      if (pendingAvatar) {
-        if (!userId) {
-          setErrorMsg('Session expired. Please sign in again.');
-          return;
-        }
-        const uploaded = await uploadAvatarImage({ userId, image: pendingAvatar });
-        if (uploaded.error || !uploaded.url) {
-          setErrorMsg(uploaded.error ?? 'Could not upload your photo. Try again.');
-          return;
-        }
-        avatarUrl = uploaded.url;
-      } else if (avatarRemoved) {
-        // Explicitly clear the stored photo.
-        avatarUrl = undefined;
-      } else if (existingAvatarUrl) {
-        // Preserve the existing photo when the user only edits other fields.
-        avatarUrl = existingAvatarUrl;
-      }
+      // The first gallery photo is the cover photo; an empty gallery clears it.
+      const avatarUrl = photoUrls[0] ?? undefined;
 
       const res = await onSubmit({
         name: name.trim(),
@@ -280,6 +241,7 @@ export function ProfileForm({
         preferredLanguages: selectedLanguages,
         bio: bio.trim() || undefined,
         avatarUrl,
+        photoUrls,
       });
 
       if (res.error) {
@@ -353,41 +315,21 @@ export function ProfileForm({
       >
         {header}
 
-        {/* Avatar */}
-        <View className="items-center mb-8">
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Add or change profile photo"
-            onPress={handlePickAvatar}
-            activeOpacity={0.85}
-            className="relative"
-          >
-            <Avatar
-              name={name.trim()}
-              url={displayedAvatarUrl}
-              size={96}
-              className="border border-hairline"
-            />
-            <View className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-signal-violet items-center justify-center border-2 border-void">
-              <Camera size={15} color="#F5F0FF" />
-            </View>
-          </TouchableOpacity>
-          <Text className="text-xs text-dusk mt-3">
-            {displayedAvatarUrl ? 'Tap to change your photo' : 'Add a photo (optional)'}
+        {/* Photos */}
+        <View className="mb-8">
+          <Text className="text-xs font-semibold uppercase tracking-wider text-dusk mb-3 ml-1">
+            Photos
           </Text>
-          {displayedAvatarUrl ? (
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Remove profile photo"
-              onPress={handleRemoveAvatar}
-              className="mt-1.5"
-            >
-              <Text className="text-2xs text-ember font-semibold">Remove photo</Text>
-            </TouchableOpacity>
-          ) : null}
-          {avatarError ? (
-            <Text className="text-xs text-ember font-medium mt-2 text-center">{avatarError}</Text>
-          ) : null}
+          <PhotoGrid
+            userId={userId}
+            photos={photoUrls}
+            onChange={(next) => {
+              setPhotoError('');
+              setPhotoUrls(next);
+            }}
+            error={photoError}
+            onError={setPhotoError}
+          />
         </View>
 
         {/* Display name */}

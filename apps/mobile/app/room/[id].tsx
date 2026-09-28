@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,20 +8,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Animated,
+  Modal,
+  BackHandler,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   Send,
   MapPin,
-  Clock,
   ShieldAlert,
   LogOut,
   CheckCircle2,
   Sparkles,
-  ExternalLink,
+  MoreHorizontal,
+  Crown,
 } from 'lucide-react-native';
 
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,17 +30,22 @@ import { useAuthStore } from '../../src/features/auth/useAuthStore';
 import {
   useRoomMetadataQuery,
   useRoomMessagesQuery,
+  useRoomMembersQuery,
   useSendRoomMessageMutation,
   useActivityExactLocationQuery,
   useConcludeActivityMutation,
   setupRealtimeRoomSync,
 } from '../../src/features/room/useRoomQuery';
+import { RoomMembersSheet } from '../../src/features/room/RoomMembersSheet';
 import { VenueLocationModal } from '../../src/features/room/VenueLocationModal';
 import { leaveSquad } from '../../src/services/handshake';
 import { queryKeys } from '../../src/services/queryKeys';
 import { MySquadItem } from '../../src/features/activity/useMyActivitiesQuery';
+import { Avatar } from '../../src/components/common/Avatar';
+import { useBackToMySquads } from '../../src/hooks/useBackToMySquads';
 
-import { useCountdown } from '../../src/hooks/useCountdown';
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function ActiveEphemeralRoomScreen() {
   const router = useRouter();
@@ -52,45 +58,35 @@ export default function ActiveEphemeralRoomScreen() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
   const [showVenueModal, setShowVenueModal] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   const { data: roomMeta } = useRoomMetadataQuery(id);
   const { data: messages = [], error: messagesQueryError } = useRoomMessagesQuery(id);
+  const { data: members = [] } = useRoomMembersQuery(id);
   const { data: exactLocation, isLoading: isLocationLoading } = useActivityExactLocationQuery(id);
   const sendMutation = useSendRoomMessageMutation(id || '');
   const concludeMutation = useConcludeActivityMutation(id || '');
 
   const title = roomMeta?.title || 'Squad Chat';
   const venueName = roomMeta?.venueName;
-  const expiresAt = roomMeta?.expiresAt || null;
   const isHost = currentUserId === roomMeta?.hostId;
   const isConcluded = roomMeta?.status === 'concluded';
 
-  const { isExpired, formattedTtl, urgency, theme } = useCountdown(expiresAt, 5000);
+  const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
-  // Burning ember pulse animation when expiring (Native Driver Safe)
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (urgency === 'expiring' && !isExpired && !isConcluded) {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 0.4,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      loop.start();
-      return () => loop.stop();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [urgency, isExpired, isConcluded, pulseAnim]);
+  // Back always returns to My Squads using the reverse (pop) transition.
+  const goBackToMySquads = useBackToMySquads();
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        goBackToMySquads();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [goBackToMySquads])
+  );
 
   // Realtime subscription directly syncing with TanStack Query cache
   useEffect(() => {
@@ -108,6 +104,14 @@ export default function ActiveEphemeralRoomScreen() {
     };
   }, [id, currentUserId, queryClient]);
 
+  const openMemberProfile = useCallback(
+    (userId: string) => {
+      if (!UUID_PATTERN.test(userId)) return;
+      router.push(`/profile/${userId}`);
+    },
+    [router]
+  );
+
   const handleSend = useCallback(async () => {
     if (!id || !input.trim()) return;
     const messageContent = input.trim();
@@ -123,6 +127,7 @@ export default function ActiveEphemeralRoomScreen() {
 
   const handleHostConclude = useCallback(() => {
     if (!id || !currentUserId) return;
+    setShowActions(false);
     Alert.alert(
       'Conclude Activity',
       'Are you sure you want to conclude this meetup? This will end the meetup for all participants and open feedback.',
@@ -146,6 +151,7 @@ export default function ActiveEphemeralRoomScreen() {
 
   const handleLeaveSquad = useCallback(() => {
     if (!id || !currentUserId || isLeaving) return;
+    setShowActions(false);
 
     Alert.alert(
       'Leave Squad',
@@ -168,18 +174,16 @@ export default function ActiveEphemeralRoomScreen() {
             );
 
             // 3. Immediately transition UI away from the room (0ms latency)
-            router.replace('/(main)/my-activities');
+            goBackToMySquads();
 
             // 4. Fire background RPC mutation with rollback on error
             try {
               const res = await leaveSquad(id, currentUserId);
               if (!res.success) {
-                // Rollback cache and inform user
                 queryClient.setQueryData(mySquadsKey, previousSquads);
                 Alert.alert('Unable to leave squad', res.error || 'Please check your connection.');
                 return;
               }
-              // Succeeded: invalidate related queries to confirm consistency
               void queryClient.invalidateQueries({ queryKey: mySquadsKey });
               void queryClient.invalidateQueries({ queryKey: queryKeys.room.meta(id) });
               void queryClient.invalidateQueries({ queryKey: queryKeys.room.messages(id) });
@@ -197,122 +201,81 @@ export default function ActiveEphemeralRoomScreen() {
         },
       ]
     );
-  }, [id, currentUserId, isLeaving, queryClient, router]);
+  }, [id, currentUserId, isLeaving, queryClient, goBackToMySquads]);
+
+  const stackMembers = members.slice(0, 4);
+  const overflowCount = Math.max(0, members.length - stackMembers.length);
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-void"
     >
-      {/* Ephemeral Header */}
+      {/* Header: back | centered title + member stack | overflow */}
       <View
         style={{ paddingTop: Math.max(insets.top, 16) }}
-        className="bg-ink border-b border-hairline px-5 pb-3"
+        className="bg-ink border-b border-hairline px-4 pb-3"
       >
-        <View className="flex-row justify-between items-center mb-2">
+        <View className="flex-row items-center">
           <TouchableOpacity
             accessibilityRole="button"
-            accessibilityLabel="Back to main"
-            onPress={() => router.replace('/(main)')}
-            className="w-11 h-11 rounded-full bg-ink-raised border border-hairline items-center justify-center"
+            accessibilityLabel="Back to My Squads"
+            onPress={goBackToMySquads}
+            className="w-10 h-10 rounded-full bg-ink-raised border border-hairline items-center justify-center"
             activeOpacity={0.7}
           >
             <ChevronLeft size={20} color="#F5F0FF" />
           </TouchableOpacity>
 
-          <View className="flex-row items-center gap-2">
-            {isConcluded ? (
-              <View className="flex-row items-center px-3 py-1.5 rounded-full border border-signal-violet/40 bg-signal-violet/10">
-                <CheckCircle2 size={12} color="#C77DFF" />
-                <Text className="text-pulse-lilac font-mono text-2xs font-bold ml-1.5">
-                  Meetup Concluded
-                </Text>
-              </View>
-            ) : (
-              <Animated.View
-                style={[
-                  {
-                    borderColor: isExpired
-                      ? '#7B2FF7'
-                      : urgency === 'expiring'
-                      ? '#FF6B5E'
-                      : theme.badgeBorder,
-                    backgroundColor: isExpired
-                      ? '#17131F'
-                      : urgency === 'expiring'
-                      ? '#2A1115'
-                      : theme.bg,
-                    opacity: pulseAnim,
-                  },
-                ]}
-                className="flex-row items-center px-3 py-1.5 rounded-full border"
-              >
-                <Clock
-                  size={12}
-                  color={
-                    isExpired ? '#C77DFF' : urgency === 'expiring' ? '#FF6B5E' : theme.primary
-                  }
-                />
-                <Text
-                  style={{
-                    color: isExpired
-                      ? '#C77DFF'
-                      : urgency === 'expiring'
-                      ? '#FFB4AB'
-                      : theme.badgeText,
-                  }}
-                  className="font-mono text-2xs font-bold ml-1.5"
-                >
-                  {isExpired ? 'Squad Room Active' : `Joining closes in ${formattedTtl}`}
-                </Text>
-              </Animated.View>
-            )}
-
-            {isHost && !isConcluded && (
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Conclude activity"
-                disabled={concludeMutation.isPending}
-                onPress={handleHostConclude}
-                className="px-2.5 py-1.5 rounded-full bg-signal-violet/20 border border-signal-violet flex-row items-center active:bg-signal-violet/30"
-              >
-                <CheckCircle2 size={13} color="#C77DFF" style={{ marginRight: 4 }} />
-                <Text className="text-pulse-lilac font-display font-bold text-2xs">
-                  Conclude
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Leave squad"
-              disabled={isLeaving}
-              onPress={handleLeaveSquad}
-              className="w-9 h-9 rounded-full bg-ink-raised border border-hairline items-center justify-center active:bg-ember/20"
-              activeOpacity={0.7}
-            >
-              <LogOut size={16} color="#FF6B5E" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <Text className="text-moonlight font-display text-lg font-bold">
-          {title}
-        </Text>
-        {venueName ? (
           <TouchableOpacity
             accessibilityRole="button"
-            accessibilityLabel="View venue location"
-            onPress={() => setShowVenueModal(true)}
-            className="flex-row items-center mt-1 self-start bg-ink-raised px-2.5 py-1 rounded-full border border-hairline active:bg-signal-violet/20"
+            accessibilityLabel="View squad members"
+            onPress={() => setShowMembers(true)}
+            className="flex-1 items-center px-2"
+            activeOpacity={0.7}
           >
-            <MapPin size={12} color="#D2BBFF" />
-            <Text className="text-signal-violet-light font-body text-xs ml-1 font-medium">
-              Venue: {venueName}
+            <View className="flex-row items-center">
+              {stackMembers.map((member, index) => (
+                <View
+                  key={member.id}
+                  style={{ marginLeft: index === 0 ? 0 : -11 }}
+                  className="rounded-full border-2 border-ink"
+                >
+                  <Avatar name={member.name} url={member.avatarUrl ?? null} size={30} />
+                </View>
+              ))}
+              {overflowCount > 0 ? (
+                <View
+                  style={{ marginLeft: -11 }}
+                  className="w-[30px] h-[30px] rounded-full border-2 border-ink bg-ink-raised items-center justify-center"
+                >
+                  <Text className="text-moonlight text-2xs font-bold">+{overflowCount}</Text>
+                </View>
+              ) : null}
+              <Text className="text-dusk text-2xs ml-2">
+                {members.length} {members.length === 1 ? 'member' : 'members'}
+              </Text>
+            </View>
+
+            <Text
+              numberOfLines={1}
+              style={{ maxWidth: '65%' }}
+              className="text-moonlight font-display text-base font-bold mt-1"
+            >
+              {title}
             </Text>
-            <ExternalLink size={10} color="#A99BC2" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
-        ) : null}
+
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Squad actions"
+            onPress={() => setShowActions(true)}
+            className="w-10 h-10 rounded-full bg-ink-raised border border-hairline items-center justify-center"
+            activeOpacity={0.7}
+          >
+            <MoreHorizontal size={20} color="#F5F0FF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Post-Concluded Feedback Banner */}
@@ -336,47 +299,76 @@ export default function ActiveEphemeralRoomScreen() {
       )}
 
       {/* Messages Feed */}
-      <ScrollView testID="room-messages"
-        className="flex-1 px-4 py-4"
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView testID="room-messages" className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
         {roomError ? <Text className="text-ember text-xs mb-3">{roomError}</Text> : null}
-        <View className="flex-row items-center justify-center p-2.5 rounded-2xl bg-ink border border-hairline mb-4">
-          <ShieldAlert size={12} color="#A99BC2" />
-          <Text className="text-dusk text-2xs font-mono ml-1.5">
-            Squad Room • Only accepted members and host can chat.
-          </Text>
+
+        {/* System line anchoring the conversation */}
+        <View className="items-center mb-4">
+          <View className="flex-row items-center">
+            <ShieldAlert size={11} color="#A99BC2" />
+            <Text className="text-dusk/70 text-2xs font-mono ml-1.5">
+              Squad room • only accepted members and the host can chat.
+            </Text>
+          </View>
         </View>
 
         {messages.map((m) => {
           const isMe = m.senderId === currentUserId || m.senderName === 'You';
-          return (
-            <View
-              key={m.id}
-              className={`mb-3 max-w-[80%] ${isMe ? 'self-end' : 'self-start'}`}
-            >
-              <View className="flex-row items-center mb-1">
-                <Text className="text-dusk font-bold text-2xs mr-1.5">
-                  {m.senderName}
+          const member = memberById.get(m.senderId);
+          const displayName = member?.name ?? m.senderName;
+          const isHostMsg = member?.isHost ?? m.isHost;
+          const canOpen = UUID_PATTERN.test(m.senderId);
+
+          if (isMe) {
+            return (
+              <View key={m.id} className="mb-3 items-end">
+                <Text className="text-dusk/60 text-2xs font-mono mb-1">
+                  {new Date(m.createdAt).toLocaleTimeString([], {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
                 </Text>
-                <Text className="text-dusk/60 text-2xs font-mono">
-                  {new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                </Text>
+                <View className="max-w-[80%] p-3.5 rounded-2xl rounded-tr-none bg-signal-violet">
+                  <Text className="text-sm text-moonlight font-medium">{m.content}</Text>
+                </View>
               </View>
-              <View
-                className={`p-3.5 rounded-2xl ${
-                  isMe
-                    ? 'bg-signal-violet rounded-tr-none'
-                    : 'bg-ink border border-hairline rounded-tl-none'
-                }`}
+            );
+          }
+
+          return (
+            <View key={m.id} className="mb-3 flex-row items-end">
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`View ${displayName}'s profile`}
+                onPress={() => openMemberProfile(m.senderId)}
+                disabled={!canOpen}
+                className="mr-2"
+                activeOpacity={0.7}
               >
-                <Text
-                  className={`text-sm ${
-                    isMe ? 'text-moonlight font-medium' : 'text-moonlight font-normal'
-                  }`}
+                <Avatar name={displayName} url={member?.avatarUrl ?? null} size={28} />
+              </TouchableOpacity>
+
+              <View className="max-w-[78%] items-start">
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={`View ${displayName}'s profile`}
+                  onPress={() => openMemberProfile(m.senderId)}
+                  disabled={!canOpen}
+                  className="flex-row items-center mb-1"
+                  activeOpacity={0.7}
                 >
-                  {m.content}
-                </Text>
+                  <Text className="text-dusk font-bold text-2xs mr-1.5">{displayName}</Text>
+                  {isHostMsg ? <Crown size={10} color="#C77DFF" /> : null}
+                  <Text className="text-dusk/60 text-2xs font-mono ml-1.5">
+                    {new Date(m.createdAt).toLocaleTimeString([], {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </TouchableOpacity>
+                <View className="p-3.5 rounded-2xl rounded-tl-none bg-ink border border-hairline">
+                  <Text className="text-sm text-moonlight">{m.content}</Text>
+                </View>
               </View>
             </View>
           );
@@ -409,6 +401,74 @@ export default function ActiveEphemeralRoomScreen() {
           <Send size={16} color="#F5F0FF" />
         </TouchableOpacity>
       </View>
+
+      {/* Members sheet */}
+      <RoomMembersSheet visible={showMembers} roomId={id || ''} onClose={() => setShowMembers(false)} />
+
+      {/* Actions sheet */}
+      <Modal
+        visible={showActions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActions(false)}
+      >
+        <TouchableOpacity
+          className="flex-1 bg-black/60 justify-end"
+          activeOpacity={1}
+          onPress={() => setShowActions(false)}
+        >
+          <View
+            className="bg-ink rounded-t-3xl border-t border-hairline px-5 pt-4"
+            style={{ paddingBottom: insets.bottom + 20 }}
+          >
+            <View className="w-10 h-1 rounded-full bg-hairline self-center mb-4" />
+
+            {venueName ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="View venue location"
+                onPress={() => {
+                  setShowActions(false);
+                  setShowVenueModal(true);
+                }}
+                className="flex-row items-center h-12"
+                activeOpacity={0.7}
+              >
+                <MapPin size={16} color="#D2BBFF" />
+                <Text className="text-moonlight text-sm font-medium ml-3">
+                  View venue • {venueName}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {isHost && !isConcluded ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Conclude activity"
+                disabled={concludeMutation.isPending}
+                onPress={handleHostConclude}
+                className="flex-row items-center h-12"
+                activeOpacity={0.7}
+              >
+                <CheckCircle2 size={16} color="#C77DFF" />
+                <Text className="text-moonlight text-sm font-medium ml-3">Conclude meetup</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Leave squad"
+              disabled={isLeaving}
+              onPress={handleLeaveSquad}
+              className="flex-row items-center h-12"
+              activeOpacity={0.7}
+            >
+              <LogOut size={16} color="#FF6B5E" />
+              <Text className="text-ember text-sm font-semibold ml-3">Leave squad</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Venue Location Modal */}
       <VenueLocationModal

@@ -8,7 +8,6 @@ import { useDiscoveryQuery } from '../../src/features/discovery/useDiscoveryQuer
 import { useDiscoveryFiltersStore } from '../../src/features/discovery/useDiscoveryFiltersStore';
 import { CategoryFilterBar } from '../../src/features/discovery/CategoryFilterBar';
 import { DiscoveryEmptyState } from '../../src/features/discovery/DiscoveryEmptyState';
-import { DevPersonaSwitcher } from '../../src/components/dev/DevPersonaSwitcher';
 import { VerifiedBadge } from '../../src/components/common/VerifiedBadge';
 import { useUserLocation } from '../../src/hooks/useUserLocation';
 import { useRefreshByUser } from '../../src/hooks/useRefreshByUser';
@@ -139,8 +138,6 @@ export default function DiscoveryListScreen() {
       style={{ paddingTop: Math.max(insets.top, 16) }}
       className="flex-1 bg-void px-5"
     >
-      <DevPersonaSwitcher variant="pill" />
-
       {/* Header */}
       <View className="mb-3 pr-24">
         <View className="flex-row items-center mb-1">

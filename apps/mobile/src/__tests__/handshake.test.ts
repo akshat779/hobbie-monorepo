@@ -21,6 +21,11 @@ vi.mock('../services/supabase', async () => {
   };
 });
 
+// Keep blocked-id lookup out of this suite's Supabase call ordering.
+vi.mock('../services/moderation', () => ({
+  getMyBlockedIds: vi.fn(async () => []),
+}));
+
 describe('Handshake Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();

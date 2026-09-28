@@ -6,12 +6,14 @@ import {
   ScrollView,
   TextInput,
   Animated,
+  Easing,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ChevronLeft,
   Clock,
@@ -32,6 +34,7 @@ import {
 } from '../../src/features/activity/useActivityDetailQuery';
 import { useJoinRequestMutation } from '../../src/features/activity/useActivityMutations';
 import { HostReviewModal } from '../../src/features/handshake/HostReviewModal';
+import { queryKeys } from '../../src/services/queryKeys';
 
 import { useCountdown } from '../../src/hooks/useCountdown';
 
@@ -40,6 +43,7 @@ export default function ActivityDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = useAuthStore((s) => s.user?.id || '');
+  const queryClient = useQueryClient();
 
   const {
     data: activity,
@@ -58,47 +62,41 @@ export default function ActivityDetailScreen() {
 
   const isSubmitting = joinMutation.isPending;
 
-  // Pulse animation for pending state
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
+  // A single render-only "radar ping" halo behind the pending clock. The card
+  // stays fully opaque and static — only the halo scales and fades on the native
+  // driver, so it reads as a calm "waiting" cue instead of a throbbing card.
+  const pendingPing = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    let animation: Animated.CompositeAnimation | null = null;
-    if (existingRequest?.status === 'pending') {
-      animation = Animated.loop(
-        Animated.parallel([
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.05,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(pulseOpacity, {
-              toValue: 1,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseOpacity, {
-              toValue: 0.5,
-              duration: 900,
-              useNativeDriver: true,
-            }),
-          ]),
-        ])
-      );
-      animation.start();
+    if (existingRequest?.status !== 'pending') {
+      pendingPing.setValue(0);
+      return;
     }
+
+    const animation = Animated.loop(
+      Animated.timing(pendingPing, {
+        toValue: 1,
+        duration: 1800,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      })
+    );
+    animation.start();
+
     return () => {
-      animation?.stop();
+      animation.stop();
+      pendingPing.setValue(0);
     };
-  }, [existingRequest?.status, pulseAnim, pulseOpacity]);
+  }, [existingRequest?.status, pendingPing]);
+
+  const pingScale = pendingPing.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.9],
+  });
+  const pingOpacity = pendingPing.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.4, 0],
+  });
 
   const loadActivityData = useCallback(() => {
     refetchActivity();
@@ -113,6 +111,16 @@ export default function ActivityDetailScreen() {
 
     const unsubscribe = subscribeToJoinRequestUpdates(existingRequest.id, (newStatus) => {
       if (newStatus === 'accepted') {
+        // Acceptance creates the membership row server-side, so discovery now
+        // intentionally omits this squad for the caller. Drop the cached
+        // discovery pages and refresh My Squads instead of waiting for
+        // staleTime, otherwise the pin/card would linger briefly.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.discovery.all() });
+        if (currentUserId) {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.activities.mySquads(currentUserId),
+          });
+        }
         // Automatically transition into the ephemeral room upon acceptance!
         navigationTimerRef.current = setTimeout(() => {
           router.replace(`/room/${id}`);
@@ -128,7 +136,7 @@ export default function ActivityDetailScreen() {
       }
       unsubscribe();
     };
-  }, [existingRequest?.id, existingRequest?.status, id, router, loadActivityData]);
+  }, [existingRequest?.id, existingRequest?.status, id, router, loadActivityData, queryClient, currentUserId]);
 
   const handleJoin = async () => {
     if (!currentUserId) {
@@ -355,21 +363,30 @@ export default function ActivityDetailScreen() {
             )}
 
             {!isHost && existingRequest?.status === 'pending' && (
-              <Animated.View
-                style={{
-                  transform: [{ scale: pulseAnim }],
-                  opacity: pulseOpacity,
-                }}
-                className="bg-ink-raised border border-signal-violet p-5 rounded-3xl items-center mb-5 shadow-lg"
-              >
-                <Clock size={24} color="#C77DFF" className="mb-2" />
+              <View className="bg-ink-raised border border-signal-violet/60 p-5 rounded-3xl items-center mb-5">
+                <View className="w-12 h-12 items-center justify-center mb-3">
+                  <Animated.View
+                    style={{
+                      position: 'absolute',
+                      width: 48,
+                      height: 48,
+                      borderRadius: 24,
+                      backgroundColor: '#C77DFF',
+                      transform: [{ scale: pingScale }],
+                      opacity: pingOpacity,
+                    }}
+                  />
+                  <View className="w-12 h-12 rounded-full bg-signal-violet/15 border border-signal-violet/50 items-center justify-center">
+                    <Clock size={22} color="#C77DFF" />
+                  </View>
+                </View>
                 <Text className="text-pulse-lilac font-display font-bold text-base mb-1">
-                  Join Request Pending...
+                  Join Request Pending
                 </Text>
                 <Text className="text-dusk text-xs text-center leading-relaxed">
-                  Waiting for {activity.hostName} to review. You will automatically enter the room once approved!
+                  Waiting for {activity.hostName} to review. You'll enter the room automatically once approved.
                 </Text>
-              </Animated.View>
+              </View>
             )}
 
             {!isHost && existingRequest?.status === 'declined' && (

@@ -3,6 +3,7 @@ export * from '../schemas/activity.schema.js';
 export * from '../schemas/join-request.schema.js';
 export * from '../schemas/room.schema.js';
 export * from '../schemas/feedback.schema.js';
+export * from '../schemas/moderation.schema.js';
 export * from '../constants/interests.js';
 export * from '../constants/languages.js';
 export * from '../constants/ttl.js';

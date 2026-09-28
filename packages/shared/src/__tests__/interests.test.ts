@@ -3,6 +3,7 @@ import {
   INTEREST_CATEGORIES,
   INTEREST_IDS,
   interestLabel,
+  interestEmoji,
 } from '../constants/interests.js';
 
 describe('interest catalogue', () => {
@@ -21,5 +22,15 @@ describe('interest catalogue', () => {
 
   it('keeps the taxonomy at the documented ten categories', () => {
     expect(INTEREST_CATEGORIES).toHaveLength(10);
+  });
+
+  it('maps every interest id to a non-empty map-pin emoji with a fallback', () => {
+    expect(interestEmoji('football')).toBe('⚽');
+    expect(interestEmoji('cafe_coffee')).toBe('☕');
+    expect(interestEmoji('unknown_interest')).toBe('✨');
+
+    for (const id of INTEREST_IDS) {
+      expect(interestEmoji(id).length).toBeGreaterThan(0);
+    }
   });
 });

@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Map, Rss, Users, User } from 'lucide-react-native';
+import { useTabBadges } from '../../features/notifications/useTabBadges';
 
 /** Rendered height of the floating dock, used to compute scroll clearance. */
 export const FLOATING_TAB_BAR_HEIGHT = 68;
@@ -56,6 +57,7 @@ export function FloatingGlassTabBar({
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const hasLiquidGlass = Platform.OS === 'ios' && isLiquidGlassAvailable();
+  const badges = useTabBadges();
 
   // Grounded floating position framing the iOS home bar cleanly
   const bottomOffset = insets.bottom > 0 ? Math.max(insets.bottom - 16, 14) : 12;
@@ -86,6 +88,7 @@ export function FloatingGlassTabBar({
 
           const isFocused = state.index === index;
           const iconColor = isFocused ? '#F5F0FF' : '#A99BC2';
+          const showBadge = badges[route.name as keyof typeof badges] ?? false;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -111,7 +114,9 @@ export function FloatingGlassTabBar({
               key={route.key}
               accessibilityRole="tab"
               accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={options.tabBarAccessibilityLabel || config.label}
+              accessibilityLabel={`${
+                options.tabBarAccessibilityLabel || config.label
+              }${showBadge ? ', new notifications' : ''}`}
               testID={options.tabBarButtonTestID}
               onPress={onPress}
               onLongPress={onLongPress}
@@ -125,7 +130,10 @@ export function FloatingGlassTabBar({
                   isFocused && styles.tabCapsuleActive,
                 ]}
               >
-                {config.renderIcon(iconColor)}
+                <View style={styles.iconWrap}>
+                  {config.renderIcon(iconColor)}
+                  {showBadge && <View style={styles.tabBadgeDot} />}
+                </View>
                 <Text
                   style={[
                     styles.tabLabel,
@@ -188,6 +196,20 @@ const styles = StyleSheet.create({
   },
   tabCapsuleActive: {
     backgroundColor: 'rgba(123, 47, 247, 0.25)',
+  },
+  iconWrap: {
+    position: 'relative',
+  },
+  tabBadgeDot: {
+    position: 'absolute',
+    top: -2,
+    right: -3,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#C77DFF',
+    borderWidth: 2,
+    borderColor: '#17131F',
   },
   tabLabel: {
     fontSize: 11,

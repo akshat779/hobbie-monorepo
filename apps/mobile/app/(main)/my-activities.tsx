@@ -8,7 +8,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -28,6 +28,7 @@ import { useRefreshByUser } from '../../src/hooks/useRefreshByUser';
 import { useCountdown } from '../../src/hooks/useCountdown';
 import { concludeActivity } from '../../src/services/room';
 import { queryKeys } from '../../src/services/queryKeys';
+import { useNotificationsStore } from '../../src/features/notifications/useNotificationsStore';
 
 function MySquadCard({
   squad,
@@ -180,7 +181,9 @@ export default function MyActivitiesScreen() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const currentUserId = useAuthStore((s) => s.user?.id);
+  // Gate on the live session so `fetchMySquads` (and its authenticated-only
+  // pending-counts RPC) never runs as the `anon` role.
+  const currentUserId = useAuthStore((s) => s.session?.user?.id);
 
   const {
     data: squads = [],
@@ -189,6 +192,14 @@ export default function MyActivitiesScreen() {
   } = useMyActivitiesQuery(currentUserId);
 
   const { isRefetchingByUser, refetchByUser } = useRefreshByUser(refetch);
+
+  // Viewing My Squads counts as "seen" for acceptance notifications.
+  const clearUnseenAcceptances = useNotificationsStore((s) => s.clearUnseenAcceptances);
+  useFocusEffect(
+    useCallback(() => {
+      clearUnseenAcceptances();
+    }, [clearUnseenAcceptances])
+  );
 
   // Selected squad for host review modal
   const [activeHostReview, setActiveHostReview] = useState<MySquadItem | null>(null);

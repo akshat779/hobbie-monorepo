@@ -4,19 +4,17 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowRight, Shield } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
-import { useAuthStore, DEV_PERSONAS } from '../src/features/auth/useAuthStore';
+import { useAuthStore } from '../src/features/auth/useAuthStore';
 import { HobbieLogo } from '../src/components/common/HobbieLogo';
 
 export default function WelcomeLandingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { initialize, user, profile, loginWithPersona, isDevMode } = useAuthStore(
+  const { initialize, user, profile } = useAuthStore(
     useShallow((s) => ({
       initialize: s.initialize,
       user: s.user,
       profile: s.profile,
-      loginWithPersona: s.loginWithPersona,
-      isDevMode: s.isDevMode,
     }))
   );
 
@@ -64,23 +62,6 @@ export default function WelcomeLandingScreen() {
             {user && profile ? 'Continue to Squads' : 'Get Started'}
           </Text>
           <ArrowRight size={18} color="#F5F0FF" style={{ marginLeft: 8 }} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Explore Hobbie Demo Mode"
-          onPress={async () => {
-            if (isDevMode && !profile) {
-              await loginWithPersona(DEV_PERSONAS[0]!.id);
-            }
-            router.push('/(main)');
-          }}
-          className="w-full h-14 bg-ink border border-hairline rounded-full items-center justify-center mt-3"
-          activeOpacity={0.7}
-        >
-          <Text className="text-dusk font-medium text-sm">
-            Explore Hobbie (Demo Mode)
-          </Text>
         </TouchableOpacity>
       </View>
     </View>

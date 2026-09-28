@@ -1,13 +1,13 @@
 appId: host.exp.Exponent
 ---
-# Real host flow: authenticate, create a squad, and verify the discovery map.
+# Real host flow: sign in as a real account, create a squad, and verify discovery.
+# Creates the "Maestro Host" account (phone 9876543210) on first run.
 - openLink: "exp://localhost:8081"
-- tapOn:
-    text: ".*(Get Started|Continue to Squads|Explore Hobbie).*"
-    optional: true
-- tapOn:
-    text: ".*Alex \\(host\\).*"
-    optional: true
+- runFlow:
+    file: helpers/sign_in_as.yaml
+    env:
+      PHONE: "9876543210"
+      NAME: "Maestro Host"
 - extendedWaitUntil:
     visible:
       id: "host-squad-button"

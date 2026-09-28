@@ -8,7 +8,9 @@ import { fetchMySquads } from '../../src/features/activity/useMyActivitiesQuery'
 
 export default function MainTabLayout() {
   const queryClient = useQueryClient();
-  const userId = useAuthStore((s) => s.user?.id);
+  // Derive the identity from the live session, not the (possibly stale) user
+  // object, so authenticated-only RPCs never fire as the `anon` role.
+  const userId = useAuthStore((s) => s.session?.user?.id);
 
   // Proactive background prefetching (pf-route-prefetch)
   // Warms the "My Squads" cache on layout mount so switching tabs is instantaneous (0ms)

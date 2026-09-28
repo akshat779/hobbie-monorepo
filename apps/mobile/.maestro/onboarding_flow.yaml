@@ -1,6 +1,7 @@
 appId: host.exp.Exponent
 ---
-# Test 1: Full Onboarding Flow (Phone -> Dev OTP -> Interests -> Radar)
+# Test 1: Full Onboarding Flow
+# Phone -> Dev OTP -> Photos -> Name -> B-day -> Gender -> Interests -> Radar
 - openLink: "exp://localhost:8081"
 # If on create modal, close it
 - tapOn:
@@ -16,7 +17,7 @@ appId: host.exp.Exponent
     text: ".*(Get Started|Continue to Squads).*"
     optional: true
 - extendedWaitUntil:
-    visible: ".*(Enter your mobile number|Enter 6-digit code|Build your identity|Hobbie|Feed).*"
+    visible: ".*(Enter your mobile number|Enter 6-digit code|Add your recent pics|Hobbie|Feed).*"
     timeout: 25000
 
 # Handle Phone screen if visible
@@ -35,13 +36,60 @@ appId: host.exp.Exponent
     commands:
       - tapOn: ".*Dev Fast Bypass.*"
 
-# Handle Profile & Interests screen if visible
+# Photos step. Requires at least one photo; selecting from the native picker
+# cannot be fully automated, so the taps below are best-effort.
 - runFlow:
     when:
-      visible: ".*Build your identity.*"
+      visible: "Add your recent pics"
     commands:
-      - tapOn: "e.g. Alex Rivera"
+      - tapOn: "Add photo 1"
+      - tapOn:
+          text: ".*(Recents|All Photos|Photos).*"
+          optional: true
+      - tapOn:
+          index: 0
+          optional: true
+      - tapOn:
+          text: ".*(Add|Done|Choose).*"
+          optional: true
+      - tapOn:
+          text: "Next"
+          optional: true
+
+# Name step
+- runFlow:
+    when:
+      visible: ".*first name.*"
+    commands:
+      - tapOn: "Enter first name"
       - inputText: "Maestro Tester"
+      - tapOn: "Next"
+
+# Birthday step
+- runFlow:
+    when:
+      visible: ".*b-day.*"
+    commands:
+      - tapOn: ".*DD / MM / YYYY.*"
+      - tapOn:
+          text: "Done"
+          optional: true
+      - tapOn: "Next"
+
+# Gender step
+- runFlow:
+    when:
+      visible: ".*your gender.*"
+    commands:
+      - tapOn: "Male"
+      - tapOn: "Next"
+
+# Interests step (final)
+- runFlow:
+    when:
+      visible: ".*What are you into.*"
+    commands:
+      - tapOn: ".*Hobby Football.*"
       - tapOn: "Enter Hobbie"
 
 # Assert we are on the main discovery radar or tabs
@@ -49,4 +97,3 @@ appId: host.exp.Exponent
     visible: ".*(Hobbie|Feed).*"
     timeout: 20000
 - assertVisible: ".*(Hobbie|Feed).*"
-

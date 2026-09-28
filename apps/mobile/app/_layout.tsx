@@ -77,6 +77,7 @@ export default function RootLayout() {
             <Stack.Screen name="activity/[id]" />
             <Stack.Screen name="room/[id]" />
             <Stack.Screen name="profile/edit" />
+            <Stack.Screen name="profile/[userId]" />
           </Stack>
           {splashFinished ? null : (
             <AnimatedSplash ready={appReady} onFinish={handleSplashFinish} />

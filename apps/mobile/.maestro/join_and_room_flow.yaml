@@ -1,13 +1,14 @@
 appId: host.exp.Exponent
 ---
-# Run after create_activity_flow.yaml. Uses real dev personas and Supabase state.
+# Run after create_activity_flow.yaml (creates "Maestro Host").
+# This flow creates/uses a second real account ("Maestro Joiner") and swaps
+# between the two via the Profile tab's Dev User Switcher.
 - openLink: "exp://localhost:8081"
-- tapOn:
-    text: ".*(Get Started|Continue to Squads|Explore Hobbie).*"
-    optional: true
-- tapOn:
-    text: ".*Sam \\(joiner\\).*"
-    optional: true
+- runFlow:
+    file: helpers/sign_in_as.yaml
+    env:
+      PHONE: "9876543211"
+      NAME: "Maestro Joiner"
 - tapOn: "Feed"
 - extendedWaitUntil:
     visible:
@@ -22,27 +23,31 @@ appId: host.exp.Exponent
     visible: "Join Request Pending"
     timeout: 15000
 
-# Switch to the host persona and accept the real request.
+# Switch to the host account and accept the real request.
+- tapOn: "Profile"
 - tapOn:
-    text: ".*Dev Persona: Sam Chen.*"
+    text: "Switch"
+    optional: true
 - tapOn:
-    text: "Dev Persona Option: Alex Rivera"
+    text: ".*Switch to Maestro Host.*"
 - tapOn: "Feed"
 - tapOn:
     text: "Squad Weekend Turf Soccer 5v5"
 - tapOn:
     id: "review-requests"
 - extendedWaitUntil:
-    visible: ".*Sam Chen.*"
+    visible: ".*Maestro Joiner.*"
     timeout: 15000
 - tapOn:
     text: ".*Accept.*"
 
 # Switch back to the joiner and verify room persistence.
+- tapOn: "Profile"
 - tapOn:
-    text: ".*Dev Persona: Alex Rivera.*"
+    text: "Switch"
+    optional: true
 - tapOn:
-    text: "Dev Persona Option: Sam Chen"
+    text: ".*Switch to Maestro Joiner.*"
 - tapOn: "Feed"
 - tapOn:
     text: "Squad Weekend Turf Soccer 5v5"

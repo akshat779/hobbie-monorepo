@@ -49,13 +49,29 @@ maestro test apps/mobile/.maestro/join_and_room_flow.yaml
 
 ---
 
-## 3. Dev Persona Switcher
+## 3. Dev User Switcher
 
-When running the mobile client in `__DEV__` mode (`npm run dev:mobile`), tap the floating **Dev Persona** pill in the top right to switch between:
-1. **Alex (Host - Football)**
-2. **Sam (Joiner - Football)**
-3. **Priya (Joiner - Badminton)**
-4. **Rohan (Unverified)**
+When running the mobile client in `__DEV__` mode (`npm run dev:mobile`), open the
+**Profile** tab and use the **Dev User Switcher** card. It lists every real
+account in `public.profiles` (i.e. every profile created through onboarding) and
+switches the active session in place, so you can test two-sided squad flows
+(request → accept → room) without re-signing in.
+
+Switching mints an authentic session server-side via the `dev-phone-login`
+Edge Function, which is denied by default and only enabled when the
+`DEV_AUTH_ALLOWED=true` function secret is set (never in production). The
+switcher itself is compiled out of release builds because it is gated on
+`__DEV__`.
+
+### Onboarding steps
+
+New accounts go through a 5-step wizard (`app/(auth)/interests.tsx` →
+`src/features/onboarding/OnboardingWizard.tsx`): **Photos → Name → Birthday →
+Gender → Interests**. Each step is one question with a top progress bar and a
+bottom-pinned CTA. Photos require at least one (the first is the cover /
+`avatar_url`); languages and bio are edited later from the profile edit screen.
+Because the photo step opens the native image picker, the Maestro onboarding
+flow's photo selection is best-effort.
 
 ## 4. Remote Supabase Integration Flow
 
@@ -72,8 +88,11 @@ SUPABASE_SERVICE_ROLE_KEY=... # test runner/CI only; never ship to the app
 RUN_SUPABASE_INTEGRATION=true
 ```
 
-For the deployed Edge Function, set `ENVIRONMENT=development` and optionally
-`DEV_AUTH_ALLOWED_PHONES` (comma-separated E.164 numbers) as function secrets.
+For the deployed Edge Function, set `DEV_AUTH_ALLOWED=true` and
+`ENVIRONMENT=development` as function secrets. Never set `DEV_AUTH_ALLOWED` in a
+production project — the function is inert (403) without it. Optionally set
+`DEV_AUTH_ALLOWED_PHONES` (comma-separated E.164 numbers) to restrict the phone
+sign-in path to a specific allowlist.
 
 Run it with:
 

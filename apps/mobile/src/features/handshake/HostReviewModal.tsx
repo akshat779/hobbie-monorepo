@@ -15,7 +15,9 @@ import {
   Clock,
   Sparkles,
   Inbox,
+  ChevronRight,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { JoinRequestPublic } from '@hobbie/shared';
 import {
   fetchIncomingJoinRequests,
@@ -48,6 +50,7 @@ export function HostReviewModal({
 }: HostReviewModalProps) {
   const hostId = useAuthStore((s) => s.user?.id || '');
   const reviewMutation = useReviewRequestMutation();
+  const router = useRouter();
 
   const [requests, setRequests] = useState<JoinRequestPublic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +61,22 @@ export function HostReviewModal({
   useEffect(() => {
     setLocalCount(currentParticipantsCount);
   }, [currentParticipantsCount]);
+
+  const openRequesterProfile = (requestId: string, targetUserId: string) => {
+    // Close this sheet first; pushing a route underneath a visible native modal
+    // would render it behind the sheet.
+    onClose();
+    router.push({
+      pathname: '/profile/[userId]',
+      params: {
+        userId: targetUserId,
+        activityId,
+        requestId,
+        currentCount: String(localCount),
+        maxParticipants: String(maxParticipants),
+      },
+    });
+  };
 
   const loadRequests = useCallback(async () => {
     if (!activityId) return;
@@ -266,14 +285,26 @@ export function HostReviewModal({
                   >
                     {/* Joiner Row */}
                     <View className="flex-row justify-between items-start mb-2">
-                      <View className="flex-1 mr-2">
-                        <View className="flex-row items-center">
-                          <Text className="text-moonlight font-display font-bold text-base mr-2">
-                            {req.user.name}
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${req.user.name}'s profile`}
+                        onPress={() => openRequesterProfile(req.id, req.user.id)}
+                        className="flex-1 mr-2 flex-row items-center"
+                        activeOpacity={0.6}
+                      >
+                        <View className="flex-1 mr-1">
+                          <View className="flex-row items-center">
+                            <Text className="text-moonlight font-display font-bold text-base mr-2">
+                              {req.user.name}
+                            </Text>
+                            {req.user.isVerified && <VerifiedBadge size={14} />}
+                          </View>
+                          <Text className="text-2xs text-pulse-lilac font-semibold mt-0.5">
+                            View profile
                           </Text>
-                          {req.user.isVerified && <VerifiedBadge size={14} />}
                         </View>
-                      </View>
+                        <ChevronRight size={18} color="#A99BC2" />
+                      </TouchableOpacity>
 
                       {/* Trust Score Badge */}
                       <View className="bg-void border border-hairline px-2.5 py-1 rounded-full">

@@ -1,0 +1,77 @@
+appId: host.exp.Exponent
+---
+# Signs the app in as a real account via the dev OTP bypass.
+# Requires env: PHONE (10-digit national number) and NAME (profile display name).
+# Signs out of any existing session first so the flow is repeatable.
+- tapOn:
+    text: "Profile"
+    optional: true
+- tapOn:
+    text: "Sign Out"
+    optional: true
+- tapOn:
+    text: ".*(Get Started|Continue to Squads).*"
+    optional: true
+- runFlow:
+    when:
+      visible: ".*Enter your mobile number.*"
+    commands:
+      - tapOn: ".*98765 43210.*"
+      - inputText: "${PHONE}"
+      - tapOn: "Send Verification Code"
+- runFlow:
+    when:
+      visible: ".*Enter 6-digit code.*"
+    commands:
+      - tapOn: ".*Dev Fast Bypass.*"
+
+# Only reaches onboarding for a brand-new phone. Existing accounts skip it.
+- runFlow:
+    when:
+      visible: "Add your recent pics"
+    commands:
+      - tapOn: "Add photo 1"
+      - tapOn:
+          text: ".*(Recents|All Photos|Photos).*"
+          optional: true
+      - tapOn:
+          index: 0
+          optional: true
+      - tapOn:
+          text: ".*(Add|Done|Choose).*"
+          optional: true
+      - tapOn:
+          text: "Next"
+          optional: true
+- runFlow:
+    when:
+      visible: ".*first name.*"
+    commands:
+      - tapOn: "Enter first name"
+      - inputText: "${NAME}"
+      - tapOn: "Next"
+- runFlow:
+    when:
+      visible: ".*b-day.*"
+    commands:
+      - tapOn: ".*DD / MM / YYYY.*"
+      - tapOn:
+          text: "Done"
+          optional: true
+      - tapOn: "Next"
+- runFlow:
+    when:
+      visible: ".*your gender.*"
+    commands:
+      - tapOn: "Male"
+      - tapOn: "Next"
+- runFlow:
+    when:
+      visible: ".*What are you into.*"
+    commands:
+      - tapOn: ".*Hobby Football.*"
+      - tapOn: "Enter Hobbie"
+
+- extendedWaitUntil:
+    visible: ".*(Hobbie|Feed).*"
+    timeout: 25000

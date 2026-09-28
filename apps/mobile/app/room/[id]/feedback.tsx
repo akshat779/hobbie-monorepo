@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ThumbsUp,
@@ -28,6 +28,7 @@ import {
   useSubmitFeedbackMutation,
 } from '../../../src/features/feedback/useFeedbackMutations';
 import { calculateFeedbackScore } from '../../../src/services/feedback';
+import { useBackToMySquads } from '../../../src/hooks/useBackToMySquads';
 
 const AVAILABLE_TAGS = [
   'Friendly',
@@ -39,10 +40,10 @@ const AVAILABLE_TAGS = [
 ];
 
 export default function PostActivityFeedbackScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const goBackToMySquads = useBackToMySquads();
 
   const { data: roomMeta } = useRoomMetadataQuery(id);
   const { data: allMembers = [], isLoading: isMembersLoading } = useRoomMembersQuery(id);
@@ -79,7 +80,7 @@ export default function PostActivityFeedbackScreen() {
       setSelectedTags([]);
       setKeepInTouch(false);
     } else {
-      router.replace('/(main)/my-activities');
+      goBackToMySquads();
     }
   };
 
@@ -117,7 +118,7 @@ export default function PostActivityFeedbackScreen() {
         Alert.alert('Feedback Received', 'Thank you for helping us curate the night!', [
           {
             text: 'Done',
-            onPress: () => router.replace('/(main)/my-activities'),
+            onPress: () => goBackToMySquads(),
           },
         ]);
       }
@@ -138,7 +139,7 @@ export default function PostActivityFeedbackScreen() {
       setSelectedTags([]);
       setKeepInTouch(false);
     } else {
-      router.replace('/(main)/my-activities');
+      goBackToMySquads();
     }
   };
 
@@ -164,7 +165,7 @@ export default function PostActivityFeedbackScreen() {
           There are no other participants to review for this meetup.
         </Text>
         <TouchableOpacity
-          onPress={() => router.replace('/(main)/my-activities')}
+          onPress={() => goBackToMySquads()}
           className="px-6 py-3 bg-signal-violet rounded-full"
         >
           <Text className="text-void font-bold">Return to My Squads</Text>
@@ -183,7 +184,7 @@ export default function PostActivityFeedbackScreen() {
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Back to My Squads"
-          onPress={() => router.replace('/(main)/my-activities')}
+          onPress={() => goBackToMySquads()}
           className="w-9 h-9 rounded-full bg-ink items-center justify-center border border-hairline"
         >
           <ArrowLeft size={16} color="#F5F0FF" />

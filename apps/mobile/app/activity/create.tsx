@@ -16,6 +16,7 @@ import darkMapStyle from '../../src/theme/dark-map-style.json';
 import {
   INTEREST_CATEGORIES,
   InterestId,
+  interestEmoji,
 } from '@hobbie/shared';
 import {
   ChevronLeft,
@@ -35,19 +36,6 @@ import { StepSlider } from '../../src/components/common/StepSlider';
 import { RangeSlider } from '../../src/components/common/RangeSlider';
 
 const TTL_OPTIONS = [1, 2, 3, 4];
-
-const CATEGORY_ICONS: Record<InterestId, string> = {
-  football: '⚽',
-  badminton: '🏸',
-  table_tennis: '🏓',
-  gym_fitness: '🏋️',
-  running: '🏃',
-  cafe_coffee: '☕',
-  coworking: '💻',
-  coding_tech: '⚡',
-  board_games: '🎲',
-  nightlife: '🍸',
-};
 
 export default function CreateActivityScreen() {
   const router = useRouter();
@@ -227,7 +215,7 @@ export default function CreateActivityScreen() {
                 activeOpacity={0.7}
               >
                 <Text className="mr-1.5 text-sm">
-                  {CATEGORY_ICONS[cat.id] || '✨'}
+                  {interestEmoji(cat.id)}
                 </Text>
                 <Text
                   className={`text-xs ${

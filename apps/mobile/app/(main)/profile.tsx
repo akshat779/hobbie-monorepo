@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateAge, interestLabel, languageLabel } from '@hobbie/shared';
-import { useAuthStore, DEV_PERSONAS } from '../../src/features/auth/useAuthStore';
+import { useAuthStore } from '../../src/features/auth/useAuthStore';
 import { HobbieLogo } from '../../src/components/common/HobbieLogo';
 import { Avatar } from '../../src/components/common/Avatar';
 import { VerifiedBadge } from '../../src/components/common/VerifiedBadge';
@@ -26,23 +26,26 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const tabBarClearance = useFloatingTabBarClearance();
   const queryClient = useQueryClient();
-  const { profile, activePersonaId, isDevMode, loginWithPersona, signOut } = useAuthStore(
+  const {
+    profile,
+    isDevMode,
+    devUsers,
+    loadDevUsers,
+    switchDevUser,
+    signOut,
+    isLoading,
+  } = useAuthStore(
     useShallow((s) => ({
       profile: s.profile,
-      activePersonaId: s.activePersonaId,
       isDevMode: s.isDevMode,
-      loginWithPersona: s.loginWithPersona,
+      devUsers: s.devUsers,
+      loadDevUsers: s.loadDevUsers,
+      switchDevUser: s.switchDevUser,
       signOut: s.signOut,
+      isLoading: s.isLoading,
     }))
   );
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
-
-  // If cold-started without active profile in dev mode, immediately hydrate default persona
-  useEffect(() => {
-    if (!profile && isDevMode) {
-      void loginWithPersona(DEV_PERSONAS[0]!.id);
-    }
-  }, [profile, isDevMode, loginWithPersona]);
 
   const handleSignOut = async () => {
     queryClient.clear();
@@ -50,26 +53,40 @@ export default function ProfileScreen() {
     router.replace('/');
   };
 
+  const handleTogglePicker = useCallback(async () => {
+    const next = !personaPickerOpen;
+    setPersonaPickerOpen(next);
+    if (next) {
+      await loadDevUsers();
+    }
+  }, [personaPickerOpen, loadDevUsers]);
+
   if (!profile) {
     return (
       <View
         style={{ paddingTop: Math.max(insets.top, 16) }}
         className="flex-1 bg-void px-5 justify-center items-center"
       >
-        <ActivityIndicator size="large" color="#C77DFF" />
-        <Text className="text-dusk font-display text-sm mt-3">Connecting to profile...</Text>
-        {isDevMode && (
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Load demo persona"
-            onPress={() => loginWithPersona(DEV_PERSONAS[0]!.id)}
-            className="mt-5 px-4 py-2.5 bg-ink border border-signal-violet/60 rounded-full"
-            activeOpacity={0.8}
-          >
-            <Text className="text-pulse-lilac text-xs font-mono font-bold">
-              Load Demo Persona (Alex Rivera)
+        {isLoading ? (
+          <>
+            <ActivityIndicator size="large" color="#C77DFF" />
+            <Text className="text-dusk font-display text-sm mt-3">Connecting to profile...</Text>
+          </>
+        ) : (
+          <>
+            <Text className="text-moonlight font-display text-base font-bold">
+              You are not signed in
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
+              onPress={() => router.replace('/(auth)/phone')}
+              className="mt-5 px-5 py-2.5 bg-signal-violet rounded-full"
+              activeOpacity={0.8}
+            >
+              <Text className="text-moonlight text-xs font-mono font-bold">Sign In</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     );
@@ -247,21 +264,21 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Developer Persona Switcher (development builds only) */}
+        {/* Developer User Switcher (development builds only) */}
         {isDevMode ? (
           <View className="bg-ink border border-hairline p-5 rounded-3xl mb-6">
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
                 <Zap size={14} color="#C77DFF" />
                 <Text className="text-xs font-bold uppercase tracking-wider text-pulse-lilac ml-1.5">
-                  Dev Persona Switcher
+                  Dev User Switcher
                 </Text>
               </View>
               <TouchableOpacity
                 accessibilityRole="button"
-                accessibilityLabel={personaPickerOpen ? 'Hide persona picker' : 'Switch dev persona'}
+                accessibilityLabel={personaPickerOpen ? 'Hide user picker' : 'Switch dev user'}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                onPress={() => setPersonaPickerOpen(!personaPickerOpen)}
+                onPress={handleTogglePicker}
                 className="min-h-[40px] px-3.5 py-2 rounded-full bg-ink-raised border border-hairline items-center justify-center"
               >
                 <Text className="text-2xs font-mono text-moonlight font-bold">
@@ -271,46 +288,57 @@ export default function ProfileScreen() {
             </View>
 
             <Text className="text-2xs text-dusk mb-3">
-              Test multi-user squad matching with different verified personas.
+              Switch between real accounts created on this project to test two-sided flows.
             </Text>
 
             {personaPickerOpen && (
               <View className="space-y-2 mt-1">
-                {DEV_PERSONAS.map((p) => {
-                  const isSelected = (activePersonaId || DEV_PERSONAS[0]!.id) === p.id;
-                  return (
-                    <TouchableOpacity
-                      key={p.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Switch to ${p.name}, role ${p.role}`}
-                      accessibilityState={{ selected: isSelected }}
-                      onPress={async () => {
-                        await loginWithPersona(p.id);
-                        setPersonaPickerOpen(false);
-                      }}
-                      className={`p-3 rounded-2xl mb-1.5 border flex-row justify-between items-center ${
-                        isSelected
-                          ? 'border-signal-violet bg-signal-violet/15'
-                          : 'border-hairline bg-void'
-                      }`}
-                      activeOpacity={0.7}
-                    >
-                      <View>
-                        <Text className="text-xs font-bold font-display text-moonlight">
-                          {p.name}
-                        </Text>
-                        <Text className="text-2xs text-dusk capitalize">
-                          Role: {p.role} • ★ {p.trustScore}
-                        </Text>
-                      </View>
-                      {isSelected && (
-                        <View className="px-2 py-0.5 rounded-full bg-signal-violet">
-                          <Text className="text-2xs text-moonlight font-bold">Active</Text>
+                {devUsers.length === 0 ? (
+                  <Text className="text-2xs text-dusk">
+                    No accounts found yet. Sign up to create one.
+                  </Text>
+                ) : (
+                  devUsers.map((u) => {
+                    const isSelected = profile.id === u.id;
+                    return (
+                      <TouchableOpacity
+                        key={u.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Switch to ${u.name}`}
+                        accessibilityState={{ selected: isSelected }}
+                        disabled={isSelected || isLoading}
+                        onPress={async () => {
+                          queryClient.clear();
+                          await switchDevUser(u.id);
+                          setPersonaPickerOpen(false);
+                        }}
+                        className={`p-3 rounded-2xl mb-1.5 border flex-row justify-between items-center ${
+                          isSelected
+                            ? 'border-signal-violet bg-signal-violet/15'
+                            : 'border-hairline bg-void'
+                        }`}
+                        activeOpacity={0.7}
+                      >
+                        <View className="flex-1 pr-2">
+                          <Text
+                            className="text-xs font-bold font-display text-moonlight"
+                            numberOfLines={1}
+                          >
+                            {u.name}
+                          </Text>
+                          <Text className="text-2xs text-dusk">
+                            ★ {u.trust_score.toFixed(2)} • {u.is_verified ? 'Verified' : 'Unverified'}
+                          </Text>
                         </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
+                        {isSelected && (
+                          <View className="px-2 py-0.5 rounded-full bg-signal-violet">
+                            <Text className="text-2xs text-moonlight font-bold">Active</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
               </View>
             )}
           </View>

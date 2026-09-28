@@ -37,7 +37,7 @@ export const CategoryFilterBar = React.memo(function CategoryFilterBar({
         >
           All Squads
         </Text>
-      </TouchableOpacity>
+    </TouchableOpacity>
 
       {INTEREST_CATEGORIES.map((c) => {
         const isSelected = selectedCategory === c.id;

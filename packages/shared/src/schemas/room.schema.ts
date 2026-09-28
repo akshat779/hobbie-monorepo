@@ -63,6 +63,7 @@ export const PendingRequestCountRowSchema = z.object({
 /** Realtime DELETE/UPDATE payload for a single join request status change. */
 export const JoinRequestRealtimeRowSchema = z.object({
   id: z.string().uuid(),
+  activity_id: z.string().uuid(),
   status: JoinRequestStatusSchema,
 });
 

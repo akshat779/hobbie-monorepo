@@ -1,16 +1,22 @@
 // Supabase Edge Function: dev-phone-login
-// Enables zero-SMS, cost-free phone authentication during development
-// by creating real Supabase Auth identities and issuing authentic signed sessions.
+// Enables zero-SMS, cost-free development authentication and one-tap switching
+// between real test accounts, by issuing authentic signed Supabase sessions.
 //
-// SECURITY MODEL
-//   1. Hard production kill-switch: ENVIRONMENT=production always returns 403.
-//   2. Strict phone allowlist: only the mock developer personas (and any phones
-//      explicitly added server-side via DEV_AUTH_ALLOWED_PHONES) can obtain a
-//      session. Arbitrary E.164 numbers are rejected with 403.
+// SECURITY MODEL (deny-by-default)
+//   1. Hard kill-switch: the function refuses every request unless the server
+//      secret DEV_AUTH_ALLOWED is explicitly the string "true". Production must
+//      never set it, so the endpoint is inert by default.
+//   2. Environment kill-switch: ENVIRONMENT=production always returns 403.
+//   3. Session minting requires either an allowlisted phone (dev sign-up) or an
+//      existing auth user id (dev account switching). Admin/service-role
+//      credentials never leave the function runtime.
 //
 // This function is intentionally retained for local simulator / Maestro testing.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import {
+  createClient,
+  type SupabaseClient,
+} from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,18 +25,9 @@ const corsHeaders = {
 };
 
 const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PRODUCTION_ENVIRONMENT = 'production';
-
-/**
- * Strict baseline allowlist. Must stay in sync with DEV_PERSONAS in
- * apps/mobile/src/features/auth/useAuthStore.ts.
- */
-const DEV_PERSONA_PHONES: readonly string[] = [
-  '+919876543210', // Alex Rivera  (host)
-  '+919876543211', // Sam Chen     (joiner)
-  '+919876543212', // Priya Sharma (joiner)
-  '+919876543213', // Rohan Patel  (unverified)
-];
 
 /**
  * Reads an environment variable in both Deno and Node-compatible runtimes.
@@ -65,6 +62,32 @@ function jsonResponse(payload: unknown, status: number): Response {
   });
 }
 
+/** Mints an authentic Supabase session for an existing auth user via magiclink. */
+async function mintSessionForEmail(
+  supabaseAdmin: SupabaseClient,
+  email: string
+): Promise<{ session: unknown; user: unknown }> {
+  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+  });
+
+  if (linkError || !linkData?.properties?.hashed_token) {
+    throw linkError || new Error('Failed to generate magiclink token');
+  }
+
+  const { data: sessionData, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
+    token_hash: linkData.properties.hashed_token,
+    type: 'magiclink',
+  });
+
+  if (verifyError || !sessionData.session) {
+    throw verifyError || new Error('Failed to verify token for session');
+  }
+
+  return { session: sessionData.session, user: sessionData.user };
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -72,7 +95,17 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // 1. Hard security guard: production is always terminated before any work.
+    // 1. Deny-by-default kill-switch: the endpoint is inert unless the server
+    //    runtime explicitly opts in. Production never sets DEV_AUTH_ALLOWED.
+    const devAuthAllowed = (readEnv('DEV_AUTH_ALLOWED') || '').trim().toLowerCase() === 'true';
+    if (!devAuthAllowed) {
+      return jsonResponse(
+        { error: 'Dev authentication endpoint is disabled.' },
+        403
+      );
+    }
+
+    // 2. Environment kill-switch, independent of the opt-in secret.
     const environment = (readEnv('ENVIRONMENT') || '').trim().toLowerCase();
     if (environment === PRODUCTION_ENVIRONMENT) {
       return jsonResponse(
@@ -81,33 +114,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { phone, name } = await req.json();
-
-    if (!phone || typeof phone !== 'string') {
-      return jsonResponse({ error: 'Valid phone number is required.' }, 400);
-    }
-
-    const normalizedPhone = phone.trim().startsWith('+')
-      ? phone.trim()
-      : `+${phone.trim()}`;
-    if (!E164_PATTERN.test(normalizedPhone)) {
-      return jsonResponse({ error: 'Phone number must be a valid E.164 number.' }, 400);
-    }
-
-    // 2. Strict allowlist: developer personas plus server-side additions only.
-    const allowedPhones = Array.from(
-      new Set([...DEV_PERSONA_PHONES, ...readAdditionalAllowedPhones()])
-    );
-    if (!allowedPhones.includes(normalizedPhone)) {
-      return jsonResponse(
-        { error: 'This development phone number is not allowlisted.' },
-        403
-      );
-    }
-
-    const phoneDigits = normalizedPhone.replace(/[^0-9]/g, '');
-    const shadowEmail = `phone_${phoneDigits}@dev.hobbie.internal`;
-    const devPassword = `HobbieDevPass_${phoneDigits}!`;
+    const { phone, name, userId } = await req.json();
 
     // 3. Initialize Supabase Admin Client
     const supabaseUrl = readEnv('SUPABASE_URL');
@@ -127,8 +134,56 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    // 4. Ensure user exists in auth.users
-    let userId: string | null = null;
+    // -----------------------------------------------------------------------
+    // Mode A: mint a session for an existing auth user id (dev account switch).
+    // -----------------------------------------------------------------------
+    if (userId !== undefined) {
+      if (typeof userId !== 'string' || !UUID_PATTERN.test(userId)) {
+        return jsonResponse({ error: 'userId must be a valid UUID.' }, 400);
+      }
+
+      const { data: userData, error: userError } =
+        await supabaseAdmin.auth.admin.getUserById(userId);
+
+      if (userError || !userData?.user?.email) {
+        return jsonResponse({ error: 'No switchable account found for that user id.' }, 404);
+      }
+
+      const { session, user } = await mintSessionForEmail(supabaseAdmin, userData.user.email);
+      return jsonResponse({ session, user }, 200);
+    }
+
+    // -----------------------------------------------------------------------
+    // Mode B: phone sign-in / sign-up (dev onboarding).
+    // -----------------------------------------------------------------------
+    if (!phone || typeof phone !== 'string') {
+      return jsonResponse({ error: 'Valid phone number is required.' }, 400);
+    }
+
+    const normalizedPhone = phone.trim().startsWith('+')
+      ? phone.trim()
+      : `+${phone.trim()}`;
+    if (!E164_PATTERN.test(normalizedPhone)) {
+      return jsonResponse({ error: 'Phone number must be a valid E.164 number.' }, 400);
+    }
+
+    // Strict allowlist: server-side additions only. When no allowlist is
+    // configured, any E.164 number is accepted (still gated by the
+    // deny-by-default DEV_AUTH_ALLOWED secret above).
+    const allowedPhones = readAdditionalAllowedPhones();
+    if (allowedPhones.length > 0 && !allowedPhones.includes(normalizedPhone)) {
+      return jsonResponse(
+        { error: 'This development phone number is not allowlisted.' },
+        403
+      );
+    }
+
+    const phoneDigits = normalizedPhone.replace(/[^0-9]/g, '');
+    const shadowEmail = `phone_${phoneDigits}@dev.hobbie.internal`;
+    const devPassword = `HobbieDevPass_${phoneDigits}!`;
+
+    // Ensure user exists in auth.users
+    let userId2: string | null = null;
     let existingUser;
     for (let page = 1; page <= 100 && !existingUser; page += 1) {
       const { data: usersList, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
@@ -143,9 +198,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (existingUser) {
-      userId = existingUser.id;
+      userId2 = existingUser.id;
       // Ensure password and confirmation state are up to date
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
+      await supabaseAdmin.auth.admin.updateUserById(userId2, {
         password: devPassword,
         email_confirm: true,
         phone_confirm: true,
@@ -166,42 +221,25 @@ Deno.serve(async (req: Request) => {
       if (createError || !newUser.user) {
         throw createError || new Error('Failed to create auth user');
       }
-      userId = newUser.user.id;
+      userId2 = newUser.user.id;
     }
 
-    // 5. Generate an authentic Supabase session using generateLink & verifyOtp
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: shadowEmail,
-    });
+    const { session, user } = await mintSessionForEmail(supabaseAdmin, shadowEmail);
 
-    if (linkError || !linkData?.properties?.hashed_token) {
-      throw linkError || new Error('Failed to generate magiclink token');
-    }
-
-    const { data: sessionData, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
-      token_hash: linkData.properties.hashed_token,
-      type: 'magiclink',
-    });
-
-    if (verifyError || !sessionData.session) {
-      throw verifyError || new Error('Failed to verify token for session');
-    }
-
-    // 6. If a name was explicitly provided (e.g. pre-configured Dev Persona), ensure profile exists.
-    // For brand-new users testing the sign-up flow, leave public.profiles empty so they
-    // are correctly routed to the onboarding screen (app/(auth)/interests.tsx).
+    // If a name was explicitly provided, ensure the profile exists. For
+    // brand-new users testing the sign-up flow, leave public.profiles empty so
+    // they are correctly routed to onboarding (app/(auth)/interests.tsx).
     if (name) {
       const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
         .select('id')
-        .eq('id', userId)
+        .eq('id', userId2)
         .maybeSingle();
 
       if (!existingProfile) {
         const { error: profileErr } = await supabaseAdmin.from('profiles').upsert(
           {
-            id: userId,
+            id: userId2,
             phone: normalizedPhone,
             name: name,
             birth_date: '1998-01-01',
@@ -220,14 +258,8 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 7. Return genuine Supabase session containing real JWT
-    return jsonResponse(
-      {
-        session: sessionData.session,
-        user: sessionData.user,
-      },
-      200
-    );
+    // Return genuine Supabase session containing real JWT
+    return jsonResponse({ session, user }, 200);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Dev phone auth failed';
     return jsonResponse({ error: message }, 500);

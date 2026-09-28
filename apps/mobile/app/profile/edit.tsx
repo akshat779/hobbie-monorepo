@@ -45,6 +45,7 @@ export default function EditProfileScreen() {
     interests: parsedInterests.success ? parsedInterests.data : [],
     preferredLanguages: parsedLanguages.success ? parsedLanguages.data : [],
     avatarUrl: profile.avatar_url,
+    photoUrls: profile.photo_urls,
   };
 
   return (
